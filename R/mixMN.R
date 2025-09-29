@@ -1,0 +1,470 @@
+#' Estimate MGM network with bootstrap centrality, bridge metrics, and clustering
+#'
+#' @description
+#' Estimates a Mixed Graphical Model (MGM) network on the original data and
+#' performs non-parametric bootstrap (row resampling) to compute centrality indices,
+#' bridge metrics, clustering stability, and confidence intervals for node metrics
+#' and edge weights.
+#'
+#' @param data Matrix or data.frame (n x p) with variables in columns
+#' @param type,level Vectors as required by \code{mgm::mgm}
+#' @param reps Integer (>= 0), number of bootstrap replications
+#' @param lambdaSel Method for lambda selection: \code{"CV"} or \code{"EBIC"}
+#' @param lambdaFolds Number of folds for CV (if \code{lambdaSel="CV"})
+#' @param lambdaGam EBIC gamma parameter (if \code{lambdaSel="EBIC"})
+#' @param exclude_from_graph Character vector: nodes excluded from graph/centrality
+#' @param exclude_from_cluster Character vector: nodes excluded from clustering (in addition to \code{exclude_from_graph})
+#' @param seed_model,seed_boot Seeds for reproducibility (model and bootstrap)
+#' @param treat_singletons_as_excluded Logical; if TRUE, singleton communities are treated as excluded
+#' @param cluster_method Community detection algorithm: \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
+#' \code{"walktrap"}, \code{"edge_betweenness"}
+#'
+#' @return A list with:
+#' \itemize{
+#' \item \code{original_membership}, \code{groups}, \code{community_palette}
+#' \item \code{boot_memberships}
+#' \item \code{reps}, \code{cluster_method}, \code{mgm_model}
+#' \item \code{ci_results} (95\% CIs for metrics and edges)
+#' \item \code{centrality_true} (centrality & bridge metrics on original network)
+#' \item bootstrap matrices for each metric (\code{*_boot})
+#' \item \code{edges_true}, \code{edge_boot_mat}
+#' \item \code{keep_nodes_graph}, \code{keep_nodes_cluster}
+#' }
+#'
+#' @details
+#' The function does **not** set \code{future::plan()} — set it beforehand if you want parallel execution.
+#' It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally; include them in the package.
+#'
+#' @importFrom mgm mgm
+#' @importFrom igraph graph_from_adjacency_matrix simplify E ecount V distances betweenness vcount
+#' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap cluster_walktrap cluster_edge_betweenness
+#' @importFrom qgraph centrality
+#' @importFrom colorspace qualitative_hcl
+#' @importFrom future.apply future_lapply
+#' @importFrom stats setNames quantile
+#' @importFrom utils combn
+#' @export
+mixMN <- function(
+    data, type, level,
+    reps = 100,
+    lambdaSel = c("CV", "EBIC"),
+    lambdaFolds = 5, lambdaGam = 0.25,
+    exclude_from_graph = NULL,
+    exclude_from_cluster = NULL,
+    seed_model = NULL, seed_boot = NULL,
+    treat_singletons_as_excluded = FALSE,
+    cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness")
+) {
+  lambdaSel <- match.arg(lambdaSel)
+  cluster_method <- match.arg(cluster_method)
+  if (!is.null(seed_model)) set.seed(seed_model)
+
+  all_nodes <- colnames(data)
+
+  # --- Initial helper ---
+
+  tiny <- 1e-10
+
+  .make_distance_graph <- function(W_signed) {
+    W <- abs(W_signed)
+    diag(W) <- 0
+    W[is.na(W) | W < tiny] <- 0
+    g <- igraph::graph_from_adjacency_matrix(W, mode = "undirected", weighted = TRUE, diag = FALSE)
+    if (igraph::ecount(g) > 0) igraph::E(g)$dist <- 1 / igraph::E(g)$weight
+    g
+  }
+
+  .harmonic_closeness <- function(g) {
+    if (igraph::ecount(g) == 0) {
+      return(setNames(rep(0, igraph::vcount(g)), igraph::V(g)$name))
+    }
+    D <- igraph::distances(g, weights = igraph::E(g)$dist)
+    diag(D) <- NA
+    cl <- rowSums(1 / D, na.rm = TRUE) / (nrow(D) - 1)
+    names(cl) <- igraph::V(g)$name
+    cl
+  }
+
+  # --- Fit MGM on original data ---
+  mgm_args <- list(
+    data = as.matrix(data),
+    type = type,
+    level = level,
+    lambdaSel = lambdaSel,
+    k = 2,
+    binarySign = TRUE
+  )
+  if (lambdaSel == "CV") {
+    mgm_args$lambdaFolds <- lambdaFolds
+  } else {
+    mgm_args$lambdaGam <- lambdaGam
+  }
+  mgm_model <- do.call(mgm::mgm, mgm_args)
+
+  wadj  <- mgm_model$pairwise$wadj
+  signs <- mgm_model$pairwise$signs
+  colnames(wadj) <- rownames(wadj) <- all_nodes
+  colnames(signs) <- rownames(signs) <- all_nodes
+
+  wadj_signed <- wadj
+  idx_sign <- !is.na(signs)
+  wadj_signed[idx_sign] <- wadj[idx_sign] * signs[idx_sign]
+  wadj_signed[!idx_sign] <- 0
+
+  # --- Keep nodes for graph and clustering ---
+  keep_nodes_graph   <- setdiff(all_nodes, exclude_from_graph)
+  keep_nodes_cluster <- setdiff(all_nodes, unique(c(exclude_from_graph, exclude_from_cluster)))
+
+  wadj_signed_graph   <- wadj_signed[keep_nodes_graph,   keep_nodes_graph]
+  wadj_signed_cluster <- wadj_signed[keep_nodes_cluster, keep_nodes_cluster]
+
+  # --- Build graphs ---
+  g_graph   <- igraph::graph_from_adjacency_matrix(abs(wadj_signed_graph),   mode = "undirected", weighted = TRUE, diag = FALSE)
+  g_cluster <- igraph::graph_from_adjacency_matrix(abs(wadj_signed_cluster), mode = "undirected", weighted = TRUE, diag = FALSE)
+  if (cluster_method %in% c("infomap", "edge_betweenness", "walktrap")) {
+    g_cluster <- igraph::simplify(g_cluster, remove.multiple = TRUE, remove.loops = TRUE)
+  }
+
+  cluster_fun <- function(graph) {
+    switch(
+      cluster_method,
+      louvain          = igraph::cluster_louvain(graph, weights = igraph::E(graph)$weight),
+      fast_greedy      = igraph::cluster_fast_greedy(graph, weights = igraph::E(graph)$weight),
+      infomap          = igraph::cluster_infomap(graph),
+      walktrap         = igraph::cluster_walktrap(graph, weights = igraph::E(graph)$weight),
+      edge_betweenness = igraph::cluster_edge_betweenness(graph, weights = igraph::E(graph)$weight)
+    )
+  }
+
+  if (cluster_method %in% c("louvain", "infomap") & !is.null(seed_model)) set.seed(seed_model)
+
+  original_membership <- tryCatch({
+    m <- cluster_fun(g_cluster)$membership
+    stats::setNames(m, keep_nodes_cluster)
+  }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
+
+  sizes <- table(original_membership)
+
+  if (treat_singletons_as_excluded) {
+    valid_labels <- as.integer(names(sizes[sizes >= 2L]))
+    in_valid <- original_membership %in% valid_labels
+
+    unique_clusters <- sort(valid_labels)
+    n_clusters <- length(unique_clusters)
+    palette_clusters <- stats::setNames(
+      if (n_clusters > 0) colorspace::qualitative_hcl(n_clusters, palette = "Dark 3") else character(0),
+      unique_clusters
+    )
+
+    groups <- as.factor(original_membership[in_valid])
+    names(groups) <- keep_nodes_cluster[in_valid]
+
+    singleton_nodes <- names(original_membership)[!in_valid]
+  } else {
+    unique_clusters <- sort(unique(stats::na.omit(original_membership)))
+    n_clusters <- length(unique_clusters)
+    palette_clusters <- stats::setNames(
+      if (n_clusters > 0) colorspace::qualitative_hcl(n_clusters, palette = "Dark 3") else character(0),
+      unique_clusters
+    )
+
+    groups <- as.factor(original_membership)
+    names(groups) <- keep_nodes_cluster
+
+    singleton_nodes <- character(0)
+  }
+
+  # --- Centrality & edges on original graph ---
+  cent_true <- qgraph::centrality(wadj_signed_graph)  # strength & EI1 (segnati)
+  g_dist <- .make_distance_graph(wadj_signed_graph)
+
+  closeness_vec <- .harmonic_closeness(g_dist)
+  betweenness_vec <- if (igraph::ecount(g_dist) > 0) {
+    b <- igraph::betweenness(g_dist, weights = igraph::E(g_dist)$dist, directed = FALSE, normalized = FALSE)
+    names(b) <- igraph::V(g_dist)$name
+    b[keep_nodes_graph]
+  } else setNames(rep(0, length(keep_nodes_graph)), keep_nodes_graph)
+
+
+  edge_names <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
+  edge_mat_true <- wadj_signed_graph[lower.tri(wadj_signed_graph)]
+  names(edge_mat_true) <- edge_names
+
+  # --- Bridge metrics on original graph ---
+  bridge_true <- bridge_metrics(g_graph, membership = groups)
+  bridge_true <- bridge_true[match(keep_nodes_graph, bridge_true$node), ]
+  bridge_outside_true <- bridge_metrics_excluded(g_graph, membership = groups)
+
+  centrality_true_df <- data.frame(
+    node = keep_nodes_graph,
+    strength = cent_true$OutDegree,
+    ei1 = cent_true$OutExpectedInfluence,
+    closeness = closeness_vec,
+    betweenness = betweenness_vec,
+    bridge_strength = bridge_true$bridge_strength,
+    bridge_betweenness = bridge_true$bridge_betweenness,
+    bridge_closeness = bridge_true$bridge_closeness,
+    bridge_ei1 = bridge_true$bridge_ei1,
+    bridge_ei2 = bridge_true$bridge_ei2
+  )
+
+  bridge_excluded_df <- data.frame(
+    node = keep_nodes_graph,
+    bridge_strength_excluded = NA_real_,
+    bridge_betweenness_excluded = NA_real_,
+    bridge_closeness_excluded = NA_real_,
+    bridge_ei1_excluded = NA_real_,
+    bridge_ei2_excluded = NA_real_
+  )
+  idx_out <- match(bridge_outside_true$node, keep_nodes_graph)
+  bridge_excluded_df[idx_out, -1] <- bridge_outside_true[, c(
+    "bridge_strength", "bridge_betweenness", "bridge_closeness",
+    "bridge_expected_influence1", "bridge_expected_influence2"
+  )]
+  centrality_true_df <- cbind(centrality_true_df, bridge_excluded_df[, -1])
+
+  n_nodes_graph   <- length(keep_nodes_graph)
+  n_nodes_cluster <- length(keep_nodes_cluster)
+
+  # --- Bootstrap (optional) ---
+  boot_memberships <- list()
+  ci_results <- NULL
+  # placeholders
+  strength_boot <- ei1_boot <- closeness_boot <- betweenness_boot <- NULL
+  bridge_strength_boot <- bridge_ei1_boot <- bridge_ei2_boot <- NULL
+  bridge_betweenness_boot <- bridge_closeness_boot <- NULL
+  bridge_strength_excl_boot <- bridge_betweenness_excl_boot <- NULL
+  bridge_closeness_excl_boot <- bridge_ei1_excl_boot <- bridge_ei2_excl_boot <- NULL
+  edge_boot_mat <- NULL
+
+  if (reps > 0) {
+    boot_output <- future.apply::future_lapply(
+      X = seq_len(reps),
+      FUN = function(i) {
+        index <- sample(1:nrow(data), replace = TRUE)
+        boot_data <- as.matrix(data[index, , drop = FALSE])
+
+        boot_args <- list(
+          data = boot_data, type = type, level = level,
+          lambdaSel = lambdaSel, k = 2, binarySign = TRUE
+        )
+        if (lambdaSel == "CV") boot_args$lambdaFolds <- lambdaFolds else boot_args$lambdaGam <- lambdaGam
+
+        boot_model <- tryCatch(do.call(mgm::mgm, boot_args), error = function(e) NULL)
+        if (is.null(boot_model)) {
+          return(list(
+            membership   = rep(NA_integer_, length(keep_nodes_cluster)),
+            centralities = rep(NA_real_, 14 * n_nodes_graph),
+            edges_boot   = NULL
+          ))
+        }
+
+        boot_wadj  <- boot_model$pairwise$wadj
+        boot_signs <- boot_model$pairwise$signs
+        colnames(boot_wadj) <- rownames(boot_wadj) <- all_nodes
+        colnames(boot_signs) <- rownames(boot_signs) <- all_nodes
+
+        boot_wadj_signed <- boot_wadj
+        idxb <- !is.na(boot_signs)
+        boot_wadj_signed[idxb] <- boot_wadj[idxb] * boot_signs[idxb]
+        boot_wadj_signed[!idxb] <- 0
+
+        boot_wadj_signed_graph   <- boot_wadj_signed[keep_nodes_graph,   keep_nodes_graph]
+        boot_wadj_signed_cluster <- boot_wadj_signed[keep_nodes_cluster, keep_nodes_cluster]
+
+        g_graph_boot   <- igraph::graph_from_adjacency_matrix(abs(boot_wadj_signed_graph),   mode = "undirected", weighted = TRUE, diag = FALSE)
+        g_cluster_boot <- igraph::graph_from_adjacency_matrix(abs(boot_wadj_signed_cluster), mode = "undirected", weighted = TRUE, diag = FALSE)
+        if (cluster_method %in% c("infomap", "edge_betweenness", "walktrap")) {
+          g_cluster_boot <- igraph::simplify(g_cluster_boot, remove.multiple = TRUE, remove.loops = TRUE)
+        }
+
+        boot_membership <- tryCatch({
+          m <- cluster_fun(g_cluster_boot)$membership
+          stats::setNames(m, keep_nodes_cluster)
+        }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
+
+        cent_vals <- tryCatch(
+          qgraph::centrality(boot_wadj_signed_graph),
+          error = function(e) list(
+            OutDegree = rep(NA_real_, n_nodes_graph),
+            OutExpectedInfluence = rep(NA_real_, n_nodes_graph)
+          )
+        )
+
+        g_dist_boot <- .make_distance_graph(boot_wadj_signed_graph)
+
+        igraph_closeness_boot <- tryCatch(
+          .harmonic_closeness(g_dist_boot)[keep_nodes_graph],
+          error = function(e) rep(NA_real_, n_nodes_graph)
+        )
+
+        igraph_betweenness_boot <- tryCatch(
+          if (igraph::ecount(g_dist_boot) > 0)
+            igraph::betweenness(g_dist_boot, weights = igraph::E(g_dist_boot)$dist, directed = FALSE, normalized = FALSE)[keep_nodes_graph]
+          else rep(0, n_nodes_graph),
+          error = function(e) rep(NA_real_, n_nodes_graph)
+        )
+
+        bridge_vals <- tryCatch({
+          b <- bridge_metrics(g_graph_boot, membership = groups)
+          b[match(keep_nodes_graph, b$node), ]
+        }, error = function(e) {
+          data.frame(
+            node = keep_nodes_graph,
+            bridge_strength = rep(NA_real_, n_nodes_graph),
+            bridge_ei1 = rep(NA_real_, n_nodes_graph),
+            bridge_ei2 = rep(NA_real_, n_nodes_graph),
+            bridge_betweenness = rep(NA_real_, n_nodes_graph),
+            bridge_closeness = rep(NA_real_, n_nodes_graph)
+          )
+        })
+
+        bridge_outside_boot <- tryCatch({
+          b <- bridge_metrics_excluded(g_graph_boot, membership = groups)
+          b[match(keep_nodes_graph, b$node), c(
+            "bridge_strength",
+            "bridge_betweenness",
+            "bridge_closeness",
+            "bridge_expected_influence1",
+            "bridge_expected_influence2"
+          )]
+        }, error = function(e) {
+          matrix(NA_real_, nrow = n_nodes_graph, ncol = 5)
+        })
+
+        boot_edges <- boot_wadj_signed[keep_nodes_graph, keep_nodes_graph]
+        edge_values <- boot_edges[lower.tri(boot_edges)]
+        names(edge_values) <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
+
+        list(
+          membership = boot_membership,
+          centralities = c(
+            cent_vals$OutDegree,
+            cent_vals$OutExpectedInfluence,
+            igraph_closeness_boot,
+            igraph_betweenness_boot,
+            bridge_vals$bridge_strength,
+            bridge_vals$bridge_ei1,
+            bridge_vals$bridge_ei2,
+            bridge_vals$bridge_betweenness,
+            bridge_vals$bridge_closeness,
+            bridge_outside_boot[, 1],
+            bridge_outside_boot[, 2],
+            bridge_outside_boot[, 3],
+            bridge_outside_boot[, 4],
+            bridge_outside_boot[, 5]
+          ),
+          edges_boot = edge_values
+        )
+      },
+      future.seed = seed_boot
+    )
+
+    # --- Assemble bootstrap matrices ---
+    boot_mat <- do.call(rbind, lapply(boot_output, function(x) x$centralities))
+    boot_memberships <- lapply(boot_output, function(x) x$membership)
+
+    edge_names <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
+    edge_boot_mat <- matrix(NA_real_, nrow = length(edge_names), ncol = reps)
+    rownames(edge_boot_mat) <- edge_names
+    for (i in seq_len(reps)) {
+      edges_i <- boot_output[[i]]$edges_boot
+      if (!is.null(edges_i)) edge_boot_mat[names(edges_i), i] <- edges_i
+    }
+
+    n <- n_nodes_graph
+    strength_boot                 <- boot_mat[,  (1):(n),             drop = FALSE]
+    ei1_boot                      <- boot_mat[,  (n + 1):(2 * n),     drop = FALSE]
+    closeness_boot                <- boot_mat[,  (2 * n + 1):(3 * n), drop = FALSE]
+    betweenness_boot              <- boot_mat[,  (3 * n + 1):(4 * n), drop = FALSE]
+    bridge_strength_boot          <- boot_mat[,  (4 * n + 1):(5 * n), drop = FALSE]
+    bridge_ei1_boot               <- boot_mat[,  (5 * n + 1):(6 * n), drop = FALSE]
+    bridge_ei2_boot               <- boot_mat[,  (6 * n + 1):(7 * n), drop = FALSE]
+    bridge_betweenness_boot       <- boot_mat[,  (7 * n + 1):(8 * n), drop = FALSE]
+    bridge_closeness_boot         <- boot_mat[,  (8 * n + 1):(9 * n), drop = FALSE]
+    bridge_strength_excl_boot     <- boot_mat[,  (9 * n + 1):(10 * n), drop = FALSE]
+    bridge_betweenness_excl_boot  <- boot_mat[, (10 * n + 1):(11 * n), drop = FALSE]
+    bridge_closeness_excl_boot    <- boot_mat[, (11 * n + 1):(12 * n), drop = FALSE]
+    bridge_ei1_excl_boot          <- boot_mat[, (12 * n + 1):(13 * n), drop = FALSE]
+    bridge_ei2_excl_boot          <- boot_mat[, (13 * n + 1):(14 * n), drop = FALSE]
+
+    colnames(strength_boot)                 <- keep_nodes_graph
+    colnames(ei1_boot)                      <- keep_nodes_graph
+    colnames(closeness_boot)                <- keep_nodes_graph
+    colnames(betweenness_boot)              <- keep_nodes_graph
+    colnames(bridge_strength_boot)          <- keep_nodes_graph
+    colnames(bridge_ei1_boot)               <- keep_nodes_graph
+    colnames(bridge_ei2_boot)               <- keep_nodes_graph
+    colnames(bridge_betweenness_boot)       <- keep_nodes_graph
+    colnames(bridge_closeness_boot)         <- keep_nodes_graph
+    colnames(bridge_strength_excl_boot)     <- keep_nodes_graph
+    colnames(bridge_betweenness_excl_boot)  <- keep_nodes_graph
+    colnames(bridge_closeness_excl_boot)    <- keep_nodes_graph
+    colnames(bridge_ei1_excl_boot)          <- keep_nodes_graph
+    colnames(bridge_ei2_excl_boot)          <- keep_nodes_graph
+
+    calc_ci <- function(mat) {
+      ci <- apply(mat, 2, function(x) {
+        if (all(is.na(x))) c(`2.5%` = NA_real_, `97.5%` = NA_real_)
+        else stats::quantile(x, probs = c(0.025, 0.975), na.rm = TRUE)
+      })
+      t(ci)
+    }
+
+    ci_results <- list(
+      strength                    = calc_ci(strength_boot),
+      expected_influence          = calc_ci(ei1_boot),
+      closeness                   = calc_ci(closeness_boot),
+      betweenness                 = calc_ci(betweenness_boot),
+      bridge_strength             = calc_ci(bridge_strength_boot),
+      bridge_betweenness          = calc_ci(bridge_betweenness_boot),
+      bridge_closeness            = calc_ci(bridge_closeness_boot),
+      bridge_ei1                  = calc_ci(bridge_ei1_boot),
+      bridge_ei2                  = calc_ci(bridge_ei2_boot),
+      bridge_strength_excluded    = calc_ci(bridge_strength_excl_boot),
+      bridge_betweenness_excluded = calc_ci(bridge_betweenness_excl_boot),
+      bridge_closeness_excluded   = calc_ci(bridge_closeness_excl_boot),
+      bridge_ei1_excluded         = calc_ci(bridge_ei1_excl_boot),
+      bridge_ei2_excluded         = calc_ci(bridge_ei2_excl_boot),
+      edge_weights                = calc_ci(t(edge_boot_mat))
+    )
+  }
+
+  edges_true_df <- data.frame(edge = edge_names, weight = edge_mat_true, row.names = NULL)
+
+  # --- Return ---
+  out <- list(
+    original_membership = original_membership,
+    groups              = groups,
+    community_palette   = palette_clusters,
+    boot_memberships    = boot_memberships,
+    reps                = reps,
+    cluster_method      = cluster_method,
+    mgm_model           = mgm_model,
+    ci_results          = ci_results,
+    centrality_true     = centrality_true_df,
+
+    strength_boot                 = strength_boot,
+    ei1_boot                      = ei1_boot,
+    closeness_boot                = closeness_boot,
+    betweenness_boot              = betweenness_boot,
+    bridge_strength_boot          = bridge_strength_boot,
+    bridge_betweenness_boot       = bridge_betweenness_boot,
+    bridge_closeness_boot         = bridge_closeness_boot,
+    bridge_ei1_boot               = bridge_ei1_boot,
+    bridge_ei2_boot               = bridge_ei2_boot,
+    bridge_strength_excl_boot     = bridge_strength_excl_boot,
+    bridge_betweenness_excl_boot  = bridge_betweenness_excl_boot,
+    bridge_closeness_excl_boot    = bridge_closeness_excl_boot,
+    bridge_ei1_excl_boot          = bridge_ei1_excl_boot,
+    bridge_ei2_excl_boot          = bridge_ei2_excl_boot,
+
+    edges_true        = edges_true_df,
+    edge_boot_mat     = edge_boot_mat,
+    keep_nodes_graph  = keep_nodes_graph,
+    keep_nodes_cluster= keep_nodes_cluster
+  )
+
+  class(out) <- c("mixMN_fit")
+  return(out)
+}
