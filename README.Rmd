@@ -30,7 +30,7 @@ In short: a bit of *mix*, a bit of *mash*, and you’re ready to build your netw
 
 ## Installation
 
-You can install the development version of netkit from [GitHub](https://github.com/) with:
+You can install the development version of MixMashNet from [GitHub](https://github.com/) with:
 
 ``` {r, eval=FALSE}
 # install.packages("devtools")
@@ -84,7 +84,7 @@ level <- c(rep(1L, length(cont_vars)),
            nlevels(df$re))
 
 # 4) Standardize continuous variables; encode categoricals for mgm:
-#    - 'sex' must be 0/1 if binarySign=TRUE inside netkit_mgm (male=0, female=1)
+#    - 'sex' must be 0/1 (male=0, female=1)
 #    - 're' becomes 1..K (K = number of levels)
 df <- df %>%
   mutate(
@@ -111,7 +111,7 @@ plan(multisession, workers = max(1, parallel::detectCores() - 1))
 # plan(sequential)
 ```
 
-### Run Netkit
+### Run MixMashNet
 
 We now fit the MGM model.  
 Here, covariates (`age`, `sex`, `re`) are included in the estimation to adjust the network, but they are excluded from the visualization and centrality metrics.
