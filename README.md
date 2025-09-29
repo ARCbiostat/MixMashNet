@@ -1,60 +1,63 @@
----
-output: github_document
----
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.path = "man/figures/README-",
-  out.width = "100%"
-)
-```
-
 # MixMashNet
 
-**MixMashNet** is an R package for estimating and analyzing **Mixed Graphical Model (MGM) networks**.  
-As the name suggests, the idea is to **“mix and mash”** different types of variables (continuous, categorical, binary) and even different **layers of information** (e.g., biomarkers, chronic diseases) to build networks that are both flexible and interpretable.  
+**MixMashNet** is an R package for estimating and analyzing **Mixed
+Graphical Model (MGM) networks**.  
+As the name suggests, the idea is to **“mix and mash”** different types
+of variables (continuous, categorical, binary) and even different
+**layers of information** (e.g., biomarkers, chronic diseases) to build
+networks that are both flexible and interpretable.
 
 With MixMashNet you can:
 
-- estimate **single-layer networks** or more complex **multilayer networks**  
+- estimate **single-layer networks** or more complex **multilayer
+  networks**  
 - compute **centrality** and **bridge centrality** indices  
 - assess **community stability** via non-parametric bootstrap  
 - obtain **confidence intervals** for node metrics and edge weights  
-- visualize and explore the resulting networks interactively  
+- visualize and explore the resulting networks interactively
 
-In short: a bit of *mix*, a bit of *mash*, and you’re ready to build your network!
+In short: a bit of *mix*, a bit of *mash*, and you’re ready to build
+your network!
 
 ## Installation
 
-You can install the development version of netkit from [GitHub](https://github.com/) with:
+You can install the development version of netkit from
+[GitHub](https://github.com/) with:
 
-``` {r, eval=FALSE}
+``` r
 # install.packages("devtools")
 devtools::install_github("Mariadmm96/MixMashNet")
 ```
 
-
 ## Example
 
-Here we demonstrate how to estimate a single-layer MGM and assess its stability.
+Here we demonstrate how to estimate a single-layer MGM and assess its
+stability.
 
 ### Preparation
 
 Load package and example data
 
-```{r example}
+``` r
 library(MixMashNet)
 data(nhgh) # example dataset bundled with the package
 ```
 
 Data preparation (mixed: continuous + categorical)
 
-```{r}
+``` r
 library(dplyr)
+#> 
+#> Attaching package: 'dplyr'
+#> The following objects are masked from 'package:stats':
+#> 
+#>     filter, lag
+#> The following objects are masked from 'package:base':
+#> 
+#>     intersect, setdiff, setequal, union
 library(tidyr)
 
 # Continuous nodes used in the network (will be "g" in mgm)
@@ -98,9 +101,10 @@ df <- df %>%
 ### Parallel execution (optional)
 
 To speed up bootstrap replications we can enable parallelism with the
-`future` framework. Using `multisession` works on **Windows, macOS, and Linux**.
+`future` framework. Using `multisession` works on **Windows, macOS, and
+Linux**.
 
-```{r parallel, message=FALSE}
+``` r
 library(future)
 library(future.apply)
 
@@ -114,9 +118,11 @@ plan(multisession, workers = max(1, parallel::detectCores() - 1))
 ### Run Netkit
 
 We now fit the MGM model.  
-Here, covariates (`age`, `sex`, `re`) are included in the estimation to adjust the network, but they are excluded from the visualization and centrality metrics.
+Here, covariates (`age`, `sex`, `re`) are included in the estimation to
+adjust the network, but they are excluded from the visualization and
+centrality metrics.
 
-```{r,results='hide'}
+``` r
 fit0 <- mixMN(
   data               = df,
   type               = type,
@@ -129,12 +135,12 @@ fit0 <- mixMN(
 )
 ```
 
-### Quick visualization 
+### Quick visualization
 
-The signed adjacency matrix (weights * signs) is extracted and plotted with qgraph.
-Nodes are colored according to their community membership.
+The signed adjacency matrix (weights \* signs) is extracted and plotted
+with qgraph. Nodes are colored according to their community membership.
 
-```{r,warning=FALSE}
+``` r
 library(qgraph)
 
 # Signed adjacency
@@ -156,12 +162,14 @@ qgraph(
 )
 ```
 
+<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
 
 ### Node stability
 
-To assess the robustness of community assignment, we re-estimate the model with non-parametric bootstrap.
+To assess the robustness of community assignment, we re-estimate the
+model with non-parametric bootstrap.
 
-```{r,results='hide'}
+``` r
 fit1 <- mixMN(
   data               = df,
   type               = type,
@@ -177,18 +185,20 @@ fit1 <- mixMN(
 
 Compute and plot item stability:
 
-```{r,warning=FALSE}
+``` r
 stab1 <- membershipStab(fit1, IS.plot = FALSE)
 membershipStab_plot(stab1)
 ```
 
+<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
+
 ### Excluding unstable nodes
 
-Nodes with stability < 0.70 are retained in the network but excluded from the clustering (they will appear in grey).
-Singletons are also excluded from communities.
+Nodes with stability \< 0.70 are retained in the network but excluded
+from the clustering (they will appear in grey). Singletons are also
+excluded from communities.
 
-
-```{r,results='hide'}
+``` r
 low_stability <- names(stab1$membership.stability$empirical.dimensions)[
     stab1$membership.stability$empirical.dimensions < 0.70
   ]
@@ -210,17 +220,19 @@ fit2 <- mixMN(
 
 Recompute stability:
 
-```{r, warning=FALSE}
+``` r
 stab2 <- membershipStab(fit2, IS.plot = FALSE)
 membershipStab_plot(stab2)
 ```
 
+<img src="man/figures/README-unnamed-chunk-9-1.png" width="100%" />
+
 ### Visualization with excluded nodes
 
-Finally, plot the updated network.
-Excluded nodes (unstable or singletons) are displayed in grey.
+Finally, plot the updated network. Excluded nodes (unstable or
+singletons) are displayed in grey.
 
-```{r,warning=FALSE}
+``` r
 # Signed adjacency
 W_signed2 <- fit2$mgm_model$pairwise$wadj * fit2$mgm_model$pairwise$signs
 dimnames(W_signed2) <- list(colnames(df), colnames(df))
@@ -248,12 +260,14 @@ qgraph(
 )
 ```
 
-### Edge weights 
+<img src="man/figures/README-unnamed-chunk-10-1.png" width="100%" />
+
+### Edge weights
 
 We can compute the edge weights with their 95% confidence intervals.  
-Confidence intervals that include zero are shown in grey.  
+Confidence intervals that include zero are shown in grey.
 
-```{r}
+``` r
 plotCentrality(
   fit2,
   metrics = "edge_weights",
@@ -262,36 +276,48 @@ plotCentrality(
 )  
 ```
 
+<img src="man/figures/README-unnamed-chunk-11-1.png" width="100%" />
+
 ### General centrality indices
 
-We can compute standard node centrality indices (strength, expected influence, closeness, and betweenness) together with their 95% confidence intervals.
-Confidence intervals that include zero are highlighted in grey.
+We can compute standard node centrality indices (strength, expected
+influence, closeness, and betweenness) together with their 95%
+confidence intervals. Confidence intervals that include zero are
+highlighted in grey.
 
-```{r}
+``` r
 plotCentrality(
   fit2,
   metrics = c("strength", "expected_influence", "closeness", "betweenness")
 )
 ```
 
+<img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />
+
 ### Bridge centrality indices
 
-Bridge centrality indices quantify the role of each node as a connector between different communities.
-Here we display bridge strength, bridge expected influence (EI1 and EI2), bridge closeness, and bridge betweenness, with their 95% confidence intervals.
+Bridge centrality indices quantify the role of each node as a connector
+between different communities. Here we display bridge strength, bridge
+expected influence (EI1 and EI2), bridge closeness, and bridge
+betweenness, with their 95% confidence intervals.
 
-```{r}
+``` r
 plotCentrality(
   fit2,
   metrics = c("bridge_strength", "bridge_ei1", "bridge_ei2", "bridge_closeness", "bridge_betweenness")
 )
 ```
 
+<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
+
 ### Bridge centrality indices for excluded nodes
 
-Nodes that were excluded from clustering (e.g. due to low item stability) can also be evaluated with bridge centrality indices.
-This allows us to investigate their potential role in connecting existing communities, even if they are not assigned to one.
+Nodes that were excluded from clustering (e.g. due to low item
+stability) can also be evaluated with bridge centrality indices. This
+allows us to investigate their potential role in connecting existing
+communities, even if they are not assigned to one.
 
-```{r}
+``` r
 plotCentrality(
   fit2,
   metrics = c("bridge_strength_excluded", "bridge_ei1_excluded", "bridge_ei2_excluded",
@@ -299,4 +325,7 @@ plotCentrality(
 )
 ```
 
-✨ That’s it! With just a few lines of code, you can mix, mash, and explore your networks.
+<img src="man/figures/README-unnamed-chunk-14-1.png" width="100%" />
+
+✨ That’s it! With just a few lines of code, you can mix, mash, and
+explore your networks.
