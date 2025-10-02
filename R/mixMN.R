@@ -50,10 +50,10 @@
 #' @importFrom qgraph centrality
 #' @importFrom colorspace qualitative_hcl
 #' @importFrom future.apply future_lapply
-#' @importFrom stats setNames quantile mean sd
-#' @importFrom utils combn
+#' @importFrom stats setNames quantile sd
+#' @importFrom utils combn capture.output
 #' @export
-mixMN2 <- function(
+mixMN <- function(
     data, type, level,
     reps = 100,
     lambdaSel = c("CV", "EBIC"),
