@@ -230,7 +230,7 @@ mixMN <- function(
     nodes_comm <- intersect(names(groups)[!is.na(groups)], keep_nodes_graph)
 
     if (length(nodes_comm) > 0) {
-      A_comm <- abs(wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE])
+      A_comm <- wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE]
 
       wc_comm <- groups[nodes_comm]
       wc_levels <- sort(unique(as.integer(wc_comm)))
@@ -474,7 +474,7 @@ mixMN <- function(
         # --- community scores on bootstrap
         nscores_boot <- NULL
         if (isTRUE(compute_scores) && length(nodes_comm) > 0) {
-          A_comm_boot <- abs(boot_wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE])
+          A_comm_boot <- boot_wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE]
 
           dat_comm_full <- as.matrix(data[, nodes_comm, drop = FALSE])
 
