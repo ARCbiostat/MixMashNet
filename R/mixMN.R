@@ -72,6 +72,12 @@ mixMN <- function(
 
   all_nodes <- colnames(data)
 
+  # assign ID
+  if (is.null(rownames(data))) {
+    rownames(data) <- sprintf("id_%d", seq_len(nrow(data)))
+  }
+  subject_ids <- rownames(data)
+
   # ---- helpers ----
   tiny <- 1e-10
 
@@ -232,7 +238,7 @@ mixMN <- function(
       wc_comm_int <- unname(wc_map[as.integer(wc_comm)]) # dense 1..K
 
       dat_comm <- as.matrix(data[, nodes_comm, drop = FALSE])
-      if (is.null(rownames(dat_comm))) rownames(dat_comm) <- paste0("id_", seq_len(nrow(dat_comm)))
+      rownames(dat_comm) <- subject_ids
 
       community_scores_obj <- tryCatch(
         {
@@ -257,11 +263,11 @@ mixMN <- function(
 
       K <- ncol(community_scores_true)
       colnames(community_scores_true) <- paste0("NS_", sort(unique(as.integer(wc_comm))))
-      rownames(community_scores_true) <- rownames(dat_comm)
+      rownames(community_scores_true) <- subject_ids
 
       community_scores_df <- data.frame(
-        id = rownames(community_scores_true),
-        as.data.frame(community_scores_true),
+        id = subject_ids,
+        as.data.frame(community_scores_true[subject_ids, , drop = FALSE]),
         row.names = NULL,
         check.names = FALSE
       )
@@ -461,24 +467,23 @@ mixMN <- function(
           matrix(NA_real_, nrow = n_nodes_graph, ncol = 5)
         })
 
-        # edges (lower triangle)
         boot_edges <- boot_wadj_signed[keep_nodes_graph, keep_nodes_graph]
         edge_values <- boot_edges[lower.tri(boot_edges)]
         names(edge_values) <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
 
-        # community scores on bootstrap (std.scores; same mapping as original), conditional
+        # --- community scores on bootstrap
         nscores_boot <- NULL
         if (isTRUE(compute_scores) && length(nodes_comm) > 0) {
-          A_comm_boot   <- abs(boot_wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE])
-          dat_comm_boot <- as.matrix(boot_data[, nodes_comm, drop = FALSE])
-          if (is.null(rownames(dat_comm_boot))) rownames(dat_comm_boot) <- paste0("id_", seq_len(nrow(dat_comm_boot)))
+          A_comm_boot <- abs(boot_wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE])
+
+          dat_comm_full <- as.matrix(data[, nodes_comm, drop = FALSE])
 
           ns_obj <- tryCatch(
             {
               .quiet_net_scores(
-                data = dat_comm_boot,
+                data = dat_comm_full,
                 A = A_comm_boot,
-                wc = wc_comm_int,                  # fixed original communities
+                wc = wc_comm_int,
                 loading.method = "revised",
                 structure = "simple",
                 rotation = NULL,
@@ -491,12 +496,15 @@ mixMN <- function(
           if (!is.null(ns_obj)) {
             nscores_boot <- ns_obj$scores$std.scores
           } else {
-            nscores_boot <- matrix(NA_real_, nrow = nrow(dat_comm_boot), ncol = length(unique(wc_comm_int)))
+            nscores_boot <- matrix(NA_real_, nrow = length(subject_ids), ncol = length(unique(wc_comm_int)))
           }
+
           if (!is.null(community_scores_true)) {
             colnames(nscores_boot) <- colnames(community_scores_true)
-            rownames(nscores_boot) <- rownames(dat_comm_boot)
+          } else {
+            colnames(nscores_boot) <- paste0("NS_", sort(unique(as.integer(wc_comm_int))))
           }
+          rownames(nscores_boot) <- subject_ids
         }
 
         list(
@@ -567,24 +575,6 @@ mixMN <- function(
     colnames(bridge_ei1_excl_boot)          <- keep_nodes_graph
     colnames(bridge_ei2_excl_boot)          <- keep_nodes_graph
 
-    # Community score bootstrap array & CIs (std.scores), conditional
-    if (isTRUE(compute_scores) && !is.null(community_scores_true)) {
-      n_subj <- nrow(community_scores_true)
-      K <- ncol(community_scores_true)
-      community_scores_boot_arr <- array(NA_real_, dim = c(reps, n_subj, K))
-      dimnames(community_scores_boot_arr) <- list(
-        rep  = paste0("b", seq_len(reps)),
-        id   = rownames(community_scores_true),
-        comm = colnames(community_scores_true)
-      )
-      for (i in seq_len(reps)) {
-        ns_i <- boot_output[[i]]$nscores_boot
-        if (!is.null(ns_i) && all(dim(ns_i) == c(n_subj, K))) {
-          community_scores_boot_arr[i, , ] <- ns_i
-        }
-      }
-    }
-
     # CIs for node metrics & edges
     calc_ci <- function(mat) {
       ci <- apply(mat, 2, function(x) {
@@ -592,6 +582,43 @@ mixMN <- function(
         else stats::quantile(x, probs = c(0.025, 0.975), na.rm = TRUE)
       })
       t(ci)
+    }
+
+    # assemble community score bootstrap array
+    if (isTRUE(compute_scores) && !is.null(community_scores_true) && ncol(community_scores_true) > 0) {
+      n_subj <- length(subject_ids)
+      comm_names <- colnames(community_scores_true)
+      K <- length(comm_names)
+
+      community_scores_boot_arr <- array(
+        NA_real_, dim = c(reps, n_subj, K),
+        dimnames = list(
+          rep  = paste0("b", seq_len(reps)),
+          id   = subject_ids,
+          comm = comm_names
+        )
+      )
+
+      for (i in seq_len(reps)) {
+        ns_i <- boot_output[[i]]$nscores_boot
+        if (is.null(ns_i)) next
+
+        ns_i <- as.matrix(ns_i)
+
+        miss_rows <- setdiff(subject_ids, rownames(ns_i))
+        if (length(miss_rows)) {
+          ns_i <- rbind(ns_i, matrix(NA_real_, nrow = length(miss_rows), ncol = ncol(ns_i),
+                                     dimnames = list(miss_rows, colnames(ns_i))))
+        }
+        miss_cols <- setdiff(comm_names, colnames(ns_i))
+        if (length(miss_cols)) {
+          ns_i <- cbind(ns_i, matrix(NA_real_, nrow = nrow(ns_i), ncol = length(miss_cols),
+                                     dimnames = list(rownames(ns_i), miss_cols)))
+        }
+
+        ns_i <- ns_i[subject_ids, comm_names, drop = FALSE]
+        community_scores_boot_arr[i, , ] <- ns_i
+      }
     }
 
     ci_results <- list(
@@ -649,7 +676,7 @@ mixMN <- function(
         NA_real_, dim = c(reps, n_subj, m_excl),
         dimnames = list(
           rep  = paste0("b", seq_len(reps)),
-          id   = rownames(X_excl),
+          id   = subject_ids,
           excl = paste0("EX_", colnames(X_excl))
         )
       )
@@ -697,15 +724,16 @@ mixMN <- function(
     # Community scores (present only if compute_scores = TRUE)
     community_scores_obj  = if (isTRUE(compute_scores)) community_scores_obj else NULL,
     community_scores_df   = if (isTRUE(compute_scores)) community_scores_df  else NULL,
-    community_scores_ci   = if (isTRUE(compute_scores) && exists("community_scores_ci")) community_scores_ci else NULL,
-    community_scores_boot = if (isTRUE(compute_scores) && exists("community_scores_boot_arr")) community_scores_boot_arr else NULL,
+    community_scores_ci   = if (isTRUE(compute_scores) && !is.null(community_scores_ci)) community_scores_ci else NULL,
+    community_scores_boot = if (isTRUE(compute_scores) && !is.null(community_scores_boot_arr)) community_scores_boot_arr else NULL,
 
     # Excluded scores (present only if compute_excluded_scores = TRUE)
     excluded_scores_df    = if (isTRUE(compute_excluded_scores)) excluded_scores_df else NULL,
-    excluded_scores_ci    = if (isTRUE(compute_excluded_scores) && exists("excluded_values_ci")) excluded_values_ci else NULL,
-    excluded_scores_boot  = if (isTRUE(compute_excluded_scores) && exists("excluded_scores_boot_arr")) excluded_scores_boot_arr else NULL
+    excluded_scores_ci    = if (isTRUE(compute_excluded_scores) && !is.null(excluded_values_ci)) excluded_values_ci else NULL,
+    excluded_scores_boot  = if (isTRUE(compute_excluded_scores) && !is.null(excluded_scores_boot_arr)) excluded_scores_boot_arr else NULL
   )
 
   class(out) <- c("mixMN_fit")
   return(out)
 }
+
