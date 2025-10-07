@@ -341,7 +341,7 @@ plotCentrality <- function(
     ggplot2::theme(
       strip.text   = ggplot2::element_text(size = 12, face = "bold"),
       axis.text.x  = ggplot2::element_text(size = 9, face = "bold"),
-      axis.text.y  = ggplot2::element_text(size = 8, face = "bold"),
+      axis.text.y  = ggplot2::element_text(size = 12, face = "bold"),
       plot.title   = ggplot2::element_text(size = 14, face = "bold"),
       legend.position = if (isTRUE(color_by_community) && !plotting_edges) "right" else "none",
       panel.border = ggplot2::element_rect(color = "black", fill = NA, linewidth = 0.5)
