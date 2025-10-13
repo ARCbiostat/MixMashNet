@@ -53,7 +53,7 @@
 #'         returning point estimates and percentile CIs.
 #' }
 #'
-#' @return An object of class \code{"mixMN_multi_fit"} with elements:
+#' @return An object of class \code{"multimixMN_fit"} with elements:
 #' \describe{
 #'   \item{\code{layers}}{Named vector of layer assignment for all nodes.}
 #'   \item{\code{layer_rules}}{Normalized symmetric matrix of allowed cross-layer edges.}
@@ -85,7 +85,7 @@
 #' @importFrom future.apply future_lapply
 #' @importFrom qgraph centrality
 #' @export
-mixMN_multi <- function(
+multimixMN <- function(
     data, type, level,
     layers, layer_rules,
     reps = 100,
@@ -107,7 +107,7 @@ mixMN_multi <- function(
   if (length(unique(layers)) < 2) {
     stop(
       paste0(
-        "mixMN_multi is designed for MULTILAYER networks (>= 2 layers). ",
+        "multimixMN is designed for MULTILAYER networks (>= 2 layers). ",
         "You provided only one layer. For single-layer networks, please use the ",
         "`mixMN()` function instead."
       ),
@@ -623,6 +623,6 @@ mixMN_multi <- function(
     seed_model           = seed_model,
     seed_boot            = seed_boot
   )
-  class(out) <- c("mixMN_multi_fit")
+  class(out) <- c("multimixMN_fit")
   return(out)
 }

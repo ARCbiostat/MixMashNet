@@ -73,7 +73,7 @@
 #' Uses internal helpers \code{bridge_metrics()} and
 #' \code{bridge_metrics_excluded()}.
 #'
-#' @seealso \code{\link{mixMN_multi}}, \code{\link{membershipStab}},
+#' @seealso \code{\link{multimixMN}}, \code{\link{membershipStab}},
 #'   \code{\link{membershipStab_plot}}
 #'
 #' @importFrom igraph graph_from_adjacency_matrix simplify ecount E V distances betweenness

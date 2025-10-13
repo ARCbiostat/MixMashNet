@@ -100,6 +100,6 @@ Uses internal helpers \code{bridge_metrics()} and
 }
 
 \seealso{
-\code{\link{mixMN_multi}}, \code{\link{membershipStab}},
+\code{\link{multimixMN}}, \code{\link{membershipStab}},
 \code{\link{membershipStab_plot}}
 }

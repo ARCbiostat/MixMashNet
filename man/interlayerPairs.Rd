@@ -7,7 +7,7 @@
 interlayerPairs(object)
 }
 \arguments{
-\item{object}{An object returned by \code{mixMN_multi()} (\code{mixMN_multi_fit})
+\item{object}{An object returned by \code{multimixMN()} (\code{multimixMN_fit})
 or its \code{$interlayer} sublist.}
 }
 \value{
@@ -15,5 +15,5 @@ A character vector of pair keys like \code{"bio_dis"}.
 }
 \description{
 Returns the available interlayer pair keys (layer pairs) from a
-\code{mixMN_multi_fit} object, normalized as \code{"A_B"} with alphabetical order.
+\code{multimixMN_fit} object, normalized as \code{"A_B"} with alphabetical order.
 }

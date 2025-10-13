@@ -12,7 +12,7 @@ Includes masked estimation for constrained (e.g., multilayer) structures and
 safe graph assembly adapted from \pkg{mgm}.
 }
 \seealso{
-\code{\link{mixMN}}, \code{\link{mixMN_multi}},
+\code{\link{mixMN}}, \code{\link{multimixMN}},
 \code{\link{membershipStab}}, \code{\link{membershipStab_plot}}
 }
 \author{

@@ -19,7 +19,7 @@ plotInterlayer(
 )
 }
 \arguments{
-\item{fit_multi}{A \code{mixMN_multi_fit} object (the full output of \code{mixMN_multi()}).}
+\item{fit_multi}{A \code{multimixMN_fit} object (the full output of \code{multimixMN()}).}
 
 \item{mode}{One of \code{"nodes"} or \code{"edges"}.}
 
@@ -48,7 +48,7 @@ The node→layer map is taken from \code{fit_multi$layers}.}
 A \code{ggplot} object.
 }
 \description{
-Works on objects returned by \code{mixMN_multi()} (class \code{mixMN_multi_fit}).
+Works on objects returned by \code{multimixMN()} (class \code{multimixMN_fit}).
 You can plot either:
 \itemize{
 \item \strong{mode="nodes"}: interlayer-only node metrics with percentile CIs

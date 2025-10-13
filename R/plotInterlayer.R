@@ -2,15 +2,15 @@
 #'
 #' @description
 #' Returns the available interlayer pair keys (layer pairs) from a
-#' \code{mixMN_multi_fit} object, normalized as \code{"A_B"} with alphabetical order.
+#' \code{multimixMN_fit} object, normalized as \code{"A_B"} with alphabetical order.
 #'
-#' @param object An object returned by \code{mixMN_multi()} (\code{mixMN_multi_fit})
+#' @param object An object returned by \code{multimixMN()} (\code{multimixMN_fit})
 #'   or its \code{$interlayer} sublist.
 #'
 #' @return A character vector of pair keys like \code{"bio_dis"}.
 #' @export
 interlayerPairs <- function(object) {
-  # Accept either full mixMN_multi_fit or directly the interlayer sublist
+  # Accept either full multimixMN_fit or directly the interlayer sublist
   if (!is.null(object$interlayer) && !is.null(object$layers)) {
     object <- object$interlayer
   }
@@ -32,7 +32,7 @@ interlayerPairs <- function(object) {
 #' Plot interlayer node metrics or interlayer edge weights with 95% CIs
 #'
 #' @description
-#' Works on objects returned by \code{mixMN_multi()} (class \code{mixMN_multi_fit}).
+#' Works on objects returned by \code{multimixMN()} (class \code{multimixMN_fit}).
 #' You can plot either:
 #' \itemize{
 #'   \item \strong{mode="nodes"}: interlayer-only node metrics with percentile CIs
@@ -40,7 +40,7 @@ interlayerPairs <- function(object) {
 #'   \item \strong{mode="edges"}: interlayer edge weights by layer-pair with percentile CIs.
 #' }
 #'
-#' @param fit_multi A \code{mixMN_multi_fit} object (the full output of \code{mixMN_multi()}).
+#' @param fit_multi A \code{multimixMN_fit} object (the full output of \code{multimixMN()}).
 #' @param mode One of \code{"nodes"} or \code{"edges"}.
 #' @param metrics For \code{mode="nodes"}: any of
 #'   \code{c("strength","ei1","closeness","betweenness")}.
@@ -82,8 +82,8 @@ plotInterlayer <- function(
   mode <- match.arg(mode)
   ordering <- match.arg(ordering)
 
-  if (!is.list(fit_multi) || !"mixMN_multi_fit" %in% class(fit_multi)) {
-    stop("`fit_multi` must be a `mixMN_multi_fit` object returned by mixMN_multi().")
+  if (!is.list(fit_multi) || !"multimixMN_fit" %in% class(fit_multi)) {
+    stop("`fit_multi` must be a `multimixMN_fit` object returned by multimixMN().")
   }
 
   interlayer <- fit_multi$interlayer
