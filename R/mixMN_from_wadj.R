@@ -1,82 +1,21 @@
-#' Build a single-layer mixMN_fit from a signed adjacency (wadj * signs)
+' Build MixMashNet metrics from a signed weighted adjacency matrix
 #'
-#' @description
-#' Constructs a **single-layer** \code{mixMN_fit} object starting from a signed
-#' weighted adjacency matrix (e.g., \code{wadj * signs} from an MGM). The function
-#' supports excluding nodes from the graph and/or from clustering, computes
-#' community structure on the clustering graph, and derives per-node centrality
-#' (strength, EI1, closeness, betweenness) and bridge metrics (including an
-#' "outside/excluded" variant). It also returns the intra-layer edge list with
-#' true weights. Bootstrap containers are initialized but left \code{NULL} here
-#' (bootstrap is handled upstream).
+#' Computes clustering, centrality, and bridge metrics from a signed
+#' weighted adjacency (wadj) selecting nodes for graph vs clustering.
 #'
-#' @param wadj_signed Square numeric matrix of signed weights (nodes × nodes).
-#'   Row/column names must correspond to \code{nodes}.
-#' @param nodes Character vector with the node names (order must match the
-#'   variables represented in \code{wadj_signed}).
-#' @param exclude_from_graph Character vector of nodes to exclude from the
-#'   **graph** (no edges/centralities for these nodes).
-#' @param exclude_from_cluster Character vector of nodes excluded from
-#'   **clustering** (no membership), but still allowed in the graph.
-#' @param cluster_method Community detection algorithm. One of
-#'   \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.
-#' @param reps Integer; number of bootstrap iterations to be stored in the
-#'   output object (metadata only here). Default \code{0}.
-#' @param seed_boot Optional integer; placeholder for upstream bootstrap seed metadata.
-#' @param treat_singletons_as_excluded Logical; if \code{TRUE}, communities of
-#'   size 1 (singletons) are treated as "excluded" for community-dependent metrics
-#'   and are omitted from the empirical membership used for plotting/stability.
+#' @param wadj_signed Square numeric matrix with signed weights.
+#' @param nodes Character vector of node names (matching row/colnames).
+#' @param exclude_from_graph Nodes to exclude from the graph metrics.
+#' @param exclude_from_cluster Nodes to exclude only from clustering.
+#' @param cluster_method One of "louvain","fast_greedy","infomap",
+#'   "walktrap","edge_betweenness".
+#' @param reps Integer, bootstrap reps (currently unused here).
+#' @param seed_boot Optional integer seed.
+#' @param treat_singletons_as_excluded Logical; treat size-1 groups as excluded.
 #'
-#' @details
-#' Two graphs are built:
-#' \enumerate{
-#'   \item \strong{g_graph}: for centrality/bridge metrics (uses \code{abs(wadj_signed)}).
-#'   \item \strong{g_cluster}: for community detection (same weights; simplified for
-#'         methods requiring it).
-#' }
-#' Membership is computed on \strong{g_cluster}. If
-#' \code{treat_singletons_as_excluded = TRUE}, membership labels with size 1 are
-#' dropped from \code{groups} (kept in \code{original_membership} for reference).
+#' @return A list of class \code{mixMN_fit} with clustering, palettes,
+#'   centrality/bridge metrics, and edge weights.
 #'
-#' Centrality includes:
-#' \itemize{
-#'   \item Strength = \code{qgraph::centrality(wadj_signed_graph)$OutDegree}
-#'   \item EI1 = \code{qgraph::centrality(wadj_signed_graph)$OutExpectedInfluence}
-#'   \item Closeness = harmonic closeness on a distance graph where
-#'         \code{dist = 1 / weight}
-#'   \item Betweenness = igraph betweenness on the same distance graph
-#' }
-#'
-#' Bridge metrics are computed via package-internal helpers:
-#' \code{bridge_metrics()} (on included nodes) and
-#' \code{bridge_metrics_excluded()} (for nodes considered outside/excluded).
-#'
-#' @return An object of class \code{mixMN_fit} with fields:
-#' \describe{
-#'   \item{\code{original_membership}}{Integer membership for clustering nodes (named).}
-#'   \item{\code{groups}}{Factor membership used for downstream plots/IS; may omit singletons if requested.}
-#'   \item{\code{community_palette}}{Named character vector of HEX colors for communities.}
-#'   \item{\code{boot_memberships}}{Empty list (bootstrap to be populated upstream).}
-#'   \item{\code{reps}, \code{cluster_method}}{Metadata echoing inputs.}
-#'   \item{\code{mgm_model}}{Always \code{NULL} here (no model fit inside).}
-#'   \item{\code{ci_results}}{Always \code{NULL} here (CIs computed upstream).}
-#'   \item{\code{centrality_true}}{Data frame with per-node strength, EI1, closeness, betweenness,
-#'     plus bridge metrics (included and excluded variants).}
-#'   \item{\code{strength_boot}, \code{ei1_boot}, \code{closeness_boot}, \code{betweenness_boot}}{All \code{NULL} here.}
-#'   \item{\code{bridge_*_boot}, \code{bridge_*_excl_boot}}{All \code{NULL} here.}
-#'   \item{\code{edges_true}}{Data frame of lower-triangular intra-layer edges with weights.}
-#'   \item{\code{edge_boot_mat}}{\code{NULL} (bootstrap stored upstream).}
-#'   \item{\code{keep_nodes_graph}, \code{keep_nodes_cluster}}{Vectors with nodes retained per role.}
-#' }
-#'
-#' @section Dependencies:
-#' Uses internal helpers \code{bridge_metrics()} and
-#' \code{bridge_metrics_excluded()}.
-#'
-#' @seealso \code{\link{multimixMN}}, \code{\link{membershipStab}},
-#'   \code{\link{membershipStab_plot}}
-#'
-#' @importFrom igraph graph_from_adjacency_matrix simplify ecount E V distances betweenness
 #' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap cluster_walktrap cluster_edge_betweenness
 #' @importFrom qgraph centrality
 #' @importFrom grDevices hcl
@@ -257,7 +196,16 @@ mixMN_from_wadj <- function(
     edge_boot_mat       = NULL,
 
     keep_nodes_graph    = keep_nodes_graph,
-    keep_nodes_cluster  = keep_nodes_cluster
+    keep_nodes_cluster  = keep_nodes_cluster,
+
+    community_scores_obj  = NULL,
+    community_scores_df   = NULL,
+    community_scores_ci   = NULL,
+    community_scores_boot = NULL,
+
+    excluded_score        = NULL,
+    excluded_score_ci     = NULL,
+    excluded_score_boot   = NULL
   )
 
   class(out) <- c("mixMN_fit")
