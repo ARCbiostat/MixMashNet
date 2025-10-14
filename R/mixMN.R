@@ -57,7 +57,7 @@
 #' @importFrom stats setNames quantile sd
 #' @importFrom utils combn capture.output
 #' @export
-mixMN <- function(
+mixMN2 <- function(
     data, type, level,
     reps = 100,
     lambdaSel = c("CV", "EBIC"),
@@ -171,6 +171,10 @@ mixMN <- function(
   if (cluster_method %in% c("infomap", "edge_betweenness", "walktrap")) {
     g_cluster <- igraph::simplify(g_cluster, remove.multiple = TRUE, remove.loops = TRUE)
   }
+
+  # ---- two bridge graphs ----
+  g_bridge_abs    <- igraph::graph_from_adjacency_matrix(abs(wadj_signed_graph), mode = "undirected", weighted = TRUE, diag = FALSE)
+  g_bridge_signed <- igraph::graph_from_adjacency_matrix(wadj_signed_graph,      mode = "undirected", weighted = TRUE, diag = FALSE)
 
   cluster_fun <- function(graph) {
     switch(
@@ -294,32 +298,79 @@ mixMN <- function(
   names(edge_mat_true) <- edge_names
 
   # ---- Bridge metrics on original graph ----
-  bridge_true <- tryCatch({
-    b <- bridge_metrics(g_graph, membership = groups)
+  bridge_true_abs <- tryCatch({
+    b <- bridge_metrics(g_bridge_abs, membership = groups)
     b[match(keep_nodes_graph, b$node), ]
   }, error = function(e) {
     data.frame(
       node = keep_nodes_graph,
-      bridge_strength    = rep(NA_real_, length(keep_nodes_graph)),
-      bridge_betweenness = rep(NA_real_, length(keep_nodes_graph)),
-      bridge_closeness   = rep(NA_real_, length(keep_nodes_graph)),
-      bridge_ei1         = rep(NA_real_, length(keep_nodes_graph)),
-      bridge_ei2         = rep(NA_real_, length(keep_nodes_graph))
+      bridge_strength    = NA_real_,
+      bridge_betweenness = NA_real_,
+      bridge_closeness   = NA_real_,
+      bridge_ei1         = NA_real_,
+      bridge_ei2         = NA_real_
     )
   })
 
-  bridge_outside_true <- tryCatch({
-    bridge_metrics_excluded(g_graph, membership = groups)
+  bridge_true_signed <- tryCatch({
+    b <- bridge_metrics(g_bridge_signed, membership = groups)
+    b[match(keep_nodes_graph, b$node), ]
   }, error = function(e) {
     data.frame(
       node = keep_nodes_graph,
-      bridge_strength                = NA_real_,
-      bridge_betweenness             = NA_real_,
-      bridge_closeness               = NA_real_,
-      bridge_expected_influence1     = NA_real_,
-      bridge_expected_influence2     = NA_real_
+      bridge_strength    = NA_real_,
+      bridge_betweenness = NA_real_,
+      bridge_closeness   = NA_real_,
+      bridge_ei1         = NA_real_,
+      bridge_ei2         = NA_real_
     )
   })
+
+  # Combine: take strength/betw/clo from ABS, EI1/EI2 from SIGNED
+  bridge_true <- data.frame(
+    node               = keep_nodes_graph,
+    bridge_strength    = bridge_true_abs$bridge_strength,
+    bridge_betweenness = bridge_true_abs$bridge_betweenness,
+    bridge_closeness   = bridge_true_abs$bridge_closeness,
+    bridge_ei1         = bridge_true_signed$bridge_ei1,
+    bridge_ei2         = bridge_true_signed$bridge_ei2
+  )
+
+  # ---- "Excluded" metrics: same split ----
+  bridge_outside_abs <- tryCatch({
+    bridge_metrics_excluded(g_bridge_abs, membership = groups)
+  }, error = function(e) {
+    data.frame(
+      node = keep_nodes_graph,
+      bridge_strength            = NA_real_,
+      bridge_betweenness         = NA_real_,
+      bridge_closeness           = NA_real_,
+      bridge_expected_influence1 = NA_real_,
+      bridge_expected_influence2 = NA_real_
+    )
+  })
+
+  bridge_outside_signed <- tryCatch({
+    bridge_metrics_excluded(g_bridge_signed, membership = groups)
+  }, error = function(e) {
+    data.frame(
+      node = keep_nodes_graph,
+      bridge_strength            = NA_real_,
+      bridge_betweenness         = NA_real_,
+      bridge_closeness           = NA_real_,
+      bridge_expected_influence1 = NA_real_,
+      bridge_expected_influence2 = NA_real_
+    )
+  })
+
+  bridge_outside_true <- data.frame(
+    node                         = bridge_outside_abs$node,
+    bridge_strength              = bridge_outside_abs$bridge_strength,
+    bridge_betweenness           = bridge_outside_abs$bridge_betweenness,
+    bridge_closeness             = bridge_outside_abs$bridge_closeness,
+    bridge_expected_influence1   = bridge_outside_signed$bridge_expected_influence1, # SIGNED
+    bridge_expected_influence2   = bridge_outside_signed$bridge_expected_influence2  # SIGNED
+  )
 
   centrality_true_df <- data.frame(
     node = keep_nodes_graph,
@@ -404,6 +455,8 @@ mixMN <- function(
 
         g_graph_boot   <- igraph::graph_from_adjacency_matrix(abs(boot_wadj_signed_graph),   mode = "undirected", weighted = TRUE, diag = FALSE)
         g_cluster_boot <- igraph::graph_from_adjacency_matrix(abs(boot_wadj_signed_cluster), mode = "undirected", weighted = TRUE, diag = FALSE)
+        g_bridge_abs_boot    <- igraph::graph_from_adjacency_matrix(abs(boot_wadj_signed_graph), mode = "undirected", weighted = TRUE, diag = FALSE)
+        g_bridge_signed_boot <- igraph::graph_from_adjacency_matrix(boot_wadj_signed_graph,      mode = "undirected", weighted = TRUE, diag = FALSE)
         if (cluster_method %in% c("infomap", "edge_betweenness", "walktrap")) {
           g_cluster_boot <- igraph::simplify(g_cluster_boot, remove.multiple = TRUE, remove.loops = TRUE)
         }
@@ -436,29 +489,50 @@ mixMN <- function(
           error = function(e) rep(NA_real_, n_nodes_graph)
         )
 
-        bridge_vals <- tryCatch({
-          b <- bridge_metrics(g_graph_boot, membership = groups)
+        bridge_vals_abs <- tryCatch({
+          b <- bridge_metrics(g_bridge_abs_boot, membership = groups)
           b[match(keep_nodes_graph, b$node), ]
         }, error = function(e) {
           data.frame(
             node = keep_nodes_graph,
-            bridge_strength   = rep(NA_real_, n_nodes_graph),
-            bridge_ei1        = rep(NA_real_, n_nodes_graph),
-            bridge_ei2        = rep(NA_real_, n_nodes_graph),
-            bridge_betweenness= rep(NA_real_, n_nodes_graph),
-            bridge_closeness  = rep(NA_real_, n_nodes_graph)
+            bridge_strength    = NA_real_,
+            bridge_betweenness = NA_real_,
+            bridge_closeness   = NA_real_,
+            bridge_ei1         = NA_real_,
+            bridge_ei2         = NA_real_
           )
         })
 
+        bridge_vals_signed <- tryCatch({
+          b <- bridge_metrics(g_bridge_signed_boot, membership = groups)
+          b[match(keep_nodes_graph, b$node), ]
+        }, error = function(e) {
+          data.frame(
+            node = keep_nodes_graph,
+            bridge_strength    = NA_real_,
+            bridge_betweenness = NA_real_,
+            bridge_closeness   = NA_real_,
+            bridge_ei1         = NA_real_,
+            bridge_ei2         = NA_real_
+          )
+        })
+
+        bridge_vals <- data.frame(
+          node               = keep_nodes_graph,
+          bridge_strength    = bridge_vals_abs$bridge_strength,
+          bridge_betweenness = bridge_vals_abs$bridge_betweenness,
+          bridge_closeness   = bridge_vals_abs$bridge_closeness,
+          bridge_ei1         = bridge_vals_signed$bridge_ei1,
+          bridge_ei2         = bridge_vals_signed$bridge_ei2
+        )
+
         bridge_outside_boot <- tryCatch({
-          b <- bridge_metrics_excluded(g_graph_boot, membership = groups)
-          b[match(keep_nodes_graph, b$node), c(
-            "bridge_strength",
-            "bridge_betweenness",
-            "bridge_closeness",
-            "bridge_expected_influence1",
-            "bridge_expected_influence2"
-          )]
+          abs_part <- bridge_metrics_excluded(g_bridge_abs_boot, membership = groups)
+          sgn_part <- bridge_metrics_excluded(g_bridge_signed_boot, membership = groups)
+          cbind(
+            abs_part[match(keep_nodes_graph, abs_part$node), c("bridge_strength","bridge_betweenness","bridge_closeness")],
+            sgn_part[match(keep_nodes_graph, sgn_part$node), c("bridge_expected_influence1","bridge_expected_influence2")]
+          )
         }, error = function(e) {
           matrix(NA_real_, nrow = n_nodes_graph, ncol = 5)
         })

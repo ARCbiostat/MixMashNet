@@ -476,8 +476,11 @@ multimixMN <- function(
           if (length(nodes_g) < 1) return(NULL)
           Wg <- W[nodes_g, nodes_g, drop=FALSE]
 
-          g_graph <- igraph::graph_from_adjacency_matrix(abs(Wg), mode="undirected", weighted=TRUE, diag=FALSE)
-          g_graph <- igraph::simplify(g_graph, remove.multiple=TRUE, remove.loops=TRUE)
+          g_bridge_abs_boot    <- igraph::graph_from_adjacency_matrix(abs(Wg), mode="undirected", weighted=TRUE, diag=FALSE)
+          g_bridge_abs_boot    <- igraph::simplify(g_bridge_abs_boot, remove.multiple=TRUE, remove.loops=TRUE)
+
+          g_bridge_signed_boot <- igraph::graph_from_adjacency_matrix(Wg,      mode="undirected", weighted=TRUE, diag=FALSE)
+          g_bridge_signed_boot <- igraph::simplify(g_bridge_signed_boot, remove.multiple=TRUE, remove.loops=TRUE)
 
           g_dist  <- .make_distance_graph(Wg)
 
@@ -495,37 +498,64 @@ multimixMN <- function(
           if (is.factor(memb_orig)) memb_orig <- stats::setNames(as.integer(memb_orig), names(memb_orig))
           memb_all  <- .align_membership(membership=memb_orig, nodes=nodes_g)
 
-          bridge_vals <- tryCatch({
-            b <- bridge_metrics(g_graph, membership=memb_orig)
-            b2 <- b[match(nodes_g, b$node),
-                    c("bridge_strength","bridge_ei1","bridge_ei2","bridge_betweenness","bridge_closeness")]
-            rownames(b2) <- nodes_g; b2
-          }, error=function(e) {
-            as.data.frame(matrix(NA_real_, length(nodes_g), 5,
-                                 dimnames=list(nodes_g, c("bridge_strength","bridge_ei1","bridge_ei2","bridge_betweenness","bridge_closeness"))))
+          bridge_vals_abs <- tryCatch({
+            b <- bridge_metrics(g_bridge_abs_boot, membership = memb_orig)
+            b[match(nodes_g, b$node),
+              c("bridge_strength","bridge_betweenness","bridge_closeness")]
+          }, error = function(e) {
+            as.data.frame(matrix(NA_real_, length(nodes_g), 3,
+                                 dimnames = list(nodes_g, c("bridge_strength","bridge_betweenness","bridge_closeness"))))
           })
 
-          bridge_excluded_mat <- tryCatch({
-            bo <- bridge_metrics_excluded(g_graph, membership = memb_orig)
-            out <- matrix(NA_real_, nrow = length(nodes_g), ncol = 5,
-                          dimnames = list(nodes_g, c("strength","ei1","ei2","closeness","betweenness")))
-            if (!is.null(bo) && nrow(bo) > 0) {
-              bo$node <- .as_chr(bo$node)
-              row_map <- intersect(nodes_g, bo$node)
-              if (length(row_map)) {
-                bom <- bo[match(row_map, bo$node), , drop = FALSE]
-                out[row_map, "strength"]    <- .pick_col(bom, c("bridge_strength"))
-                out[row_map, "ei1"]         <- .pick_col(bom, c("bridge_ei1","bridge_expected_influence1"))
-                out[row_map, "ei2"]         <- .pick_col(bom, c("bridge_ei2","bridge_expected_influence2"))
-                out[row_map, "closeness"]   <- .pick_col(bom, c("bridge_closeness"))
-                out[row_map, "betweenness"] <- .pick_col(bom, c("bridge_betweenness"))
-              }
-            }
-            out
-          }, error=function(e) {
-            matrix(NA_real_, length(nodes_g), 5,
-                   dimnames=list(nodes_g, c("strength","ei1","ei2","closeness","betweenness")))
+          bridge_vals_signed <- tryCatch({
+            b <- bridge_metrics(g_bridge_signed_boot, membership = memb_orig)
+            b[match(nodes_g, b$node), c("bridge_ei1","bridge_ei2")]
+          }, error = function(e) {
+            as.data.frame(matrix(NA_real_, length(nodes_g), 2,
+                                 dimnames = list(nodes_g, c("bridge_ei1","bridge_ei2"))))
           })
+
+          bridge_vals <- cbind(
+            bridge_strength    = bridge_vals_abs[,"bridge_strength"],
+            bridge_ei1         = bridge_vals_signed[,"bridge_ei1"],
+            bridge_ei2         = bridge_vals_signed[,"bridge_ei2"],
+            bridge_betweenness = bridge_vals_abs[,"bridge_betweenness"],
+            bridge_closeness   = bridge_vals_abs[,"bridge_closeness"]
+          )
+          rownames(bridge_vals) <- nodes_g
+
+          bridge_excluded_abs <- tryCatch({
+            bo <- bridge_metrics_excluded(g_bridge_abs_boot, membership = memb_orig)
+            bo[match(nodes_g, bo$node), c("bridge_strength","bridge_betweenness","bridge_closeness")]
+          }, error = function(e) {
+            as.data.frame(matrix(NA_real_, length(nodes_g), 3,
+                                 dimnames = list(nodes_g, c("bridge_strength","bridge_betweenness","bridge_closeness"))))
+          })
+
+          bridge_excluded_signed <- tryCatch({
+            bo <- bridge_metrics_excluded(g_bridge_signed_boot, membership = memb_orig)
+            # Nota: alcune implementazioni usano "bridge_ei1/2", altre "bridge_expected_influence1/2"
+            ei1 <- .pick_col(bo, c("bridge_ei1","bridge_expected_influence1"))
+            ei2 <- .pick_col(bo, c("bridge_ei2","bridge_expected_influence2"))
+            data.frame(node = bo$node, ei1 = ei1, ei2 = ei2)
+          }, error = function(e) {
+            data.frame(node = nodes_g, ei1 = NA_real_, ei2 = NA_real_)
+          })
+
+          bridge_excluded_mat <- matrix(NA_real_, nrow = length(nodes_g), ncol = 5,
+                                        dimnames = list(nodes_g, c("strength","ei1","ei2","closeness","betweenness")))
+          row_map_abs <- intersect(nodes_g, rownames(bridge_excluded_abs))
+          if (length(row_map_abs)) {
+            bridge_excluded_mat[row_map_abs, "strength"]    <- bridge_excluded_abs[row_map_abs, "bridge_strength"]
+            bridge_excluded_mat[row_map_abs, "closeness"]   <- bridge_excluded_abs[row_map_abs, "bridge_closeness"]
+            bridge_excluded_mat[row_map_abs, "betweenness"] <- bridge_excluded_abs[row_map_abs, "bridge_betweenness"]
+          }
+          row_map_sgn <- intersect(nodes_g, bridge_excluded_signed$node)
+          if (length(row_map_sgn)) {
+            idx <- match(row_map_sgn, bridge_excluded_signed$node)
+            bridge_excluded_mat[row_map_sgn, "ei1"] <- bridge_excluded_signed$ei1[idx]
+            bridge_excluded_mat[row_map_sgn, "ei2"] <- bridge_excluded_signed$ei2[idx]
+          }
 
           ## --- ADD: COMMUNITY SCORES on bootstrap (per layer) ---
           cs_boot <- NULL
