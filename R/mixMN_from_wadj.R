@@ -22,7 +22,7 @@
 #' @importFrom stats setNames
 #' @importFrom utils combn
 #' @export
-mixMN_from_wadj2 <- function(
+mixMN_from_wadj <- function(
     wadj_signed,
     nodes,
     exclude_from_graph = NULL,

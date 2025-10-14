@@ -57,7 +57,7 @@
 #' @importFrom stats setNames quantile sd
 #' @importFrom utils combn capture.output
 #' @export
-mixMN2 <- function(
+mixMN <- function(
     data, type, level,
     reps = 100,
     lambdaSel = c("CV", "EBIC"),
