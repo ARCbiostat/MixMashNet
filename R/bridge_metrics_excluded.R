@@ -27,7 +27,10 @@
 #' @importFrom stats setNames
 #' @export
 bridge_metrics_excluded <- function(g, membership) {
-  # Ensure vertex names (character)
+  # --- Fixed numerical tolerance for edge filtering ---
+  EPS <- 1e-10
+
+  # --- 0) Ensure vertex names are present and are character -------------------
   if (is.null(igraph::V(g)$name)) {
     warning("Vertices had no names: assigning sequential character names.")
     igraph::V(g)$name <- as.character(seq_len(igraph::vcount(g)))
@@ -35,37 +38,38 @@ bridge_metrics_excluded <- function(g, membership) {
   igraph::V(g)$name <- as.character(igraph::V(g)$name)
   node_names <- igraph::V(g)$name
 
-  # Validate membership names
+  # --- 1) Build full membership over all nodes; unassigned -> "Z" ------------
   if (is.null(names(membership))) {
-    stop("`membership` must be a named vector/factor with names matching V(g)$name.")
+    stop("`membership` must be a *named* vector/factor with names matching V(g)$name.")
   }
   names(membership) <- as.character(names(membership))
 
-  # Build full membership over all nodes; unassigned -> "Z"
   full_membership <- stats::setNames(rep("Z", length(node_names)), node_names)
-  full_membership[names(membership)] <- as.character(membership)
+  in_graph <- intersect(names(membership), node_names)
+  if (length(in_graph)) {
+    full_membership[in_graph] <- as.character(membership[in_graph])
+  }
 
-  full_membership <- full_membership[node_names]
-
-  # Weighted adjacency; fall back to unweighted if weight attr missing
-  adj <- suppressWarnings(as.matrix(igraph::as_adjacency_matrix(g, attr = "weight", sparse = FALSE)))
+  # --- 2) Get (weighted) adjacency; fallback to unweighted if needed ----------
+  adj <- suppressWarnings(
+    as.matrix(igraph::as_adjacency_matrix(g, attr = "weight", sparse = FALSE))
+  )
   if (!is.matrix(adj) || all(is.na(adj))) {
+    # No usable weights: use unweighted adjacency (1/0)
     adj <- as.matrix(igraph::as_adjacency_matrix(g, sparse = FALSE))
-    # ensure numeric 0/1
     adj[adj != 0] <- 1
   }
   rownames(adj) <- colnames(adj) <- node_names
-
   adj[is.na(adj)] <- 0
+  diag(adj) <- 0
 
-  # Compute bridge metrics via networktools
+  # --- 3) Baseline bridge metrics from networktools ---------------------------
   bridge_res <- networktools::bridge(network = adj, communities = full_membership)
 
-  # Select excluded nodes ("Z")
+  # --- 4) Identify excluded ("Z") nodes --------------------------------------
   outside_nodes <- names(full_membership)[full_membership == "Z"]
-
-  # If none, return empty data frame with proper columns
-  if (length(outside_nodes) == 0L) {
+  if (!length(outside_nodes)) {
+    # Nothing to compute; return a typed empty frame
     return(data.frame(
       node = character(0),
       bridge_strength = numeric(0),
@@ -78,87 +82,99 @@ bridge_metrics_excluded <- function(g, membership) {
     ))
   }
 
-  # --------- Recompute betweenness for EXCLUDED nodes (Z) ONLY ----------
-  directed <- igraph::is_directed(g)
-  if (directed) {
-    g_nt <- igraph::graph_from_adjacency_matrix(adj, mode = "directed", diag = FALSE, weighted = TRUE)
-  } else {
-    g_nt <- igraph::graph_from_adjacency_matrix(adj, mode = "upper",   diag = FALSE, weighted = TRUE)
-  }
-  igraph::E(g_nt)$weight <- 1 / igraph::E(g_nt)$weight
-  g2 <- g_nt
-  if (igraph::ecount(g2) > 0 && min(igraph::E(g2)$weight, na.rm = TRUE) < 0) {
-    g2 <- igraph::delete_edges(g2, which(igraph::E(g2)$weight < 0))
-  }
+  # --- 5) Custom Bridge Betweenness for Z nodes -------------------------------
+  # Build a path graph starting from |w|:
+  # - take absolute weights
+  # - drop edges with |w| <= EPS
+  # - invert remaining weights (1/|w|) to represent distances
+  # - BUT compute shortest paths as UNWEIGHTED counts on this edge set
+  Wabs <- suppressWarnings(
+    as.matrix(igraph::as_adjacency_matrix(g, attr = "weight", sparse = FALSE))
+  )
+  rownames(Wabs) <- colnames(Wabs) <- node_names
+  Wabs[is.na(Wabs)] <- 0
+  diag(Wabs) <- 0
+  Wabs <- abs(Wabs)
 
-  # Endpoints = only real communities (exclude "Z")
-  assigned_nodes <- names(full_membership)[full_membership != "Z"]
-  assigned_comm  <- full_membership[assigned_nodes]
+  g_absw <- igraph::graph_from_adjacency_matrix(
+    Wabs, mode = "undirected", weighted = TRUE, diag = FALSE
+  )
+  drop_e <- which(igraph::E(g_absw)$weight <= EPS | is.na(igraph::E(g_absw)$weight))
+  g_inv  <- if (length(drop_e)) igraph::delete_edges(g_absw, drop_e) else g_absw
+  if (igraph::ecount(g_inv) > 0) igraph::E(g_inv)$weight <- 1 / igraph::E(g_inv)$weight
 
-  # Helper: intermediate vertex ids of a path
-  mid_ids <- function(path_ids) {
-    ids <- as.vector(path_ids)
-    if (length(ids) <= 2L) integer(0) else ids[-c(1L, length(ids))]
-  }
+  # Keep names consistent
+  g_pos <- g_inv
+  igraph::V(g_pos)$name <- node_names
 
-  # Compute custom betweenness for excluded nodes, counting PER TARGET
-  custom_betw <- setNames(numeric(0), character(0))
-  outside_nodes <- names(full_membership)[full_membership == "Z"]
+  # Assigned endpoints (S) vs excluded intermediates (Z)
+  S <- intersect(names(membership), igraph::V(g_pos)$name)    # assigned endpoints
+  Z <- setdiff(igraph::V(g_pos)$name, S)                      # excluded candidates
 
-  if (length(outside_nodes) && length(assigned_nodes) && igraph::vcount(g2) > 0) {
-    vnames_g2 <- igraph::V(g2)$name
-    for (z in outside_nodes) {
-      # If z not present (or isolated) in g2, its betweenness is 0
-      if (!(z %in% vnames_g2) || igraph::degree(g2, v = z) == 0) {
-        custom_betw[z] <- 0
-        next
-      }
-      zid <- match(z, vnames_g2)
-      total <- 0L
+  custom_betw <- stats::setNames(numeric(length(Z)), Z)
 
-      for (src in assigned_nodes) {
-        cs <- assigned_comm[[src]]
-        to_nodes <- assigned_nodes[assigned_comm != cs]
-        if (!length(to_nodes)) next
+  if (length(S) && length(Z) && igraph::ecount(g_pos) > 0) {
+    # Community labels for assigned endpoints (as plain character)
+    commS <- stats::setNames(as.character(membership[S]), S)
 
-        for (t in to_nodes) {
-          sp <- suppressWarnings(
-            igraph::get.all.shortest.paths(g2, from = src, to = t, mode = if (directed) "out" else "all")
-          )
-          if (!length(sp$res)) next
+    # Order S according to the vertex order in g_pos; iterate i<j
+    o <- order(match(S, igraph::V(g_pos)$name))
+    S <- S[o]
+    commS <- commS[S]
 
-          # +1 SE z appare in ALMENO un shortest path (conteggio per-target)
-          hit <- FALSE
-          for (p in sp$res) { if (any(mid_ids(p) == zid)) { hit <- TRUE; break } }
-          if (hit) total <- total + 1L
-        }
-      }
+    nodes_path <- igraph::V(g_pos)$name
 
-      # Undirected correction (s–t e t–s sono la stessa coppia)
-      if (!directed) total <- total / 2
-      custom_betw[z] <- as.numeric(total)
+    # Helpers to extract intermediate vertices (exclude endpoints)
+    mid_ids <- function(path_ids) {
+      ids <- as.vector(path_ids)
+      if (length(ids) <= 2L) integer(0) else ids[-c(1L, length(ids))]
+    }
+    mids_to_names <- function(x) nodes_path[mid_ids(x)]
+
+    # Enumerate unweighted shortest paths between assigned endpoints
+    # that belong to different communities, and count Z intermediates.
+    for (i in seq_len(length(S) - 1L)) {
+      src <- S[i]
+      Ci  <- commS[[src]]
+
+      # Only destinations in a different community and with j > i
+      j_idx <- which(commS != Ci)
+      if (!length(j_idx)) next
+      j_idx <- j_idx[j_idx > i]
+      if (!length(j_idx)) next
+
+      to_nodes <- S[j_idx]
+
+      sp <- suppressWarnings(igraph::get.all.shortest.paths(
+        g_pos, from = src, to = to_nodes, mode = "all"
+      ))
+      if (!length(sp$res)) next
+
+      inter <- unlist(lapply(sp$res, mids_to_names), use.names = FALSE)
+      if (!length(inter)) next
+
+      inter_Z <- inter[inter %in% Z]
+      if (!length(inter_Z)) next
+
+      tb <- table(factor(inter_Z, levels = Z))
+      custom_betw[names(tb)] <- custom_betw[names(tb)] + as.numeric(tb)
     }
   }
-  # ----------------------------------------------------------------------
 
+  # Override Bridge Betweenness ONLY for excluded nodes
+  bridge_res$`Bridge Betweenness`[outside_nodes] <- custom_betw[outside_nodes]
 
-  # Assemble output (index by node names)
+  # --- 6) Assemble output for excluded nodes ----------------------------------
   out <- data.frame(
     node = outside_nodes,
-    bridge_strength = bridge_res$`Bridge Strength`[outside_nodes],
-    bridge_closeness = bridge_res$`Bridge Closeness`[outside_nodes],
-    bridge_betweenness = bridge_res$`Bridge Betweenness`[outside_nodes],  # placeholder
-    bridge_expected_influence1 = bridge_res$`Bridge Expected Influence (1-step)`[outside_nodes],
-    bridge_expected_influence2 = bridge_res$`Bridge Expected Influence (2-step)`[outside_nodes],
+    bridge_strength              = bridge_res$`Bridge Strength`[outside_nodes],
+    bridge_closeness             = bridge_res$`Bridge Closeness`[outside_nodes],
+    bridge_betweenness           = bridge_res$`Bridge Betweenness`[outside_nodes],
+    bridge_expected_influence1   = bridge_res$`Bridge Expected Influence (1-step)`[outside_nodes],
+    bridge_expected_influence2   = bridge_res$`Bridge Expected Influence (2-step)`[outside_nodes],
     cluster = full_membership[outside_nodes],
     row.names = NULL
   )
 
-  if (length(custom_betw)) {
-    out$bridge_betweenness <- ifelse(out$node %in% names(custom_betw),
-                                     custom_betw[out$node],
-                                     out$bridge_betweenness)
-  }
-
-  return(out)
+  out
 }
