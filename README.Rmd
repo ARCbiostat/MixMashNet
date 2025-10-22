@@ -145,13 +145,17 @@ dimnames(W_signed) <- list(colnames(df), colnames(df))
 keep     <- fit0$keep_nodes_graph
 W_plot   <- W_signed[keep, keep, drop = FALSE]
 
+node_order  <- colnames(W_plot)
+node_groups <- as.character(fit0$groups[node_order])
+
+node_cols   <- fit0$community_palette[node_groups]
+
 qgraph(
   W_plot,
   layout    = "spring",
-  labels    = colnames(W_plot),
+  labels    = node_order,
   label.cex = 0.8,
-  color     = fit0$community_palette,   # community colors
-  groups    = split(names(fit0$groups), fit0$groups),
+  color     = node_cols,   # community colors
   vsize     = 6
 )
 ```
