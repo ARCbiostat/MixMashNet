@@ -224,8 +224,34 @@ mixMN_from_wadj <- function(
   names(edge_mat_true) <- edge_names
   edges_true_df <- data.frame(edge = edge_names, weight = edge_mat_true, row.names = NULL)
 
+  # ---- iGraph object  ----
+  Wg <- wadj_signed[keep_nodes_graph, keep_nodes_graph, drop = FALSE]
+
+  g_igraph <- igraph::graph_from_adjacency_matrix(
+    Wg,
+    mode = "undirected",
+    weighted = TRUE,
+    diag = FALSE
+  )
+
+  if (igraph::ecount(g_igraph) > 0) {
+    igraph::E(g_igraph)$abs_weight <- abs(igraph::E(g_igraph)$weight)
+    igraph::E(g_igraph)$sign <- ifelse(igraph::E(g_igraph)$weight >= 0, 1L, -1L)
+  }
+
+  igraph::V(g_igraph)$name <- keep_nodes_graph
+  if (length(groups)) {
+    memb <- rep(NA_integer_, length(keep_nodes_graph))
+    names(memb) <- keep_nodes_graph
+    memb[names(groups)] <- as.integer(groups)
+    igraph::V(g_igraph)$membership <- memb
+  } else {
+    igraph::V(g_igraph)$membership <- NA_integer_
+  }
+
   # --- Return object skeleton (no bootstrap here) ---
   out <- list(
+    graph_igraph        = g_igraph,
     original_membership = original_membership,
     groups              = groups,
     community_palette   = palette_clusters,

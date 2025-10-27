@@ -57,6 +57,7 @@ mixMN(
 \value{
 A list with:
 \itemize{
+\item \code{g_igraph}
 \item \code{original_membership}, \code{groups}, \code{community_palette}
 \item \code{boot_memberships}
 \item \code{reps}, \code{cluster_method}, \code{mgm_model}
