@@ -9,6 +9,7 @@ mixMN(
   data,
   type,
   level,
+  scale = TRUE,
   reps = 100,
   lambdaSel = c("CV", "EBIC"),
   lambdaFolds = 5,
@@ -28,6 +29,8 @@ mixMN(
 \item{data}{Matrix or data.frame (n x p) with variables in columns}
 
 \item{type, level}{Vectors as required by \code{mgm::mgm}}
+
+\item{scale}{Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized}
 
 \item{reps}{Integer (>= 0), number of bootstrap replications}
 

@@ -20,6 +20,7 @@
 #'   to layer names. \code{TRUE}/1 indicates **cross-layer** edges are allowed
 #'   between the corresponding layer pair. The diagonal (intra-layer) is always
 #'   treated as allowed; if the diagonal is \code{NA}, it is coerced to allowed.
+#' @param scale Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized
 #' @param reps Integer; number of bootstrap resamples (row resampling with replacement).
 #'   Default \code{100}.
 #' @param lambdaSel Character; lambda selection for \pkg{mgm} (\code{"CV"} or \code{"EBIC"}).
@@ -98,6 +99,7 @@
 multimixMN <- function(
     data, type, level,
     layers, layer_rules,
+    scale = TRUE,
     reps = 100,
     lambdaSel = c("CV", "EBIC"),
     lambdaFolds = 5, lambdaGam = 0.25,
@@ -232,7 +234,7 @@ multimixMN <- function(
   mgm_model <- mgm_masked(
     data = as.matrix(data), type = type, level = level,
     lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
-    k = 2, binarySign = TRUE, mask_list = mask_list
+    k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale
   )
   wadj <- mgm_model$pairwise$wadj; signs <- mgm_model$pairwise$signs
   colnames(wadj) <- rownames(wadj) <- all_nodes
@@ -462,7 +464,7 @@ multimixMN <- function(
         boot_model <- tryCatch(mgm_masked(
           data = Xb, type = type, level = level,
           lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
-          k = 2, binarySign = TRUE, mask_list = mask_list
+          k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale
         ), error=function(e) NULL)
         if (is.null(boot_model)) return(NULL)
 

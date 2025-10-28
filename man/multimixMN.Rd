@@ -10,6 +10,7 @@ multimixMN(
   level,
   layers,
   layer_rules,
+  scale = TRUE,
   reps = 100,
   lambdaSel = c("CV", "EBIC"),
   lambdaFolds = 5,
@@ -39,6 +40,8 @@ layer (character or factor). Must cover all columns of \code{data}.}
 to layer names. \code{TRUE}/1 indicates \strong{cross-layer} edges are allowed
 between the corresponding layer pair. The diagonal (intra-layer) is always
 treated as allowed; if the diagonal is \code{NA}, it is coerced to allowed.}
+
+\item{scale}{Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized}
 
 \item{reps}{Integer; number of bootstrap resamples (row resampling with replacement).
 Default \code{100}.}

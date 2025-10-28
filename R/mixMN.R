@@ -11,6 +11,7 @@
 #' @param data Matrix or data.frame (n x p) with variables in columns
 #' @param type,level Vectors as required by \code{mgm::mgm}
 #' @param reps Integer (>= 0), number of bootstrap replications
+#' @param scale Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized
 #' @param lambdaSel Method for lambda selection: \code{"CV"} or \code{"EBIC"}
 #' @param lambdaFolds Number of folds for CV (if \code{lambdaSel="CV"})
 #' @param lambdaGam EBIC gamma parameter (if \code{lambdaSel="EBIC"})
@@ -60,6 +61,7 @@
 #' @export
 mixMN <- function(
     data, type, level,
+    scale = TRUE,
     reps = 100,
     lambdaSel = c("CV", "EBIC"),
     lambdaFolds = 5, lambdaGam = 0.25,
@@ -140,7 +142,8 @@ mixMN <- function(
     level = level,
     lambdaSel = lambdaSel,
     k = 2,
-    binarySign = TRUE
+    binarySign = TRUE,
+    scale = scale
   )
   if (lambdaSel == "CV") {
     mgm_args$lambdaFolds <- lambdaFolds
@@ -427,7 +430,7 @@ mixMN <- function(
 
         boot_args <- list(
           data = boot_data, type = type, level = level,
-          lambdaSel = lambdaSel, k = 2, binarySign = TRUE
+          lambdaSel = lambdaSel, k = 2, binarySign = TRUE, scale = scale
         )
         if (lambdaSel == "CV") boot_args$lambdaFolds <- lambdaFolds else boot_args$lambdaGam <- lambdaGam
 
