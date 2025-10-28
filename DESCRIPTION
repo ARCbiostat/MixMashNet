@@ -1,5 +1,5 @@
 Package: MixMashNet
-Title: Tools for Multilayer and Single-Layer Network Modeling
+Title: Tools for multilayer and single-layer Network Modeling
 Version: 0.1.0
 Authors@R: 
     person(given = "Maria", family = "De Martino", role = c("aut","cre"),
