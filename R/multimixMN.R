@@ -517,7 +517,6 @@ multimixMN <- function(
           }, error=function(e) rep(NA_real_, length(nodes_g)))
 
           memb_orig <- layer_fits[[L]]$groups
-          if (is.factor(memb_orig)) memb_orig <- stats::setNames(as.integer(memb_orig), names(memb_orig))
           memb_all  <- .align_membership(membership=memb_orig, nodes=nodes_g)
 
           bridge_vals_abs <- tryCatch({
@@ -548,18 +547,42 @@ multimixMN <- function(
 
           bridge_excluded_abs <- tryCatch({
             bo <- bridge_metrics_excluded(g_bridge_abs_boot, membership = memb_orig)
-            bo[match(nodes_g, bo$node), c("bridge_strength","bridge_betweenness","bridge_closeness")]
+            idx <- match(nodes_g, bo$node)
+            df_abs <- data.frame(
+              node = nodes_g,
+              bridge_strength    = bo$bridge_strength[idx],
+              bridge_betweenness = bo$bridge_betweenness[idx],
+              bridge_closeness   = bo$bridge_closeness[idx],
+              stringsAsFactors = FALSE
+            )
+            rownames(df_abs) <- nodes_g
+            df_abs
           }, error = function(e) {
-            as.data.frame(matrix(NA_real_, length(nodes_g), 3,
-                                 dimnames = list(nodes_g, c("bridge_strength","bridge_betweenness","bridge_closeness"))))
+            df_abs <- data.frame(
+              node = nodes_g,
+              bridge_strength    = NA_real_,
+              bridge_betweenness = NA_real_,
+              bridge_closeness   = NA_real_,
+              stringsAsFactors = FALSE
+            )
+            rownames(df_abs) <- nodes_g
+            df_abs
           })
+
 
           bridge_excluded_signed <- tryCatch({
             bo <- bridge_metrics_excluded(g_bridge_signed_boot, membership = memb_orig)
-            # Nota: alcune implementazioni usano "bridge_ei1/2", altre "bridge_expected_influence1/2"
             ei1 <- .pick_col(bo, c("bridge_ei1","bridge_expected_influence1"))
             ei2 <- .pick_col(bo, c("bridge_ei2","bridge_expected_influence2"))
-            data.frame(node = bo$node, ei1 = ei1, ei2 = ei2)
+            idx <- match(nodes_g, bo$node)
+            df_sgn <- data.frame(
+              node = nodes_g,
+              ei1  = ei1[idx],
+              ei2  = ei2[idx],
+              stringsAsFactors = FALSE
+            )
+            rownames(df_sgn) <- nodes_g
+            df_sgn
           }, error = function(e) {
             data.frame(node = nodes_g, ei1 = NA_real_, ei2 = NA_real_)
           })
