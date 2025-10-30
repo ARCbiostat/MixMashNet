@@ -35,9 +35,17 @@ membershipStab_plot <- function(stab_obj, title = "Node Stability by Community")
   df <- df[order(df$community, -df$stability), ]
   df$node <- factor(df$node, levels = df$node)
 
-  # palette mapping
+  # --- Palette mapping ---
   lv <- levels(df$community)
+
+  # NEW: costruisci una palette che includa eventuali community "extra"
   pal_vals <- if (!is.null(names(palette))) unname(palette[as.character(lv)]) else palette[seq_along(lv)]
+
+  # NEW: assegna un colore di fallback ("grey80") per le community non nella palette
+  pal_vals[is.na(pal_vals)] <- "grey80"
+
+  # NEW: gestisci eventuali NA totali (solo per sicurezza)
+  pal_vals <- ifelse(is.na(pal_vals), "grey80", pal_vals)
 
   ggplot2::ggplot(df, ggplot2::aes(y = node, x = stability, fill = community, color = community)) +
     ggplot2::geom_col(width = 0.7, fill = "white", linewidth = 1.2) +
@@ -45,8 +53,18 @@ membershipStab_plot <- function(stab_obj, title = "Node Stability by Community")
                        hjust = -0.2, color = "black", size = 3.2, fontface = "bold") +
     ggplot2::geom_vline(xintercept = 0.7, linetype = "dashed", linewidth = 0.6) +
     ggplot2::scale_x_continuous(limits = c(0, 1.1), expand = c(0, 0)) +
-    ggplot2::scale_fill_manual(values = pal_vals, breaks = lv, labels = lv, name = "Community") +
-    ggplot2::scale_color_manual(values = pal_vals, breaks = lv, labels = lv, guide = "none") +
+    ggplot2::scale_fill_manual(
+      values = pal_vals,
+      breaks = lv,
+      labels = lv,
+      name = "Community"
+    ) +
+    ggplot2::scale_color_manual(
+      values = pal_vals,
+      breaks = lv,
+      labels = lv,
+      guide = "none"
+    ) +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::labs(title = title, x = "Node Stability", y = NULL) +
     ggplot2::theme(

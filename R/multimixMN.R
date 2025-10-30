@@ -477,6 +477,8 @@ multimixMN <- function(
           nodes_g <- layer_nodes_graph[[L]]
           if (length(nodes_g) < 1) return(NULL)
           Wg <- W[nodes_g, nodes_g, drop=FALSE]
+          nodes_c <- layer_nodes_cluster[[L]]
+          nodes_c <- intersect(nodes_c, nodes_g)
 
           g_bridge_abs_boot    <- igraph::graph_from_adjacency_matrix(abs(Wg), mode="undirected", weighted=TRUE, diag=FALSE)
           g_bridge_abs_boot    <- igraph::simplify(g_bridge_abs_boot, remove.multiple=TRUE, remove.loops=TRUE)
@@ -485,6 +487,24 @@ multimixMN <- function(
           g_bridge_signed_boot <- igraph::simplify(g_bridge_signed_boot, remove.multiple=TRUE, remove.loops=TRUE)
 
           g_dist  <- .make_distance_graph(Wg)
+
+          memb_boot <- NULL
+          if (length(nodes_c) > 0) {
+            Wc <- Wg[nodes_c, nodes_c, drop = FALSE]
+            g_c <- igraph::graph_from_adjacency_matrix(
+              abs(Wc), mode = "undirected", weighted = TRUE, diag = FALSE
+            )
+            g_c <- igraph::simplify(g_c, remove.multiple = TRUE, remove.loops = TRUE)
+
+            memb_boot <- tryCatch({
+              cl <- cluster_fun(g_c)
+              mb <- cl$membership
+              names(mb) <- nodes_c
+              mb
+            }, error = function(e) {
+              stats::setNames(rep(NA_integer_, length(nodes_c)), nodes_c)
+            })
+          }
 
           cent <- tryCatch(qgraph::centrality(Wg), error=function(e) list(
             OutDegree=rep(NA_real_, length(nodes_g)), OutExpectedInfluence=rep(NA_real_, length(nodes_g))
@@ -616,6 +636,7 @@ multimixMN <- function(
             closeness = clh, betweenness = btw, edges = evec,
             bridge_vals = bridge_vals, bridge_excluded_mat = bridge_excluded_mat,
             membership = memb_all,
+            membership_boot = memb_boot,
             community_scores_boot = cs_boot,
             excluded_score_boot   = ex_boot
           )
@@ -726,8 +747,13 @@ multimixMN <- function(
         }
 
         if (length(nodes_c)) {
-          mm <- pl$membership[nodes_c]
-          if (is.factor(mm)) mm <- stats::setNames(as.integer(mm), names(mm))
+          mm <- pl$membership_boot
+          if (is.null(mm)) {
+            mm <- stats::setNames(rep(NA_integer_, length(nodes_c)), nodes_c)
+          }
+          if (is.factor(mm)) {
+            mm <- stats::setNames(as.integer(mm), names(mm))
+          }
           layer_boot[[L]]$boot_memberships[[bi]] <- mm
         } else {
           layer_boot[[L]]$boot_memberships[[bi]] <- NULL
