@@ -72,8 +72,7 @@ membershipStab <- function(fit, IS.plot = FALSE) {
   result <- list(
     membership = list(
       empirical  = structure,
-      bootstrap  = homogenized,
-      structure  = structure
+      bootstrap  = homogenized
     ),
     membership.stability = list(
       empirical.dimensions = prop_empirical,
