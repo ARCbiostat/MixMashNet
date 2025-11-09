@@ -239,8 +239,12 @@ multimixMN <- function(
   wadj <- mgm_model$pairwise$wadj; signs <- mgm_model$pairwise$signs
   colnames(wadj) <- rownames(wadj) <- all_nodes
   colnames(signs) <- rownames(signs) <- all_nodes
-  wadj_signed <- wadj; ms <- !is.na(signs)
-  wadj_signed[ms] <- wadj[ms]*signs[ms]; wadj_signed[!ms] <- 0
+  wadj_signed <- wadj
+  if (!is.null(signs)) {
+    idx_sign <- !is.na(signs) & (abs(signs) == 1)
+    wadj_signed[idx_sign] <- wadj[idx_sign] * signs[idx_sign]
+  }
+  wadj_signed[is.na(wadj_signed)] <- 0
 
   # --- Inclusion sets
   keep_nodes_graph_all   <- setdiff(all_nodes, exclude_from_graph)
@@ -468,10 +472,16 @@ multimixMN <- function(
         ), error=function(e) NULL)
         if (is.null(boot_model)) return(NULL)
 
-        bw <- boot_model$pairwise$wadj; bsig <- boot_model$pairwise$signs
-        colnames(bw) <- rownames(bw) <- all_nodes
+        bw   <- boot_model$pairwise$wadj
+        bsig <- boot_model$pairwise$signs
+        colnames(bw)   <- rownames(bw)   <- all_nodes
         colnames(bsig) <- rownames(bsig) <- all_nodes
-        W <- bw; ms2 <- !is.na(bsig); W[ms2] <- bw[ms2]*bsig[ms2]; W[!ms2] <- 0
+        W <- bw
+        if (!is.null(bsig)) {
+          idxb_sign <- !is.na(bsig) & (abs(bsig) == 1)
+          W[idxb_sign] <- bw[idxb_sign] * bsig[idxb_sign]
+        }
+        W[is.na(W)] <- 0
 
         per_layer <- lapply(uniq_layers, function(L) {
           nodes_g <- layer_nodes_graph[[L]]

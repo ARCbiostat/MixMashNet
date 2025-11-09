@@ -78,6 +78,10 @@ A list with:
 }
 \description{
 Estimates a Mixed Graphical Model (MGM) network on the original data and
+Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
+and (optionally) community/excluded scores with CIs.
+
+Estimates a Mixed Graphical Model (MGM) network on the original data and
 performs non-parametric bootstrap (row resampling) to compute centrality indices,
 bridge metrics, clustering stability, confidence intervals for node metrics and edge weights.
 Optionally computes community network scores and/or

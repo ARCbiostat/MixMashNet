@@ -3,6 +3,11 @@
 #'
 #' @description
 #' Estimates a Mixed Graphical Model (MGM) network on the original data and
+#' Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
+#' and (optionally) community/excluded scores with CIs.
+#'
+#' @description
+#' Estimates a Mixed Graphical Model (MGM) network on the original data and
 #' performs non-parametric bootstrap (row resampling) to compute centrality indices,
 #' bridge metrics, clustering stability, confidence intervals for node metrics and edge weights.
 #' Optionally computes community network scores and/or
@@ -158,9 +163,11 @@ mixMN <- function(
   colnames(signs) <- rownames(signs) <- all_nodes
 
   wadj_signed <- wadj
-  idx_sign <- !is.na(signs)
-  wadj_signed[idx_sign] <- wadj[idx_sign] * signs[idx_sign]
-  wadj_signed[!idx_sign] <- 0
+  if (!is.null(signs)) {
+    idx_sign <- !is.na(signs) & (abs(signs) == 1)
+    wadj_signed[idx_sign] <- wadj[idx_sign] * signs[idx_sign]
+  }
+  wadj_signed[is.na(wadj_signed)] <- 0
 
   # ---- Keep nodes for graph and clustering ----
   keep_nodes_graph   <- setdiff(all_nodes, exclude_from_graph)
@@ -450,9 +457,11 @@ mixMN <- function(
         colnames(boot_signs) <- rownames(boot_signs) <- all_nodes
 
         boot_wadj_signed <- boot_wadj
-        idxb <- !is.na(boot_signs)
-        boot_wadj_signed[idxb] <- boot_wadj[idxb] * boot_signs[idxb]
-        boot_wadj_signed[!idxb] <- 0
+        if (!is.null(boot_signs)) {
+          idxb_sign <- !is.na(boot_signs) & (abs(boot_signs) == 1)
+          boot_wadj_signed[idxb_sign] <- boot_wadj[idxb_sign] * boot_signs[idxb_sign]
+        }
+        boot_wadj_signed[is.na(boot_wadj_signed)] <- 0
 
         boot_wadj_signed_graph   <- boot_wadj_signed[keep_nodes_graph,   keep_nodes_graph]
         boot_wadj_signed_cluster <- boot_wadj_signed[keep_nodes_cluster, keep_nodes_cluster]
