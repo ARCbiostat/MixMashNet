@@ -288,11 +288,7 @@ mixMN_from_wadj <- function(
     community_scores_obj  = NULL,
     community_scores_df   = NULL,
     community_scores_ci   = NULL,
-    community_scores_boot = NULL,
-
-    excluded_score        = NULL,
-    excluded_score_ci     = NULL,
-    excluded_score_boot   = NULL
+    community_scores_boot = NULL
   )
 
   class(out) <- c("mixMN_fit")

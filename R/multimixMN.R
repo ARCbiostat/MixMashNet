@@ -6,8 +6,7 @@
 #' (intra-layer edges are always allowed). For each layer, the function computes
 #' community structure, nonparametric row-bootstrap for node centralities and
 #' edge weights, and bridge metrics (including "excluded" nodes logic).
-#' Optionally computes community network scores and/or
-#' excluded score with CIs and bootstrap arrays. It also
+#' Optionally computes community network scores with CIs and bootstrap arrays. It also
 #' returns **interlayer-only** node metrics (strength, EI1, closeness, betweenness)
 #' with bootstrap confidence intervals.
 #'
@@ -39,14 +38,11 @@
 #' @param cluster_method Community detection algorithm. One of
 #'   \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.
 #' @param compute_community_scores Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95% CIs and bootstrap array.
-#' @param compute_excluded_score Logical; if TRUE, compute an excluded score as the row-wise sum of X_j * z(bridge_closeness_excluded_j) across excluded nodes.
-#' @param excluded_score_nodes Optional character vector of node names to include in the excluded score. If NULL, defaults to nodes excluded from communities (or all keep_nodes_graph if no community scores were computed).
 #'
 #' @details
 #' - This function does **not** call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
 #' - It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
 #' - Community scores use EGAnet **std.scores** (z-standardized per community).
-#' - Excluded score uses raw X multiplied by **z(bridge_closeness_excluded)**.
 #'
 #' Internally, the function:
 #' \enumerate{
@@ -108,9 +104,7 @@ multimixMN <- function(
     seed_model = NULL, seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
     cluster_method = c("louvain","fast_greedy","infomap","walktrap","edge_betweenness"),
-    compute_community_scores = FALSE,
-    compute_excluded_score  = FALSE,
-    excluded_score_nodes    = NULL
+    compute_community_scores = FALSE
 ) {
   lambdaSel <- match.arg(lambdaSel)
   cluster_method <- match.arg(cluster_method)
@@ -174,7 +168,6 @@ multimixMN <- function(
       if (grepl("default 'loading.method'.*revised", txt, ignore.case = TRUE)) invokeRestart("muffleWarning")
     })
   }
-  .z <- function(x, mu, sd) if (!is.finite(sd) || sd == 0) (x - mu) else (x - mu)/sd
 
   .make_distance_graph <- function(W_signed) {
     W <- abs(W_signed); diag(W) <- 0; W[is.na(W) | W < tiny] <- 0
@@ -322,41 +315,6 @@ multimixMN <- function(
       }
     }
 
-    ## --- EXCLUDED SCORE (TRUE) ---
-    if (isTRUE(compute_excluded_score)) {
-      if (!is.null(excluded_score_nodes)) {
-        sel_nodes <- intersect(excluded_score_nodes, nL)
-      } else {
-        if (isTRUE(compute_community_scores) && !is.null(fitL$.nodes_comm)) {
-          sel_nodes <- setdiff(nL, fitL$.nodes_comm)
-        } else {
-          sel_nodes <- nL
-        }
-      }
-
-      if (length(sel_nodes) > 0) {
-        # coeff = z(bridge_closeness_excluded)
-        bcx <- fitL$centrality_true$bridge_closeness_excluded
-        names(bcx) <- fitL$centrality_true$node
-        bc_mu <- mean(bcx, na.rm = TRUE)
-        bc_sd <- stats::sd(bcx, na.rm = TRUE); if (!is.finite(bc_sd) || bc_sd == 0) bc_sd <- 1
-
-        coef_true <- .z(bcx[sel_nodes], bc_mu, bc_sd)
-
-        X_sel <- as.matrix(data[, sel_nodes, drop = FALSE])
-        subject_ids <- rownames(X_sel)
-        if (is.null(subject_ids)) subject_ids <- sprintf("id_%d", seq_len(nrow(X_sel)))
-        rownames(X_sel) <- subject_ids
-
-        ex_sum <- as.numeric(X_sel %*% coef_true)
-        fitL$excluded_score <- data.frame(id = subject_ids, EX_SUM = ex_sum, check.names = FALSE)
-
-        fitL$.ex_mu  <- bc_mu
-        fitL$.ex_sd  <- bc_sd
-        fitL$.ex_sel <- sel_nodes
-      }
-    }
-
     layer_fits[[L]] <- fitL
   }
 
@@ -422,13 +380,6 @@ multimixMN <- function(
                 dimnames = list(rep = paste0("b", seq_len(reps)),
                                 id  = subj,
                                 comm = paste0("NS_", sort(unique(layer_fits[[L]]$.wc_int)))))
-        } else NULL
-      },
-      excluded_score_boot = {
-        if (isTRUE(compute_excluded_score) && !is.null(layer_fits[[L]]$.ex_sel)) {
-          subj <- rownames(data); if (is.null(subj)) subj <- sprintf("id_%d", seq_len(nrow(data)))
-          matrix(NA_real_, nrow = reps, ncol = length(subj),
-                 dimnames = list(paste0("b", seq_len(reps)), subj))
         } else NULL
       }
     )
@@ -644,23 +595,6 @@ multimixMN <- function(
             }
           }
 
-          ## --- EXCLUDED SCORE on bootstrap (per layer) ---
-          ex_boot <- NULL
-          if (isTRUE(compute_excluded_score)) {
-            sel_nodes <- layer_fits[[L]]$.ex_sel
-            if (!is.null(sel_nodes) && length(sel_nodes) > 0) {
-              bcx_boot <- bridge_excluded_mat[, "closeness"]
-              mu  <- layer_fits[[L]]$.ex_mu
-              sdv <- layer_fits[[L]]$.ex_sd; if (!is.finite(sdv) || sdv == 0) sdv <- 1
-              coef_i <- .z(bcx_boot[sel_nodes], mu, sdv)
-
-              X_sel <- as.matrix(data[, sel_nodes, drop = FALSE])
-              rownames(X_sel) <- subject_ids
-              ex_boot <- as.numeric(X_sel %*% coef_i)
-              names(ex_boot) <- subject_ids
-            }
-          }
-
           en <- .edge_names_lt(nodes_g)
           evec <- if (length(en)) { v <- Wg[lower.tri(Wg)]; names(v) <- en; v } else NULL
 
@@ -670,8 +604,7 @@ multimixMN <- function(
             bridge_vals = bridge_vals, bridge_excluded_mat = bridge_excluded_mat,
             membership = memb_all,
             membership_boot = memb_boot,
-            community_scores_boot = cs_boot,
-            excluded_score_boot   = ex_boot
+            community_scores_boot = cs_boot
           )
         })
         names(per_layer) <- uniq_layers
@@ -736,12 +669,6 @@ multimixMN <- function(
           }
           mat <- mat[ids, comms, drop = FALSE]
           layer_boot[[L]]$community_scores_boot[bi, , ] <- mat
-        }
-
-        if (!is.null(layer_boot[[L]]$excluded_score_boot) && !is.null(pl$excluded_score_boot)) {
-          ids <- colnames(layer_boot[[L]]$excluded_score_boot)
-          vec <- pl$excluded_score_boot[ids]
-          layer_boot[[L]]$excluded_score_boot[bi, ] <- vec
         }
 
         nodes_g <- layer_nodes_graph[[L]]
@@ -837,14 +764,6 @@ multimixMN <- function(
           up   <- apply(CSB, c(2, 3), qfun, p = 0.975)
           list(lower = low, upper = up)
         } else NULL
-      },
-      excluded_score = {
-        EXB <- LB$excluded_score_boot
-        if (!is.null(EXB)) {
-          low <- apply(EXB, 2, function(x) if (all(is.na(x))) NA_real_ else stats::quantile(x, probs = 0.025, na.rm = TRUE))
-          up  <- apply(EXB, 2, function(x) if (all(is.na(x))) NA_real_ else stats::quantile(x, probs = 0.975, na.rm = TRUE))
-          list(lower = low, upper = up)
-        } else NULL
       }
     )
 
@@ -884,11 +803,6 @@ multimixMN <- function(
       names(cs_list) <- reps_names
       layer_fits[[L]]$community_scores_boot <- cs_list
       layer_fits[[L]]$community_scores_ci   <- ci_list$community_scores
-    }
-
-    if (!is.null(LB$excluded_score_boot) && !is.null(layer_fits[[L]]$excluded_score)) {
-      layer_fits[[L]]$excluded_score_boot <- LB$excluded_score_boot
-      layer_fits[[L]]$excluded_score_ci   <- ci_list$excluded_score
     }
   }
 

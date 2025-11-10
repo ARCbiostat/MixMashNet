@@ -1,17 +1,16 @@
 #' Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
-#' and (optionally) community/excluded scores with CIs.
+#' and (optionally) community scores with CIs.
 #'
 #' @description
 #' Estimates a Mixed Graphical Model (MGM) network on the original data and
 #' Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
-#' and (optionally) community/excluded scores with CIs.
+#' and (optionally) community scores with CIs.
 #'
 #' @description
 #' Estimates a Mixed Graphical Model (MGM) network on the original data and
 #' performs non-parametric bootstrap (row resampling) to compute centrality indices,
 #' bridge metrics, clustering stability, confidence intervals for node metrics and edge weights.
-#' Optionally computes community network scores and/or
-#' excluded score with CIs and bootstrap arrays.
+#' Optionally computes community network scores with CIs and bootstrap arrays.
 #'
 #' @param data Matrix or data.frame (n x p) with variables in columns
 #' @param type,level Vectors as required by \code{mgm::mgm}
@@ -27,8 +26,6 @@
 #' @param cluster_method Community detection algorithm: \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #' \code{"walktrap"}, \code{"edge_betweenness"}
 #' @param compute_community_scores Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95% CIs and bootstrap array.
-#' @param compute_excluded_score Logical; if TRUE, compute an excluded score as the row-wise sum of X_j * z(bridge_closeness_excluded_j) across excluded nodes.
-#' @param excluded_score_nodes Optional character vector of node names to include in the excluded score. If NULL, defaults to nodes excluded from communities (or all keep_nodes_graph if no community scores were computed).
 #'
 #' @return A list with:
 #' \itemize{
@@ -44,15 +41,12 @@
 #'   \item (if \code{compute_community_scores}) \code{community_scores_obj},
 #'         \code{community_scores_df}, \code{community_scores_ci},
 #'         \code{community_scores_boot} (list of data frames; one per bootstrap replication)
-#'   \item (if \code{compute_excluded_score}) \code{excluded_score},
-#'         \code{excluded_score_ci}, \code{excluded_score_boot}
 #' }
 #'
 #' @details
 #' - This function does **not** call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
 #' - It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
 #' - Community scores use EGAnet **std.scores** (z-standardized per community).
-#' - Excluded score uses raw X multiplied by **z(bridge_closeness_excluded)**.
 #'
 #' @importFrom mgm mgm
 #' @importFrom EGAnet net.scores
@@ -61,7 +55,7 @@
 #' @importFrom qgraph centrality
 #' @importFrom colorspace qualitative_hcl
 #' @importFrom future.apply future_lapply
-#' @importFrom stats setNames quantile sd
+#' @importFrom stats setNames quantile
 #' @importFrom utils combn capture.output
 #' @export
 mixMN <- function(
@@ -75,9 +69,7 @@ mixMN <- function(
     seed_model = NULL, seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-    compute_community_scores = FALSE,
-    compute_excluded_score  = FALSE,
-    excluded_score_nodes    = NULL
+    compute_community_scores = FALSE
 ) {
   lambdaSel <- match.arg(lambdaSel)
   cluster_method <- match.arg(cluster_method)
@@ -232,16 +224,12 @@ mixMN <- function(
     names(groups) <- keep_nodes_cluster
   }
 
-  # --- placeholders per community e excluded score ---
+  # --- placeholders per community score ---
   community_scores_obj  <- NULL
   community_scores_df   <- NULL
   community_scores_true <- NULL
   community_scores_boot_arr <- NULL
   community_scores_ci   <- NULL
-
-  excluded_score   <- NULL
-  excluded_score_ci   <- NULL
-  excluded_score_boot <- NULL
 
   # ========== Community network scores (original, conditional) ==========
   nodes_comm <- integer(0)
@@ -412,11 +400,6 @@ mixMN <- function(
   centrality_true_df <- cbind(centrality_true_df, bridge_excluded_df[, -1])
 
   n_nodes_graph <- length(keep_nodes_graph)
-
-  # --- Bridge standardization params (across nodes, ORIGINAL graph) ---
-  bc_mu  <- mean(centrality_true_df$bridge_closeness_excluded, na.rm = TRUE)
-  bc_sd  <- stats::sd(centrality_true_df$bridge_closeness_excluded, na.rm = TRUE)
-  if (!is.finite(bc_sd) || bc_sd == 0) bc_sd <- 1
 
   # ---- Bootstrap containers ----
   boot_memberships <- list()
@@ -750,67 +733,6 @@ mixMN <- function(
     }
   } # end if reps > 0
 
-  # ===== EXCLUDED SCORE (EX_SUM) =====
-  if (isTRUE(compute_excluded_score)) {
-
-    # --- 1) Selezione dei nodi da includere ---
-    if (!is.null(excluded_score_nodes)) {
-      sel_nodes <- intersect(excluded_score_nodes, keep_nodes_graph)
-    } else {
-      if (isTRUE(compute_community_scores) && length(nodes_comm) > 0) {
-        sel_nodes <- setdiff(keep_nodes_graph, nodes_comm)
-      } else {
-        sel_nodes <- keep_nodes_graph
-      }
-    }
-
-    if (length(sel_nodes) > 0) {
-
-      # --- 2) Coefficienti z(bridge_closeness_excluded) sui nodi selezionati ---
-      bc_true_all_z <- with(centrality_true_df, (bridge_closeness_excluded - bc_mu) / bc_sd)
-      names(bc_true_all_z) <- centrality_true_df$node
-      coef_true <- bc_true_all_z[sel_nodes]
-
-      # --- 3) Dati X per i nodi selezionati ---
-      X_sel <- as.matrix(data[, sel_nodes, drop = FALSE])
-      if (is.null(rownames(X_sel))) rownames(X_sel) <- paste0("id_", seq_len(nrow(X_sel)))
-
-      # --- 4) Calcolo EX_SUM puntuale ---
-      ex_sum_vec <- as.numeric(X_sel %*% matrix(coef_true, ncol = 1))
-      excluded_score <- data.frame(
-        id     = rownames(X_sel),
-        EX_SUM = ex_sum_vec,
-        row.names = NULL,
-        check.names = FALSE
-      )
-
-      # --- 5) Bootstrap (se presente) ---
-      if (!is.null(bridge_closeness_excl_boot)) {
-        bc_boot_z <- (bridge_closeness_excl_boot - bc_mu) / bc_sd
-        bc_boot_z <- bc_boot_z[, sel_nodes, drop = FALSE]
-
-        excluded_score_boot <- matrix(NA_real_, nrow = nrow(bc_boot_z), ncol = nrow(X_sel))
-        rownames(excluded_score_boot) <- paste0("b", seq_len(nrow(bc_boot_z)))
-        colnames(excluded_score_boot) <- rownames(X_sel)
-
-        for (i in seq_len(nrow(bc_boot_z))) {
-          coef_i <- as.numeric(bc_boot_z[i, ])
-          excluded_score_boot[i, ] <- as.numeric(X_sel %*% coef_i)
-        }
-
-        # CI 95% per soggetto
-        qfun <- function(x, p) if (all(is.na(x))) NA_real_ else stats::quantile(x, probs = p, na.rm = TRUE)
-        low  <- apply(excluded_score_boot, 2, qfun, p = 0.025)
-        up   <- apply(excluded_score_boot, 2, qfun, p = 0.975)
-
-        excluded_score_ci <- list(
-          lower = setNames(low,  colnames(excluded_score_boot)),
-          upper = setNames(up,   colnames(excluded_score_boot))
-        )
-      }
-    }
-  }
-
   edges_true_df <- data.frame(edge = edge_names, weight = edge_mat_true, row.names = NULL)
 
   # ---- iGraph object  ----
@@ -876,12 +798,7 @@ mixMN <- function(
     community_scores_obj  = if (isTRUE(compute_community_scores)) community_scores_obj else NULL,
     community_scores_df   = if (isTRUE(compute_community_scores)) community_scores_df  else NULL,
     community_scores_ci   = if (isTRUE(compute_community_scores) && !is.null(community_scores_ci)) community_scores_ci else NULL,
-    community_scores_boot = if (isTRUE(compute_community_scores) && !is.null(community_scores_boot_list)) community_scores_boot_list else NULL,
-
-    # Excluded (total) score (present only if compute_excluded_score = TRUE)
-    excluded_score   = if (isTRUE(compute_excluded_score)) excluded_score else NULL,
-    excluded_score_ci   = if (isTRUE(compute_excluded_score)) excluded_score_ci  else NULL,
-    excluded_score_boot = if (isTRUE(compute_excluded_score)) excluded_score_boot else NULL
+    community_scores_boot = if (isTRUE(compute_community_scores) && !is.null(community_scores_boot_list)) community_scores_boot_list else NULL
   )
 
   class(out) <- c("mixMN_fit")

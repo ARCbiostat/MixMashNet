@@ -3,7 +3,7 @@
 \name{mixMN}
 \alias{mixMN}
 \title{Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
-and (optionally) community/excluded scores with CIs.}
+and (optionally) community scores with CIs.}
 \usage{
 mixMN(
   data,
@@ -20,9 +20,7 @@ mixMN(
   seed_boot = NULL,
   treat_singletons_as_excluded = FALSE,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-  compute_community_scores = FALSE,
-  compute_excluded_score = FALSE,
-  excluded_score_nodes = NULL
+  compute_community_scores = FALSE
 )
 }
 \arguments{
@@ -52,10 +50,6 @@ mixMN(
 \code{"walktrap"}, \code{"edge_betweenness"}}
 
 \item{compute_community_scores}{Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95\% CIs and bootstrap array.}
-
-\item{compute_excluded_score}{Logical; if TRUE, compute an excluded score as the row-wise sum of X_j * z(bridge_closeness_excluded_j) across excluded nodes.}
-
-\item{excluded_score_nodes}{Optional character vector of node names to include in the excluded score. If NULL, defaults to nodes excluded from communities (or all keep_nodes_graph if no community scores were computed).}
 }
 \value{
 A list with:
@@ -72,26 +66,22 @@ A list with:
 \item (if \code{compute_community_scores}) \code{community_scores_obj},
 \code{community_scores_df}, \code{community_scores_ci},
 \code{community_scores_boot} (list of data frames; one per bootstrap replication)
-\item (if \code{compute_excluded_score}) \code{excluded_score},
-\code{excluded_score_ci}, \code{excluded_score_boot}
 }
 }
 \description{
 Estimates a Mixed Graphical Model (MGM) network on the original data and
 Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
-and (optionally) community/excluded scores with CIs.
+and (optionally) community scores with CIs.
 
 Estimates a Mixed Graphical Model (MGM) network on the original data and
 performs non-parametric bootstrap (row resampling) to compute centrality indices,
 bridge metrics, clustering stability, confidence intervals for node metrics and edge weights.
-Optionally computes community network scores and/or
-excluded score with CIs and bootstrap arrays.
+Optionally computes community network scores with CIs and bootstrap arrays.
 }
 \details{
 \itemize{
 \item This function does \strong{not} call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
 \item It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
 \item Community scores use EGAnet \strong{std.scores} (z-standardized per community).
-\item Excluded score uses raw X multiplied by \strong{z(bridge_closeness_excluded)}.
 }
 }

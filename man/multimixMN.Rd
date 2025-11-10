@@ -21,9 +21,7 @@ multimixMN(
   seed_boot = NULL,
   treat_singletons_as_excluded = FALSE,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-  compute_community_scores = FALSE,
-  compute_excluded_score = FALSE,
-  excluded_score_nodes = NULL
+  compute_community_scores = FALSE
 )
 }
 \arguments{
@@ -71,10 +69,6 @@ treated as excluded for community-dependent metrics/plots.}
 \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.}
 
 \item{compute_community_scores}{Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95\% CIs and bootstrap array.}
-
-\item{compute_excluded_score}{Logical; if TRUE, compute an excluded score as the row-wise sum of X_j * z(bridge_closeness_excluded_j) across excluded nodes.}
-
-\item{excluded_score_nodes}{Optional character vector of node names to include in the excluded score. If NULL, defaults to nodes excluded from communities (or all keep_nodes_graph if no community scores were computed).}
 }
 \value{
 An object of class \code{"multimixMN_fit"} with elements:
@@ -104,8 +98,7 @@ The mask enforces which cross-layer edges are allowed according to \code{layer_r
 (intra-layer edges are always allowed). For each layer, the function computes
 community structure, nonparametric row-bootstrap for node centralities and
 edge weights, and bridge metrics (including "excluded" nodes logic).
-Optionally computes community network scores and/or
-excluded score with CIs and bootstrap arrays. It also
+Optionally computes community network scores with CIs and bootstrap arrays. It also
 returns \strong{interlayer-only} node metrics (strength, EI1, closeness, betweenness)
 with bootstrap confidence intervals.
 }
@@ -114,7 +107,6 @@ with bootstrap confidence intervals.
 \item This function does \strong{not} call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
 \item It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
 \item Community scores use EGAnet \strong{std.scores} (z-standardized per community).
-\item Excluded score uses raw X multiplied by \strong{z(bridge_closeness_excluded)}.
 }
 
 Internally, the function:
