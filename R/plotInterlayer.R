@@ -128,7 +128,7 @@ plotInterlayer <- function(
       closeness  = "closeness",
       betweenness= "betweenness"
     )
-    metrics <- intersect(metrics, names(ci_name_map))
+    metrics <- metrics[metrics %in% names(ci_name_map)]
     if (!length(metrics)) stop("No valid metrics selected for nodes.")
 
     # Build long df for chosen metrics
@@ -147,6 +147,7 @@ plotInterlayer <- function(
     })
     df <- dplyr::bind_rows(dfs)
     if (is.null(df) || !nrow(df)) stop("No data for selected node metrics after filtering.")
+    df$metric <- factor(df$metric, levels = metrics)
 
     # Optional standardization per metric panel
     if (isTRUE(standardize)) {
@@ -356,3 +357,4 @@ plotInterlayer <- function(
 
   return(p)
 }
+
