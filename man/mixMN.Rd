@@ -46,7 +46,7 @@ mixMN(
 
 \item{lambdaGam}{EBIC gamma parameter (if \code{lambdaSel="EBIC"})}
 
-\item{alphaSeq}{Alpha parameters of the elastic net penalty (values in \link{0, 1})}
+\item{alphaSeq}{Alpha parameters of the elastic net penalty (values from 0 to 1)}
 
 \item{alphaSel}{Method for selecting alpha parameter: \code{"CV"} or \code{"EBIC"}}
 
