@@ -25,6 +25,14 @@
 #' @param lambdaSel Character; lambda selection for \pkg{mgm} (\code{"CV"} or \code{"EBIC"}).
 #' @param lambdaFolds Integer; number of folds for CV (used when \code{lambdaSel = "CV"}).
 #' @param lambdaGam Numeric; EBIC gamma (used when \code{lambdaSel = "EBIC"}).
+#' @param alphaSeq Alpha parameters of the elastic net penalty (values from 0 to 1).
+#' @param alphaSel Method for selecting alpha parameter: \code{"CV"} or \code{"EBIC"}.
+#' @param alphaFolds Number of folds for CV (if \code{alphaSel="CV"}).
+#' @param alphaGam EBIC gamma parameter (if \code{alphaSel="EBIC"}).
+#' @param ruleReg  rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}.
+#' @param threshold threshold below which edge-weights are put to zero: \code{"LW"}, \code{"HW"} or \code{"none"}.
+#' @param overparameterize Logical; if TRUE uses the over-parameterized version.
+#' @param thresholdCat Logical; if FALSE thresholds of categorical variables are set to zero.
 #' @param exclude_from_graph Character vector; nodes to exclude from the **graph**
 #'   (no edges, no centralities). They will not appear in per-layer graphs.
 #' @param exclude_from_cluster Character vector; nodes excluded from **clustering**

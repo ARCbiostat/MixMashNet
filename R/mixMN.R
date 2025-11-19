@@ -19,6 +19,14 @@
 #' @param lambdaSel Method for lambda selection: \code{"CV"} or \code{"EBIC"}
 #' @param lambdaFolds Number of folds for CV (if \code{lambdaSel="CV"})
 #' @param lambdaGam EBIC gamma parameter (if \code{lambdaSel="EBIC"})
+#' @param alphaSeq Alpha parameters of the elastic net penalty (values from 0 to 1)
+#' @param alphaSel Method for selecting alpha parameter: \code{"CV"} or \code{"EBIC"}
+#' @param alphaFolds Number of folds for CV (if \code{alphaSel="CV"})
+#' @param alphaGam EBIC gamma parameter (if \code{alphaSel="EBIC"})
+#' @param ruleReg  rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}
+#' @param threshold threshold below which edge-weights are put to zero: \code{"LW"}, \code{"HW"} or \code{"none"}
+#' @param overparameterize Logical; if TRUE uses the over-parameterized version
+#' @param thresholdCat Logical; if FALSE thresholds of categorical variables are set to zero
 #' @param exclude_from_graph Character vector: nodes excluded from graph/centrality
 #' @param exclude_from_cluster Character vector: nodes excluded from clustering (in addition to \code{exclude_from_graph})
 #' @param seed_model,seed_boot Seeds for reproducibility (model and bootstrap)

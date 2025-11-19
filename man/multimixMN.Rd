@@ -15,6 +15,14 @@ multimixMN(
   lambdaSel = c("CV", "EBIC"),
   lambdaFolds = 5,
   lambdaGam = 0.25,
+  alphaSeq = 1,
+  alphaSel = "CV",
+  alphaFolds = 5,
+  alphaGam = 0.25,
+  ruleReg = "AND",
+  threshold = "LW",
+  overparameterize = FALSE,
+  thresholdCat = TRUE,
   exclude_from_graph = NULL,
   exclude_from_cluster = NULL,
   seed_model = NULL,
@@ -49,6 +57,22 @@ Default \code{100}.}
 \item{lambdaFolds}{Integer; number of folds for CV (used when \code{lambdaSel = "CV"}).}
 
 \item{lambdaGam}{Numeric; EBIC gamma (used when \code{lambdaSel = "EBIC"}).}
+
+\item{alphaSeq}{Alpha parameters of the elastic net penalty (values in \link{0, 1}).}
+
+\item{alphaSel}{Method for selecting alpha parameter: \code{"CV"} or \code{"EBIC"}.}
+
+\item{alphaFolds}{Number of folds for CV (if \code{alphaSel="CV"}).}
+
+\item{alphaGam}{EBIC gamma parameter (if \code{alphaSel="EBIC"}).}
+
+\item{ruleReg}{rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}.}
+
+\item{threshold}{threshold below which edge-weights are put to zero: \code{"LW"}, \code{"HW"} or \code{"none"}.}
+
+\item{overparameterize}{Logical; if TRUE uses the over-parameterized version.}
+
+\item{thresholdCat}{Logical; if FALSE thresholds of categorical variables are set to zero.}
 
 \item{exclude_from_graph}{Character vector; nodes to exclude from the \strong{graph}
 (no edges, no centralities). They will not appear in per-layer graphs.}
