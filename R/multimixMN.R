@@ -99,6 +99,11 @@ multimixMN <- function(
     reps = 100,
     lambdaSel = c("CV", "EBIC"),
     lambdaFolds = 5, lambdaGam = 0.25,
+    alphaSeq = 1,
+    alphaSel = "CV",
+    alphaFolds = 5, alphaGam = 0.25,
+    ruleReg = "AND", threshold = "LW",
+    overparameterize = FALSE, thresholdCat = TRUE,
     exclude_from_graph = NULL,
     exclude_from_cluster = NULL,
     seed_model = NULL, seed_boot = NULL,
@@ -227,7 +232,11 @@ multimixMN <- function(
   mgm_model <- mgm_masked(
     data = as.matrix(data), type = type, level = level,
     lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
-    k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale
+    alphaSeq = alphaSeq, alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
+    ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
+    thresholdCat = thresholdCat,
+    k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale,
+    signInfo = FALSE
   )
   wadj <- mgm_model$pairwise$wadj; signs <- mgm_model$pairwise$signs
   colnames(wadj) <- rownames(wadj) <- all_nodes
@@ -419,7 +428,11 @@ multimixMN <- function(
         boot_model <- tryCatch(mgm_masked(
           data = Xb, type = type, level = level,
           lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
-          k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale
+          alphaSeq = alphaSeq, alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
+          ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
+          thresholdCat = thresholdCat,
+          k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale,
+          signInfo = FALSE
         ), error=function(e) NULL)
         if (is.null(boot_model)) return(NULL)
 

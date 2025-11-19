@@ -64,6 +64,11 @@ mixMN <- function(
     reps = 100,
     lambdaSel = c("CV", "EBIC"),
     lambdaFolds = 5, lambdaGam = 0.25,
+    alphaSeq = 1,
+    alphaSel = "CV",
+    alphaFolds = 5, alphaGam = 0.25,
+    ruleReg = "AND", threshold = "LW",
+    overparameterize = FALSE, thresholdCat = TRUE,
     exclude_from_graph = NULL,
     exclude_from_cluster = NULL,
     seed_model = NULL, seed_boot = NULL,
@@ -138,9 +143,18 @@ mixMN <- function(
     type = type,
     level = level,
     lambdaSel = lambdaSel,
+    alphaSeq = alphaSeq,
+    alphaSel = alphaSel,
+    alphaFolds = alphaFolds,
+    alphaGam = alphaGam,
+    ruleReg = ruleReg,
+    threshold = threshold,
+    overparameterize = overparameterize,
+    thresholdCat = thresholdCat,
     k = 2,
     binarySign = TRUE,
-    scale = scale
+    scale = scale,
+    signInfo = FALSE
   )
   if (lambdaSel == "CV") {
     mgm_args$lambdaFolds <- lambdaFolds
@@ -420,7 +434,11 @@ mixMN <- function(
 
         boot_args <- list(
           data = boot_data, type = type, level = level,
-          lambdaSel = lambdaSel, k = 2, binarySign = TRUE, scale = scale
+          lambdaSel = lambdaSel, alphaSeq = alphaSeq,
+          alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
+          ruleReg = ruleReg, threshold = threshold,
+          overparameterize = overparameterize, thresholdCat = thresholdCat,
+          k = 2, binarySign = TRUE, scale = scale, signInfo = FALSE
         )
         if (lambdaSel == "CV") boot_args$lambdaFolds <- lambdaFolds else boot_args$lambdaGam <- lambdaGam
 
