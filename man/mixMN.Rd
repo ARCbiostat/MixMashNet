@@ -9,8 +9,8 @@ mixMN(
   data,
   type,
   level,
-  scale = TRUE,
   reps = 100,
+  scale = TRUE,
   lambdaSel = c("CV", "EBIC"),
   lambdaFolds = 5,
   lambdaGam = 0.25,
@@ -25,9 +25,9 @@ mixMN(
   thresholdCat = TRUE,
   exclude_from_graph = NULL,
   exclude_from_cluster = NULL,
+  treat_singletons_as_excluded = FALSE,
   seed_model = NULL,
   seed_boot = NULL,
-  treat_singletons_as_excluded = FALSE,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
   compute_community_scores = FALSE
 )
@@ -37,9 +37,9 @@ mixMN(
 
 \item{type, level}{Vectors as required by \code{mgm::mgm}}
 
-\item{scale}{Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized}
-
 \item{reps}{Integer (>= 0), number of bootstrap replications}
+
+\item{scale}{Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized}
 
 \item{lambdaSel}{Method for lambda selection: \code{"CV"} or \code{"EBIC"}}
 
@@ -69,9 +69,9 @@ mixMN(
 
 \item{exclude_from_cluster}{Character vector: nodes excluded from clustering (in addition to \code{exclude_from_graph})}
 
-\item{seed_model, seed_boot}{Seeds for reproducibility (model and bootstrap)}
-
 \item{treat_singletons_as_excluded}{Logical; if TRUE, singleton communities are treated as excluded}
+
+\item{seed_model, seed_boot}{Seeds for reproducibility (model and bootstrap)}
 
 \item{cluster_method}{Community detection algorithm: \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 \code{"walktrap"}, \code{"edge_betweenness"}}
@@ -106,9 +106,5 @@ bridge metrics, clustering stability, confidence intervals for node metrics and 
 Optionally computes community network scores with CIs and bootstrap arrays.
 }
 \details{
-\itemize{
-\item This function does \strong{not} call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
-\item It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
-\item Community scores use EGAnet \strong{std.scores} (z-standardized per community).
-}
+This function does \strong{not} call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
 }

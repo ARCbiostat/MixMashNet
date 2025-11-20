@@ -30,8 +30,8 @@
 #' @param thresholdCat Logical; if FALSE thresholds of categorical variables are set to zero
 #' @param exclude_from_graph Character vector: nodes excluded from graph/centrality
 #' @param exclude_from_cluster Character vector: nodes excluded from clustering (in addition to \code{exclude_from_graph})
-#' @param seed_model,seed_boot Seeds for reproducibility (model and bootstrap)
 #' @param treat_singletons_as_excluded Logical; if TRUE, singleton communities are treated as excluded
+#' @param seed_model,seed_boot Seeds for reproducibility (model and bootstrap)
 #' @param cluster_method Community detection algorithm: \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #' \code{"walktrap"}, \code{"edge_betweenness"}
 #' @param compute_community_scores Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95% CIs and bootstrap array.
@@ -53,9 +53,7 @@
 #' }
 #'
 #' @details
-#' - This function does **not** call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
-#' - It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
-#' - Community scores use EGAnet **std.scores** (z-standardized per community).
+#' This function does **not** call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
 #'
 #' @importFrom mgm mgm
 #' @importFrom EGAnet net.scores
@@ -68,20 +66,28 @@
 #' @importFrom utils combn capture.output
 #' @export
 mixMN <- function(
-    data, type, level,
-    scale = TRUE,
+    data,
+    type,
+    level,
     reps = 100,
+    scale = TRUE,
     lambdaSel = c("CV", "EBIC"),
-    lambdaFolds = 5, lambdaGam = 0.25,
+    lambdaFolds = 5,
+    lambdaGam = 0.25,
     alphaSeq = 1,
     alphaSel = "CV",
-    alphaFolds = 5, alphaGam = 0.25,
-    k = 2, ruleReg = "AND", threshold = "LW",
-    overparameterize = FALSE, thresholdCat = TRUE,
+    alphaFolds = 5,
+    alphaGam = 0.25,
+    k = 2,
+    ruleReg = "AND",
+    threshold = "LW",
+    overparameterize = FALSE,
+    thresholdCat = TRUE,
     exclude_from_graph = NULL,
     exclude_from_cluster = NULL,
-    seed_model = NULL, seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
+    seed_model = NULL,
+    seed_boot = NULL,
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
     compute_community_scores = FALSE
 ) {
