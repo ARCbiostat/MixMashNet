@@ -29,6 +29,7 @@
 #' @param alphaSel Method for selecting alpha parameter: \code{"CV"} or \code{"EBIC"}.
 #' @param alphaFolds Number of folds for CV (if \code{alphaSel="CV"}).
 #' @param alphaGam EBIC gamma parameter (if \code{alphaSel="EBIC"}).
+#' @param k Integer (>= 0), order of modeled interactions.
 #' @param ruleReg  rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}.
 #' @param threshold threshold below which edge-weights are put to zero: \code{"LW"}, \code{"HW"} or \code{"none"}.
 #' @param overparameterize Logical; if TRUE uses the over-parameterized version.
@@ -110,7 +111,7 @@ multimixMN <- function(
     alphaSeq = 1,
     alphaSel = "CV",
     alphaFolds = 5, alphaGam = 0.25,
-    ruleReg = "AND", threshold = "LW",
+    k = 2, ruleReg = "AND", threshold = "LW",
     overparameterize = FALSE, thresholdCat = TRUE,
     exclude_from_graph = NULL,
     exclude_from_cluster = NULL,
@@ -243,7 +244,7 @@ multimixMN <- function(
     alphaSeq = alphaSeq, alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
     ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
     thresholdCat = thresholdCat,
-    k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale,
+    k = k, binarySign = TRUE, mask_list = mask_list, scale = scale,
     signInfo = FALSE
   )
   wadj <- mgm_model$pairwise$wadj; signs <- mgm_model$pairwise$signs
@@ -439,7 +440,7 @@ multimixMN <- function(
           alphaSeq = alphaSeq, alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
           ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
           thresholdCat = thresholdCat,
-          k = 2, binarySign = TRUE, mask_list = mask_list, scale = scale,
+          k = k, binarySign = TRUE, mask_list = mask_list, scale = scale,
           signInfo = FALSE
         ), error=function(e) NULL)
         if (is.null(boot_model)) return(NULL)

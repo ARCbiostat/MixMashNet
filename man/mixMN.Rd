@@ -18,6 +18,7 @@ mixMN(
   alphaSel = "CV",
   alphaFolds = 5,
   alphaGam = 0.25,
+  k = 2,
   ruleReg = "AND",
   threshold = "LW",
   overparameterize = FALSE,
@@ -53,6 +54,8 @@ mixMN(
 \item{alphaFolds}{Number of folds for CV (if \code{alphaSel="CV"})}
 
 \item{alphaGam}{EBIC gamma parameter (if \code{alphaSel="EBIC"})}
+
+\item{k}{Integer (>= 0), order of modeled interactions}
 
 \item{ruleReg}{rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}}
 
