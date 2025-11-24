@@ -35,6 +35,10 @@
 #' @param cluster_method Community detection algorithm: \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #' \code{"walktrap"}, \code{"edge_betweenness"}
 #' @param compute_community_scores Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95% CIs and bootstrap array.
+#' @param boot_what Character vector specifying which quantities to bootstrap:
+#'   can include \code{"general_index"}, \code{"bridge_index"},
+#'   \code{"excluded_index"}, \code{"community"}, \code{"community_scores"}
+#'   or \code{"none"} to skip node-level bootstrap.
 #'
 #' @return A list with:
 #' \itemize{
@@ -89,7 +93,9 @@ mixMN <- function(
     seed_model = NULL,
     seed_boot = NULL,
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-    compute_community_scores = FALSE
+    compute_community_scores = FALSE,
+    boot_what = c("general_index", "bridge_index", "excluded_index",
+                  "community", "community_scores", "none")
 ) {
   lambdaSel <- match.arg(lambdaSel)
   cluster_method <- match.arg(cluster_method)
@@ -430,6 +436,29 @@ mixMN <- function(
 
   n_nodes_graph <- length(keep_nodes_graph)
 
+  # --- parse 'boot_what' argument ---
+  boot_what <- match.arg(
+    boot_what,
+    choices = c("general_index", "bridge_index", "excluded_index",
+                "community", "community_scores", "none"),
+    several.ok = TRUE
+  )
+
+  if ("none" %in% boot_what && length(boot_what) == 1L) {
+    do_general_boot     <- FALSE
+    do_bridge_boot      <- FALSE
+    do_excluded_boot    <- FALSE
+    do_community_boot   <- FALSE
+    do_comm_scores_boot <- FALSE
+  } else {
+    do_general_boot   <- "general_index"  %in% boot_what
+    do_bridge_boot    <- "bridge_index"   %in% boot_what
+    do_excluded_boot  <- "excluded_index" %in% boot_what
+    do_community_boot <- "community"      %in% boot_what
+    do_comm_scores_boot <- isTRUE(compute_community_scores) &&
+      ("community_scores" %in% boot_what)
+  }
+
   # ---- Bootstrap containers ----
   boot_memberships <- list()
   ci_results <- NULL
@@ -439,6 +468,8 @@ mixMN <- function(
   bridge_strength_excl_boot <- bridge_betweenness_excl_boot <- NULL
   bridge_closeness_excl_boot <- bridge_ei1_excl_boot <- bridge_ei2_excl_boot <- NULL
   edge_boot_mat <- NULL
+  community_scores_boot_arr  <- NULL
+  community_scores_boot_list <- NULL
 
   if (reps > 0) {
     boot_output <- future.apply::future_lapply(
@@ -458,10 +489,19 @@ mixMN <- function(
         if (lambdaSel == "CV") boot_args$lambdaFolds <- lambdaFolds else boot_args$lambdaGam <- lambdaGam
 
         boot_model <- tryCatch(do.call(mgm::mgm, boot_args), error = function(e) NULL)
+
+        ## Se MGM fallisce: restituisci NA della lunghezza corretta
         if (is.null(boot_model)) {
+          n_blocks <- 0L
+          if (isTRUE(do_general_boot))  n_blocks <- n_blocks + 4L  # strength, EI1, closeness, betweenness
+          if (isTRUE(do_bridge_boot))   n_blocks <- n_blocks + 5L  # bridge strength, EI1, EI2, betw, closeness
+          if (isTRUE(do_excluded_boot)) n_blocks <- n_blocks + 5L  # excluded bridge metrics
+
+          central_len <- n_blocks * n_nodes_graph
+
           return(list(
-            membership   = rep(NA_integer_, length(keep_nodes_cluster)),
-            centralities = rep(NA_real_, 14 * n_nodes_graph),
+            membership   = if (isTRUE(do_community_boot)) rep(NA_integer_, length(keep_nodes_cluster)) else NULL,
+            centralities = if (central_len > 0) rep(NA_real_, central_len) else numeric(0),
             edges_boot   = NULL,
             nscores_boot = NULL
           ))
@@ -490,89 +530,134 @@ mixMN <- function(
           g_cluster_boot <- igraph::simplify(g_cluster_boot, remove.multiple = TRUE, remove.loops = TRUE)
         }
 
-        boot_membership <- tryCatch({
-          m <- cluster_fun(g_cluster_boot)$membership
-          stats::setNames(m, keep_nodes_cluster)
-        }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
+        ## membership bootstrap solo se richiesto
+        boot_membership <- NULL
+        if (isTRUE(do_community_boot)) {
+          boot_membership <- tryCatch({
+            m <- cluster_fun(g_cluster_boot)$membership
+            stats::setNames(m, keep_nodes_cluster)
+          }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
+        }
 
-        # centrality on bootstrap
-        cent_vals <- tryCatch(
-          qgraph::centrality(boot_wadj_signed_graph),
-          error = function(e) list(
-            OutDegree = rep(NA_real_, n_nodes_graph),
-            OutExpectedInfluence = rep(NA_real_, n_nodes_graph)
+        ## vettore centrale per tutte le metriche scelte
+        centralities_vec <- numeric(0)
+
+        ## --- GENERAL INDEX ---
+        if (isTRUE(do_general_boot)) {
+          cent_vals <- tryCatch(
+            qgraph::centrality(boot_wadj_signed_graph),
+            error = function(e) list(
+              OutDegree = rep(NA_real_, n_nodes_graph),
+              OutExpectedInfluence = rep(NA_real_, n_nodes_graph)
+            )
           )
-        )
 
-        g_dist_boot <- .make_distance_graph(boot_wadj_signed_graph)
+          g_dist_boot <- .make_distance_graph(boot_wadj_signed_graph)
 
-        igraph_closeness_boot <- tryCatch(
-          .harmonic_closeness(g_dist_boot)[keep_nodes_graph],
-          error = function(e) rep(NA_real_, n_nodes_graph)
-        )
-
-        igraph_betweenness_boot <- tryCatch(
-          if (igraph::ecount(g_dist_boot) > 0)
-            igraph::betweenness(g_dist_boot, weights = igraph::E(g_dist_boot)$dist, directed = FALSE, normalized = FALSE)[keep_nodes_graph]
-          else rep(0, n_nodes_graph),
-          error = function(e) rep(NA_real_, n_nodes_graph)
-        )
-
-        bridge_vals_abs <- tryCatch({
-          b <- bridge_metrics(g_bridge_abs_boot, membership = groups)
-          b[match(keep_nodes_graph, b$node), ]
-        }, error = function(e) {
-          data.frame(
-            node = keep_nodes_graph,
-            bridge_strength    = NA_real_,
-            bridge_betweenness = NA_real_,
-            bridge_closeness   = NA_real_,
-            bridge_ei1         = NA_real_,
-            bridge_ei2         = NA_real_
+          igraph_closeness_boot <- tryCatch(
+            .harmonic_closeness(g_dist_boot)[keep_nodes_graph],
+            error = function(e) rep(NA_real_, n_nodes_graph)
           )
-        })
 
-        bridge_vals_signed <- tryCatch({
-          b <- bridge_metrics(g_bridge_signed_boot, membership = groups)
-          b[match(keep_nodes_graph, b$node), ]
-        }, error = function(e) {
-          data.frame(
-            node = keep_nodes_graph,
-            bridge_strength    = NA_real_,
-            bridge_betweenness = NA_real_,
-            bridge_closeness   = NA_real_,
-            bridge_ei1         = NA_real_,
-            bridge_ei2         = NA_real_
+          igraph_betweenness_boot <- tryCatch(
+            if (igraph::ecount(g_dist_boot) > 0)
+              igraph::betweenness(g_dist_boot, weights = igraph::E(g_dist_boot)$dist,
+                                  directed = FALSE, normalized = FALSE)[keep_nodes_graph]
+            else rep(0, n_nodes_graph),
+            error = function(e) rep(NA_real_, n_nodes_graph)
           )
-        })
 
-        bridge_vals <- data.frame(
-          node               = keep_nodes_graph,
-          bridge_strength    = bridge_vals_abs$bridge_strength,
-          bridge_betweenness = bridge_vals_abs$bridge_betweenness,
-          bridge_closeness   = bridge_vals_abs$bridge_closeness,
-          bridge_ei1         = bridge_vals_signed$bridge_ei1,
-          bridge_ei2         = bridge_vals_signed$bridge_ei2
-        )
-
-        bridge_outside_boot <- tryCatch({
-          abs_part <- bridge_metrics_excluded(g_bridge_abs_boot, membership = groups)
-          sgn_part <- bridge_metrics_excluded(g_bridge_signed_boot, membership = groups)
-          cbind(
-            abs_part[match(keep_nodes_graph, abs_part$node), c("bridge_strength","bridge_betweenness","bridge_closeness")],
-            sgn_part[match(keep_nodes_graph, sgn_part$node), c("bridge_expected_influence1","bridge_expected_influence2")]
+          centralities_vec <- c(
+            centralities_vec,
+            cent_vals$OutDegree,
+            cent_vals$OutExpectedInfluence,
+            igraph_closeness_boot,
+            igraph_betweenness_boot
           )
-        }, error = function(e) {
-          matrix(NA_real_, nrow = n_nodes_graph, ncol = 5)
-        })
+        }
 
+        ## --- BRIDGE INDEX (nodi in comunità) ---
+        if (isTRUE(do_bridge_boot)) {
+          bridge_vals_abs <- tryCatch({
+            b <- bridge_metrics(g_bridge_abs_boot, membership = groups)
+            b[match(keep_nodes_graph, b$node), ]
+          }, error = function(e) {
+            data.frame(
+              node = keep_nodes_graph,
+              bridge_strength    = NA_real_,
+              bridge_betweenness = NA_real_,
+              bridge_closeness   = NA_real_,
+              bridge_ei1         = NA_real_,
+              bridge_ei2         = NA_real_
+            )
+          })
+
+          bridge_vals_signed <- tryCatch({
+            b <- bridge_metrics(g_bridge_signed_boot, membership = groups)
+            b[match(keep_nodes_graph, b$node), ]
+          }, error = function(e) {
+            data.frame(
+              node = keep_nodes_graph,
+              bridge_strength    = NA_real_,
+              bridge_betweenness = NA_real_,
+              bridge_closeness   = NA_real_,
+              bridge_ei1         = NA_real_,
+              bridge_ei2         = NA_real_
+            )
+          })
+
+          bridge_vals <- data.frame(
+            node               = keep_nodes_graph,
+            bridge_strength    = bridge_vals_abs$bridge_strength,
+            bridge_betweenness = bridge_vals_abs$bridge_betweenness,
+            bridge_closeness   = bridge_vals_abs$bridge_closeness,
+            bridge_ei1         = bridge_vals_signed$bridge_ei1,
+            bridge_ei2         = bridge_vals_signed$bridge_ei2
+          )
+
+          centralities_vec <- c(
+            centralities_vec,
+            bridge_vals$bridge_strength,
+            bridge_vals$bridge_ei1,
+            bridge_vals$bridge_ei2,
+            bridge_vals$bridge_betweenness,
+            bridge_vals$bridge_closeness
+          )
+        }
+
+        ## --- EXCLUDED INDEX ---
+        if (isTRUE(do_excluded_boot)) {
+          bridge_outside_boot <- tryCatch({
+            abs_part <- bridge_metrics_excluded(g_bridge_abs_boot, membership = groups)
+            sgn_part <- bridge_metrics_excluded(g_bridge_signed_boot, membership = groups)
+            cbind(
+              abs_part[match(keep_nodes_graph, abs_part$node),
+                       c("bridge_strength","bridge_betweenness","bridge_closeness")],
+              sgn_part[match(keep_nodes_graph, sgn_part$node),
+                       c("bridge_expected_influence1","bridge_expected_influence2")]
+            )
+          }, error = function(e) {
+            matrix(NA_real_, nrow = n_nodes_graph, ncol = 5)
+          })
+
+          centralities_vec <- c(
+            centralities_vec,
+            bridge_outside_boot[, 1],
+            bridge_outside_boot[, 2],
+            bridge_outside_boot[, 3],
+            bridge_outside_boot[, 4],
+            bridge_outside_boot[, 5]
+          )
+        }
+
+        ## edges sempre
         boot_edges <- boot_wadj_signed[keep_nodes_graph, keep_nodes_graph]
         edge_values <- boot_edges[lower.tri(boot_edges)]
         names(edge_values) <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
 
-        # --- community scores on bootstrap
+        ## community scores bootstrap (solo se richieste)
         nscores_boot <- NULL
-        if (isTRUE(compute_community_scores) && length(nodes_comm) > 0) {
+        if (isTRUE(do_comm_scores_boot) && length(nodes_comm) > 0) {
           A_comm_boot <- boot_wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE]
 
           dat_comm_full <- as.matrix(data[, nodes_comm, drop = FALSE])
@@ -607,34 +692,26 @@ mixMN <- function(
         }
 
         list(
-          membership = boot_membership,
-          centralities = c(
-            cent_vals$OutDegree,
-            cent_vals$OutExpectedInfluence,
-            igraph_closeness_boot,
-            igraph_betweenness_boot,
-            bridge_vals$bridge_strength,
-            bridge_vals$bridge_ei1,
-            bridge_vals$bridge_ei2,
-            bridge_vals$bridge_betweenness,
-            bridge_vals$bridge_closeness,
-            bridge_outside_boot[, 1],
-            bridge_outside_boot[, 2],
-            bridge_outside_boot[, 3],
-            bridge_outside_boot[, 4],
-            bridge_outside_boot[, 5]
-          ),
-          edges_boot = edge_values,
+          membership   = boot_membership,
+          centralities = centralities_vec,
+          edges_boot   = edge_values,
           nscores_boot = nscores_boot
         )
       },
       future.seed = seed_boot
     )
 
-    # Assemble bootstrap matrices
+    ## matrice bootstrap centralità
     boot_mat <- do.call(rbind, lapply(boot_output, function(x) x$centralities))
-    boot_memberships <- lapply(boot_output, function(x) x$membership)
 
+    ## memberships solo se richieste
+    if (isTRUE(do_community_boot)) {
+      boot_memberships <- lapply(boot_output, function(x) x$membership)
+    } else {
+      boot_memberships <- list()
+    }
+
+    ## edges sempre
     edge_names <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
     edge_boot_mat <- matrix(NA_real_, nrow = length(edge_names), ncol = reps)
     rownames(edge_boot_mat) <- edge_names
@@ -643,51 +720,57 @@ mixMN <- function(
       if (!is.null(edges_i)) edge_boot_mat[names(edges_i), i] <- edges_i
     }
 
+    ## slicing dinamico di boot_mat in base a boot_what
     n <- n_nodes_graph
-    strength_boot                 <- boot_mat[,  (1):(n),             drop = FALSE]
-    ei1_boot                      <- boot_mat[,  (n + 1):(2 * n),     drop = FALSE]
-    closeness_boot                <- boot_mat[,  (2 * n + 1):(3 * n), drop = FALSE]
-    betweenness_boot              <- boot_mat[,  (3 * n + 1):(4 * n), drop = FALSE]
-    bridge_strength_boot          <- boot_mat[,  (4 * n + 1):(5 * n), drop = FALSE]
-    bridge_ei1_boot               <- boot_mat[,  (5 * n + 1):(6 * n), drop = FALSE]
-    bridge_ei2_boot               <- boot_mat[,  (6 * n + 1):(7 * n), drop = FALSE]
-    bridge_betweenness_boot       <- boot_mat[,  (7 * n + 1):(8 * n), drop = FALSE]
-    bridge_closeness_boot         <- boot_mat[,  (8 * n + 1):(9 * n), drop = FALSE]
-    bridge_strength_excl_boot     <- boot_mat[,  (9 * n + 1):(10 * n), drop = FALSE]
-    bridge_betweenness_excl_boot  <- boot_mat[, (10 * n + 1):(11 * n), drop = FALSE]
-    bridge_closeness_excl_boot    <- boot_mat[, (11 * n + 1):(12 * n), drop = FALSE]
-    bridge_ei1_excl_boot          <- boot_mat[, (12 * n + 1):(13 * n), drop = FALSE]
-    bridge_ei2_excl_boot          <- boot_mat[, (13 * n + 1):(14 * n), drop = FALSE]
+    offset <- 0
 
-    colnames(strength_boot)                 <- keep_nodes_graph
-    colnames(ei1_boot)                      <- keep_nodes_graph
-    colnames(closeness_boot)                <- keep_nodes_graph
-    colnames(betweenness_boot)              <- keep_nodes_graph
-    colnames(bridge_strength_boot)          <- keep_nodes_graph
-    colnames(bridge_ei1_boot)               <- keep_nodes_graph
-    colnames(bridge_ei2_boot)               <- keep_nodes_graph
-    colnames(bridge_betweenness_boot)       <- keep_nodes_graph
-    colnames(bridge_closeness_boot)         <- keep_nodes_graph
-    colnames(bridge_strength_excl_boot)     <- keep_nodes_graph
-    colnames(bridge_betweenness_excl_boot)  <- keep_nodes_graph
-    colnames(bridge_closeness_excl_boot)    <- keep_nodes_graph
-    colnames(bridge_ei1_excl_boot)          <- keep_nodes_graph
-    colnames(bridge_ei2_excl_boot)          <- keep_nodes_graph
+    if (isTRUE(do_general_boot) && !is.null(boot_mat) && ncol(boot_mat) > 0) {
+      strength_boot    <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      ei1_boot         <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      closeness_boot   <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      betweenness_boot <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
 
-    # CIs for node metrics & edges
-    calc_ci <- function(mat) {
-      ci <- apply(mat, 2, function(x) {
-        if (all(is.na(x))) c(`2.5%` = NA_real_, `97.5%` = NA_real_)
-        else stats::quantile(x, probs = c(0.025, 0.975), na.rm = TRUE)
-      })
-      t(ci)
+      colnames(strength_boot)    <- keep_nodes_graph
+      colnames(ei1_boot)         <- keep_nodes_graph
+      colnames(closeness_boot)   <- keep_nodes_graph
+      colnames(betweenness_boot) <- keep_nodes_graph
     }
 
-    # assemble community score bootstrap array
-    if (isTRUE(compute_community_scores) && !is.null(community_scores_true) && ncol(community_scores_true) > 0) {
-      n_subj <- length(subject_ids)
+    if (isTRUE(do_bridge_boot) && !is.null(boot_mat) && ncol(boot_mat) >= offset + 5 * n) {
+      bridge_strength_boot    <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_ei1_boot         <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_ei2_boot         <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_betweenness_boot <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_closeness_boot   <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+
+      colnames(bridge_strength_boot)    <- keep_nodes_graph
+      colnames(bridge_ei1_boot)         <- keep_nodes_graph
+      colnames(bridge_ei2_boot)         <- keep_nodes_graph
+      colnames(bridge_betweenness_boot) <- keep_nodes_graph
+      colnames(bridge_closeness_boot)   <- keep_nodes_graph
+    }
+
+    if (isTRUE(do_excluded_boot) && !is.null(boot_mat) && ncol(boot_mat) >= offset + 5 * n) {
+      bridge_strength_excl_boot    <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_betweenness_excl_boot <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_closeness_excl_boot   <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_ei1_excl_boot         <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+      bridge_ei2_excl_boot         <- boot_mat[, (offset + 1):(offset + n), drop = FALSE]; offset <- offset + n
+
+      colnames(bridge_strength_excl_boot)    <- keep_nodes_graph
+      colnames(bridge_betweenness_excl_boot) <- keep_nodes_graph
+      colnames(bridge_closeness_excl_boot)   <- keep_nodes_graph
+      colnames(bridge_ei1_excl_boot)         <- keep_nodes_graph
+      colnames(bridge_ei2_excl_boot)         <- keep_nodes_graph
+    }
+
+    ## --- Community scores: costruzione array e lista ---
+    if (isTRUE(do_comm_scores_boot) && !is.null(community_scores_true) &&
+        ncol(community_scores_true) > 0) {
+
+      n_subj     <- length(subject_ids)
       comm_names <- colnames(community_scores_true)
-      K <- length(comm_names)
+      K          <- length(comm_names)
 
       community_scores_boot_arr <- array(
         NA_real_, dim = c(reps, n_subj, K),
@@ -704,32 +787,37 @@ mixMN <- function(
 
         ns_i <- as.matrix(ns_i)
 
+        ## allinea righe (id)
         miss_rows <- setdiff(subject_ids, rownames(ns_i))
         if (length(miss_rows)) {
-          ns_i <- rbind(ns_i, matrix(NA_real_, nrow = length(miss_rows), ncol = ncol(ns_i),
-                                     dimnames = list(miss_rows, colnames(ns_i))))
+          ns_i <- rbind(
+            ns_i,
+            matrix(NA_real_, nrow = length(miss_rows), ncol = ncol(ns_i),
+                   dimnames = list(miss_rows, colnames(ns_i)))
+          )
         }
+
+        ## allinea colonne (comunità)
         miss_cols <- setdiff(comm_names, colnames(ns_i))
         if (length(miss_cols)) {
-          ns_i <- cbind(ns_i, matrix(NA_real_, nrow = nrow(ns_i), ncol = length(miss_cols),
-                                     dimnames = list(rownames(ns_i), miss_cols)))
+          ns_i <- cbind(
+            ns_i,
+            matrix(NA_real_, nrow = nrow(ns_i), ncol = length(miss_cols),
+                   dimnames = list(rownames(ns_i), miss_cols))
+          )
         }
 
         ns_i <- ns_i[subject_ids, comm_names, drop = FALSE]
         community_scores_boot_arr[i, , ] <- ns_i
       }
-    }
 
-    # ---- Convert array to list of data.frame (1 per rep)
-    community_scores_boot_list <- NULL
-    if (isTRUE(compute_community_scores) && !is.null(community_scores_boot_arr)) {
+      ## converto array in lista di data.frame
       reps_names <- dimnames(community_scores_boot_arr)$rep
       id_names   <- dimnames(community_scores_boot_arr)$id
       comm_names <- dimnames(community_scores_boot_arr)$comm
 
-      community_scores_boot_list <- lapply(seq_along(reps_names), function(i) {
-        # estrai la "fetta" i-esima: subjects x K
-        mat <- community_scores_boot_arr[i, , , drop = FALSE][1, , ]
+      community_scores_boot_list <- lapply(seq_along(reps_names), function(j) {
+        mat <- community_scores_boot_arr[j, , , drop = FALSE][1, , ]
         mat <- as.matrix(mat)
         dimnames(mat) <- list(id_names, comm_names)
         as.data.frame(mat, check.names = FALSE)
@@ -737,26 +825,45 @@ mixMN <- function(
       names(community_scores_boot_list) <- reps_names
     }
 
-    ci_results <- list(
-      strength                    = calc_ci(strength_boot),
-      expected_influence          = calc_ci(ei1_boot),
-      closeness                   = calc_ci(closeness_boot),
-      betweenness                 = calc_ci(betweenness_boot),
-      bridge_strength             = calc_ci(bridge_strength_boot),
-      bridge_betweenness          = calc_ci(bridge_betweenness_boot),
-      bridge_closeness            = calc_ci(bridge_closeness_boot),
-      bridge_ei1                  = calc_ci(bridge_ei1_boot),
-      bridge_ei2                  = calc_ci(bridge_ei2_boot),
-      bridge_strength_excluded    = calc_ci(bridge_strength_excl_boot),
-      bridge_betweenness_excluded = calc_ci(bridge_betweenness_excl_boot),
-      bridge_closeness_excluded   = calc_ci(bridge_closeness_excl_boot),
-      bridge_ei1_excluded         = calc_ci(bridge_ei1_excl_boot),
-      bridge_ei2_excluded         = calc_ci(bridge_ei2_excl_boot),
-      edge_weights                = calc_ci(t(edge_boot_mat))
-    )
+    ## funzione di CI
+    calc_ci <- function(mat) {
+      ci <- apply(mat, 2, function(x) {
+        if (all(is.na(x))) c(`2.5%` = NA_real_, `97.5%` = NA_real_)
+        else stats::quantile(x, probs = c(0.025, 0.975), na.rm = TRUE)
+      })
+      t(ci)
+    }
 
-    # Community score CIs (std.scores; subject × community), conditional
-    if (isTRUE(compute_community_scores) && !is.null(community_scores_true)) {
+    ci_results <- list()
+
+    if (isTRUE(do_general_boot) && !is.null(strength_boot)) {
+      ci_results$strength           <- calc_ci(strength_boot)
+      ci_results$expected_influence <- calc_ci(ei1_boot)
+      ci_results$closeness          <- calc_ci(closeness_boot)
+      ci_results$betweenness        <- calc_ci(betweenness_boot)
+    }
+
+    if (isTRUE(do_bridge_boot) && !is.null(bridge_strength_boot)) {
+      ci_results$bridge_strength    <- calc_ci(bridge_strength_boot)
+      ci_results$bridge_betweenness <- calc_ci(bridge_betweenness_boot)
+      ci_results$bridge_closeness   <- calc_ci(bridge_closeness_boot)
+      ci_results$bridge_ei1         <- calc_ci(bridge_ei1_boot)
+      ci_results$bridge_ei2         <- calc_ci(bridge_ei2_boot)
+    }
+
+    if (isTRUE(do_excluded_boot) && !is.null(bridge_strength_excl_boot)) {
+      ci_results$bridge_strength_excluded    <- calc_ci(bridge_strength_excl_boot)
+      ci_results$bridge_betweenness_excluded <- calc_ci(bridge_betweenness_excl_boot)
+      ci_results$bridge_closeness_excluded   <- calc_ci(bridge_closeness_excl_boot)
+      ci_results$bridge_ei1_excluded         <- calc_ci(bridge_ei1_excl_boot)
+      ci_results$bridge_ei2_excluded         <- calc_ci(bridge_ei2_excl_boot)
+    }
+
+    ## edges sempre
+    ci_results$edge_weights <- calc_ci(t(edge_boot_mat))
+
+    ## Community score CIs
+    if (isTRUE(do_comm_scores_boot) && !is.null(community_scores_true)) {
       qfun <- function(x, p) if (all(is.na(x))) NA_real_ else stats::quantile(x, probs = p, na.rm = TRUE)
       cs_ci_low  <- apply(community_scores_boot_arr, c(2, 3), qfun, p = 0.025)
       cs_ci_high <- apply(community_scores_boot_arr, c(2, 3), qfun, p = 0.975)

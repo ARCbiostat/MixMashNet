@@ -30,7 +30,9 @@ multimixMN(
   seed_boot = NULL,
   treat_singletons_as_excluded = FALSE,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-  compute_community_scores = FALSE
+  compute_community_scores = FALSE,
+  boot_what = c("general_index", "interlayer_index", "bridge_index", "excluded_index",
+    "community", "community_scores", "none")
 )
 }
 \arguments{
@@ -96,6 +98,13 @@ treated as excluded for community-dependent metrics/plots.}
 \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.}
 
 \item{compute_community_scores}{Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95\% CIs and bootstrap array.}
+
+\item{boot_what}{Character vector specifying which quantities to bootstrap:
+can include \code{"general_index"} (intra-layer centrality indices),
+\code{"interlayer_index"} (interlayer-only centrality indices),
+\code{"bridge_index"}, \code{"excluded_index"},
+\code{"community"}, \code{"community_scores"},
+or \code{"none"} to skip node-level bootstrap.}
 }
 \value{
 An object of class \code{"multimixMN_fit"} with elements:
