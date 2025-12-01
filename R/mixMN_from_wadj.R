@@ -1,22 +1,70 @@
-' Build MixMashNet metrics from a signed weighted adjacency matrix
+#' Build MixMashNet metrics from a signed weighted adjacency matrix
 #'
-#' Computes clustering, centrality, and bridge metrics from a signed
-#' weighted adjacency (wadj) selecting nodes for graph vs clustering.
+#' @description
+#' Low-level constructor that computes clustering, centrality, and bridge
+#' metrics from a signed weighted adjacency matrix. It returns a
+#' \code{mixMN_fit} object analogous a quello prodotto da \code{mixMN()},
+#' ma stimato direttamente da \code{wadj_signed} invece che da \code{mgm()}.
+#' The arguments \code{reps}, \code{seed_boot}, and \code{boot_what} are
+#' stored in \code{$settings} for compatibility with bootstrap-based
+#' functions, but no bootstrap is performed inside this function.
 #'
-#' @param wadj_signed Square numeric matrix with signed weights.
-#' @param nodes Character vector of node names (matching row/colnames).
-#' @param exclude_from_graph Nodes to exclude from the graph metrics.
-#' @param exclude_from_cluster Nodes to exclude only from clustering.
-#' @param cluster_method One of "louvain","fast_greedy","infomap",
-#'   "walktrap","edge_betweenness".
-#' @param reps Integer, bootstrap reps (currently unused here).
-#' @param seed_boot Optional integer seed.
-#' @param treat_singletons_as_excluded Logical; treat size-1 groups as excluded.
+#' @param wadj_signed Square numeric matrix with signed edge weights
+#'   (rows/columns = nodes). Typically \code{wadj * signs} from \pkg{mgm}.
+#' @param nodes Character vector of node names (must match
+#'   \code{rownames(wadj_signed)} and \code{colnames(wadj_signed)}).
+#' @param exclude_from_graph Character vector of nodes to exclude entirely
+#'   from the graph (no edges, no centralities).
+#' @param exclude_from_cluster Character vector of nodes to exclude only
+#'   from clustering (they remain in the graph, but have no community label).
+#' @param cluster_method Community detection algorithm, one of
+#'   \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.
+#' @param reps Integer; number of bootstrap replications. Currently not used
+#'   inside this function, but saved in \code{$settings$reps} for consistency
+#'   with \code{mixMN()} and downstream bootstrap utilities.
+#' @param seed_boot Optional integer; bootstrap seed, stored in
+#'   \code{$settings} but not used here.
+#' @param treat_singletons_as_excluded Logical; if \code{TRUE}, communities
+#'   of size 1 are treated as "excluded" (their nodes receive \code{NA}
+#'   community labels).
+#' @param boot_what Character vector specifying which quantities are meant
+#'   to be bootstrapped in higher-level functions:
+#'   can include \code{"general_index"}, \code{"interlayer_index"},
+#'   \code{"bridge_index"}, \code{"excluded_index"}, \code{"community"},
+#'   \code{"community_scores"}, or \code{"none"}. The value is stored in
+#'   \code{$settings$boot_what} but no bootstrap is computed here.
 #'
-#' @return A list of class \code{mixMN_fit} with clustering, palettes,
-#'   centrality/bridge metrics, and edge weights.
+#' @return An object of class \code{c("mixmashnet","mixMN_fit")} with:
+#' \describe{
+#'   \item{\code{graph}}{List with: \code{igraph} (signed network),
+#'     \code{keep_nodes_graph}, and \code{keep_nodes_cluster}.}
+#'   \item{\code{communities}}{List with empirical community structure
+#'     (\code{original_membership}, \code{groups}), color palette
+#'     (\code{palette}), and empty \code{boot_memberships}.}
+#'   \item{\code{statistics}}{Node-level metrics in
+#'     \code{$statistics$node$true} (strength, EI1, closeness, betweenness,
+#'     bridge metrics, including "excluded" versions) and edge weights in
+#'     \code{$statistics$edge$true}. Bootstrap slots
+#'     (\code{$statistics$node$boot}, \code{$statistics$edge$boot},
+#'     \code{$statistics$node$ci}, \code{$statistics$edge$ci}) are set to
+#'     \code{NULL}.}
+#'   \item{\code{community_scores}}{Empty containers (\code{obj}, \code{df},
+#'     \code{ci}, \code{boot}) for eventual community scores.}
+#'   \item{\code{settings}}{List echoing the main arguments
+#'     (\code{reps}, \code{cluster_method}, \code{exclude_from_graph},
+#'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
+#'     \code{boot_what}).}
+#' }
 #'
-#' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap cluster_walktrap cluster_edge_betweenness
+#' @details
+#' Centrality indices are computed on the signed matrix \code{wadj_signed}
+#' (via \code{qgraph::centrality}), while distances for closeness and
+#' betweenness are based on \eqn{|w|} with edge length \eqn{1/|w|}. Bridge
+#' metrics are computed separately on the absolute and signed graphs using
+#' \code{bridge_metrics()} and \code{bridge_metrics_excluded()}.
+#'
+#' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap
+#' @importFrom igraph cluster_walktrap cluster_edge_betweenness
 #' @importFrom qgraph centrality
 #' @importFrom grDevices hcl
 #' @importFrom stats setNames
@@ -30,7 +78,9 @@ mixMN_from_wadj <- function(
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
     reps = 0,
     seed_boot = NULL,
-    treat_singletons_as_excluded = FALSE
+    treat_singletons_as_excluded = FALSE,
+    boot_what = c("general_index", "interlayer_index", "bridge_index",
+                  "excluded_index", "community", "community_scores", "none")
 ) {
   cluster_method <- match.arg(cluster_method)
 
@@ -251,46 +301,71 @@ mixMN_from_wadj <- function(
 
   # --- Return object skeleton (no bootstrap here) ---
   out <- list(
-    graph_igraph        = g_igraph,
-    original_membership = original_membership,
-    groups              = groups,
-    community_palette   = palette_clusters,
-    boot_memberships    = list(),
-    reps                = reps,
-    cluster_method      = cluster_method,
-    mgm_model           = NULL,
+    call = match.call(),
 
-    ci_results          = NULL,
+    settings = list(
+      reps                         = reps,
+      cluster_method               = cluster_method,
+      exclude_from_graph           = exclude_from_graph,
+      exclude_from_cluster         = exclude_from_cluster,
+      treat_singletons_as_excluded = treat_singletons_as_excluded,
+      boot_what                    = boot_what
+    ),
 
-    centrality_true     = centrality_true_df,
-    strength_boot       = NULL,
-    ei1_boot            = NULL,
-    closeness_boot      = NULL,
-    betweenness_boot    = NULL,
+    model = list(
+      mgm   = NULL,
+      nodes = all_nodes
+    ),
 
-    bridge_strength_boot        = NULL,
-    bridge_betweenness_boot     = NULL,
-    bridge_closeness_boot       = NULL,
-    bridge_ei1_boot             = NULL,
-    bridge_ei2_boot             = NULL,
-    bridge_strength_excl_boot   = NULL,
-    bridge_betweenness_excl_boot= NULL,
-    bridge_closeness_excl_boot  = NULL,
-    bridge_ei1_excl_boot        = NULL,
-    bridge_ei2_excl_boot        = NULL,
+    graph = list(
+      igraph             = g_igraph,
+      keep_nodes_graph   = keep_nodes_graph,
+      keep_nodes_cluster = keep_nodes_cluster
+    ),
 
-    edges_true          = edges_true_df,
-    edge_boot_mat       = NULL,
+    communities = list(
+      original_membership = original_membership,  # su keep_nodes_cluster
+      groups              = groups,               # fattore (eventualmente senza singleton)
+      palette             = palette_clusters,
+      boot_memberships    = list()
+    ),
 
-    keep_nodes_graph    = keep_nodes_graph,
-    keep_nodes_cluster  = keep_nodes_cluster,
+    statistics = list(
+      node = list(
+        true = centrality_true_df,
+        boot = list(
+          strength                    = NULL,
+          ei1                         = NULL,
+          closeness                   = NULL,
+          betweenness                 = NULL,
+          bridge_strength             = NULL,
+          bridge_betweenness          = NULL,
+          bridge_closeness            = NULL,
+          bridge_ei1                  = NULL,
+          bridge_ei2                  = NULL,
+          bridge_strength_excluded    = NULL,
+          bridge_betweenness_excluded = NULL,
+          bridge_closeness_excluded   = NULL,
+          bridge_ei1_excluded         = NULL,
+          bridge_ei2_excluded         = NULL
+        ),
+        ci = NULL
+      ),
+      edge = list(
+        true = edges_true_df,
+        boot = NULL,
+        ci   = NULL
+      )
+    ),
 
-    community_scores_obj  = NULL,
-    community_scores_df   = NULL,
-    community_scores_ci   = NULL,
-    community_scores_boot = NULL
+    community_scores = list(
+      obj  = NULL,
+      df   = NULL,
+      ci   = NULL,
+      boot = NULL
+    )
   )
 
-  class(out) <- c("mixMN_fit")
+  class(out) <- c("mixmashnet", "mixMN_fit")
   return(out)
 }

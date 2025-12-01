@@ -1,71 +1,58 @@
 #' Plot bootstrap centrality with 95% CIs (nodes or edges)
 #'
 #' @description
-#' Creates lollipop/errorbar plots of bootstrap estimates with 95% CIs for:
-#' - node metrics (general): strength, expected_influence, closeness, betweenness
-#' - node metrics (bridge): bridge_strength, bridge_closeness, bridge_betweenness, bridge_ei1, bridge_ei2
-#' - node metrics (excluded): bridge_*_excluded
-#' - edge metrics: edge_weights (top-N by absolute weight, optional)
+#' Internal helper used by \code{plot.mixmashnet()} to visualize node and edge
+#' centrality with 95\% bootstrap confidence intervals.
 #'
-#' Only one *type* of metrics can be plotted at a time (general OR bridge OR excluded OR edges).
-#'
-#' @param fit A \code{mixMN_fit} object from \code{mixMN()}.
-#' @param metrics Character vector of metrics to plot. See details.
-#' @param title Plot title.
-#' @param plot_nonzero_edges_only Logical; if TRUE, keeps only non-zero observed edges.
-#' @param ordering One of \code{"value"}, \code{"alphabetical"}, \code{"community"}.
-#' @param exclude_nodes Optional character vector of node names to exclude.
-#' @param standardize Logical; if TRUE, z-standardizes observed and CI values (per panel).
-#' @param color_by_community Logical; color points by community (nodes only).
-#' @param edges_top_n Integer; keep only the top-N edges by |weight| (when plotting edges).
-#'
-#' @return A \code{ggplot} object.
+#' @keywords internal
+#' @noRd
 #' @importFrom ggplot2 ggplot aes geom_hline geom_errorbar geom_point
 #' @importFrom ggplot2 scale_color_manual scale_fill_manual scale_x_continuous coord_flip
 #' @importFrom ggplot2 labs facet_wrap theme_minimal theme element_text element_rect
 #' @importFrom dplyr mutate arrange desc slice n select filter pull bind_rows distinct row_number
 #' @importFrom magrittr %>%
 #' @importFrom stats sd
-#' @export
 plotCentrality <- function(
     fit,
-    metrics = c(
+    statistics = c(
       "strength", "expected_influence", "closeness", "betweenness",
       "bridge_strength", "bridge_closeness", "bridge_betweenness",
       "bridge_ei1", "bridge_ei2",
       "bridge_strength_excluded", "bridge_betweenness_excluded",
       "bridge_closeness_excluded", "bridge_ei1_excluded", "bridge_ei2_excluded",
-      "edge_weights"
+      "edges"
     ),
     title = "Bootstrap Centrality with 95% CI",
-    plot_nonzero_edges_only = TRUE,
     ordering = c("value", "alphabetical", "community"),
     exclude_nodes = NULL,
     standardize = FALSE,
     color_by_community = TRUE,
     edges_top_n = 60
 ) {
-  if (!is.list(fit) || is.null(fit$ci_results))
-    stop("Input 'fit' must be a 'mixMN_fit'-like list produced by mixMN().")
+  if (!inherits(fit, "mixMN_fit"))
+    stop("`fit` must be an object of class 'mixMN_fit' returned by mixMN().")
+  if (is.null(fit$statistics) || is.null(fit$statistics$node))
+    stop("`fit$statistics$node` is missing. Did you run mixMN() with bootstrap?")
 
-  metrics  <- match.arg(metrics, several.ok = TRUE)
+
+  statistics  <- match.arg(statistics, several.ok = TRUE)
   ordering <- match.arg(ordering, choices = c("value","alphabetical","community"))
 
   general_metrics  <- c("strength","expected_influence","closeness","betweenness")
   bridge_metrics   <- c("bridge_strength","bridge_closeness","bridge_betweenness","bridge_ei1","bridge_ei2")
   excluded_metrics <- c("bridge_strength_excluded","bridge_closeness_excluded",
                         "bridge_betweenness_excluded","bridge_ei1_excluded","bridge_ei2_excluded")
-  edge_metric      <- "edge_weights"
+  edge_metric      <- "edges"
 
   types_selected <- c(
-    general  = any(metrics %in% general_metrics),
-    bridge   = any(metrics %in% bridge_metrics),
-    excluded = any(metrics %in% excluded_metrics),
-    edge     = any(metrics %in% edge_metric)
+    general  = any(statistics %in% general_metrics),
+    bridge   = any(statistics %in% bridge_metrics),
+    excluded = any(statistics %in% excluded_metrics),
+    edge     = any(statistics %in% edge_metric)
   )
   if (sum(types_selected) > 1) {
     stop(
-      "Cannot combine metrics of different types.\n",
+      "Cannot combine statistics of different types.\n",
       "- General metrics can only be plotted together.\n",
       "- Bridge metrics can only be plotted together.\n",
       "- Excluded bridge metrics can only be plotted together.\n",
@@ -73,7 +60,7 @@ plotCentrality <- function(
     )
   }
 
-  metric_map <- c(
+  statistic_map <- c(
     strength = "strength",
     expected_influence = "ei1",
     closeness = "closeness",
@@ -88,22 +75,21 @@ plotCentrality <- function(
     bridge_closeness_excluded = "bridge_closeness_excluded",
     bridge_ei1_excluded = "bridge_ei1_excluded",
     bridge_ei2_excluded = "bridge_ei2_excluded",
-    edge_weights = "edge_weights"
+    edges = "edges"
   )
 
   df_all <- list()
 
-  for (metric in metrics) {
+  for (statistic in statistics) {
     df_list <- list()
 
-    if (metric == "edge_weights") {
-      edges_true <- fit$edges_true
-      ci <- fit$ci_results$edge_weights
+    if (statistic == "edges") {
+      edges_true <- fit$statistics$edge$true
+      ci <- fit$statistics$edge$ci
       if (is.null(edges_true) || nrow(edges_true) == 0 || is.null(ci)) next
 
-      if (isTRUE(plot_nonzero_edges_only)) {
-        edges_true <- edges_true[edges_true$weight != 0, , drop = FALSE]
-      }
+      edges_true <- edges_true[edges_true$weight != 0, , drop = FALSE]
+
       ci <- ci[match(edges_true$edge, rownames(ci)), , drop = FALSE]
 
       df <- data.frame(
@@ -111,7 +97,7 @@ plotCentrality <- function(
         observed = edges_true$weight,
         lower = ci[, "2.5%"],
         upper = ci[, "97.5%"],
-        metric = "edge_weights",
+        statistic = "edges",
         community = NA
       )
       df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA, df$lower <= 0 & df$upper >= 0)
@@ -152,47 +138,83 @@ plotCentrality <- function(
 
       df$label_colored <- df$node
 
-      df_list[[metric]] <- df
-      df_all[[metric]]  <- do.call(rbind, df_list)
+      df_list[[statistic]] <- df
+      df_all[[statistic]]  <- do.call(rbind, df_list)
       next
     }
 
     # ------- Node metrics -------
-    mat_boot <- switch(metric,
-                       strength                    = fit$strength_boot,
-                       expected_influence          = fit$ei1_boot,
-                       closeness                   = fit$closeness_boot,
-                       betweenness                 = fit$betweenness_boot,
-                       bridge_strength             = fit$bridge_strength_boot,
-                       bridge_closeness            = fit$bridge_closeness_boot,
-                       bridge_betweenness          = fit$bridge_betweenness_boot,
-                       bridge_ei1                  = fit$bridge_ei1_boot,
-                       bridge_ei2                  = fit$bridge_ei2_boot,
-                       bridge_strength_excluded    = fit$bridge_strength_excl_boot,
-                       bridge_betweenness_excluded = fit$bridge_betweenness_excl_boot,
-                       bridge_closeness_excluded   = fit$bridge_closeness_excl_boot,
-                       bridge_ei1_excluded         = fit$bridge_ei1_excl_boot,
-                       bridge_ei2_excluded         = fit$bridge_ei2_excl_boot)
+    mat_boot <- switch(statistic,
+                       strength                    = fit$statistics$node$boot$strength,
+                       expected_influence          = fit$statistics$node$boot$ei1,
+                       closeness                   = fit$statistics$node$boot$closeness,
+                       betweenness                 = fit$statistics$node$boot$betweenness,
+                       bridge_strength             = fit$statistics$node$boot$bridge_strength,
+                       bridge_closeness            = fit$statistics$node$boot$bridge_closeness,
+                       bridge_betweenness          = fit$statistics$node$boot$bridge_betweenness,
+                       bridge_ei1                  = fit$statistics$node$boot$bridge_ei1,
+                       bridge_ei2                  = fit$statistics$node$boot$bridge_ei2,
+                       bridge_strength_excluded    = fit$statistics$node$boot$bridge_strength_excluded,
+                       bridge_betweenness_excluded = fit$statistics$node$boot$bridge_betweenness_excluded,
+                       bridge_closeness_excluded   = fit$statistics$node$boot$bridge_closeness_excluded,
+                       bridge_ei1_excluded         = fit$statistics$node$boot$bridge_ei1_excluded,
+                       bridge_ei2_excluded         = fit$statistics$node$boot$bridge_ei2_excluded)
 
-    ci <- fit$ci_results[[metric]]
+    ci <- fit$statistics$node$ci[[statistic]]
     if (is.null(mat_boot) || ncol(mat_boot) == 0) {
-      stop(sprintf("Bootstrap matrix for metric '%s' is empty or NULL.", metric))
+      stop(sprintf("Bootstrap matrix for statistic '%s' is empty or NULL.", statistic))
     }
 
     node_set <- colnames(mat_boot)
-    ct_filtered <- fit$centrality_true %>% dplyr::filter(node %in% node_set)
+
+    ## --- allinea e PULISCI i CI ---
+    if (!is.null(ci)) {
+      ci <- as.matrix(ci)
+
+      # riordina le righe secondo node_set (se possibile)
+      if (!is.null(rownames(ci))) {
+        ci <- ci[match(node_set, rownames(ci)), , drop = FALSE]
+      }
+
+      # togli completamente i rownames per evitare che finiscano come row.names del data.frame
+      rownames(ci) <- NULL
+
+      lower_vec <- as.numeric(ci[, "2.5%"])
+      upper_vec <- as.numeric(ci[, "97.5%"])
+    } else {
+      lower_vec <- rep(NA_real_, length(node_set))
+      upper_vec <- rep(NA_real_, length(node_set))
+    }
+
+    ## --- osservati e community ---
+    ct_filtered <- fit$statistics$node$true %>%
+      dplyr::filter(node %in% node_set)
     order_index <- match(node_set, ct_filtered$node)
-    observed_values <- ct_filtered[[metric_map[metric]]][order_index]
+    observed_values <- ct_filtered[[statistic_map[statistic]]][order_index]
 
-    community <- if (!is.null(fit$groups)) fit$groups[node_set] else rep(NA, length(node_set))
+    community <- if (!is.null(fit$communities$groups)) {
+      fit$communities$groups[node_set]
+    } else {
+      rep(NA_integer_, length(node_set))
+    }
 
+    ## assicuriamoci che NESSUN vettore abbia names
+    names(node_set)        <- NULL
+    names(observed_values) <- NULL
+    names(lower_vec)       <- NULL
+    names(upper_vec)       <- NULL
+    names(community)       <- NULL
+
+    ## --- QUI forziamo row.names "sane" ---
     df <- data.frame(
-      node = node_set,
-      observed = observed_values,
-      lower = ci[, "2.5%"],
-      upper = ci[, "97.5%"],
-      metric = metric,
-      community = community
+      node      = node_set,
+      observed  = observed_values,
+      lower     = lower_vec,
+      upper     = upper_vec,
+      statistic    = statistic,
+      community = community,
+      row.names = seq_along(node_set),   # <- riga chiave
+      check.names = FALSE
     )
     df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA, df$lower <= 0 & df$upper >= 0)
 
@@ -204,10 +226,10 @@ plotCentrality <- function(
       df$upper    <- (df$upper    - mean_val) / sd_val
     }
 
-    # keep/exclude coherent with metric type
-    if (grepl("_excluded$", metric)) {
+    # keep/exclude coherent with statistic type
+    if (grepl("_excluded$", statistic)) {
       df <- df %>% dplyr::filter(is.na(community))
-    } else if (grepl("^bridge_", metric)) {
+    } else if (grepl("^bridge_", statistic)) {
       df <- df %>% dplyr::filter(!is.na(community))
     }
 
@@ -221,7 +243,7 @@ plotCentrality <- function(
       dplyr::mutate(
         lower = as.numeric(lower),
         upper = as.numeric(upper),
-        community_clean = ifelse(metric == "edge_weights",
+        community_clean = ifelse(statistic == "edges",
                                  NA_character_,
                                  ifelse(is.na(community), "Excluded", as.character(community)))
       )
@@ -230,7 +252,7 @@ plotCentrality <- function(
     community_numeric <- sort(community_levels_present[community_levels_present != "Excluded"])
     community_ordered <- c(community_numeric, "Excluded")
 
-    cmap <- c(fit$community_palette, Excluded = "gray70")
+    cmap <- c(fit$communities$palette, Excluded = "gray70")
     community_colors <- cmap[community_ordered]
 
     df_plot$community_factor <- factor(df_plot$community_clean, levels = community_ordered)
@@ -255,13 +277,13 @@ plotCentrality <- function(
 
     df_plot$label_colored <- as.character(df_plot$node)
 
-    df_list[[metric]] <- df_plot
-    df_all[[metric]]  <- do.call(rbind, df_list)
+    df_list[[statistic]] <- df_plot
+    df_all[[statistic]]  <- do.call(rbind, df_list)
   }
 
-  # Reference order from the first metric
-  reference_metric <- metrics[1]
-  reference_df <- df_all[[reference_metric]]
+  # Reference order from the first statistic
+  reference_statistic <- statistics[1]
+  reference_df <- df_all[[reference_statistic]]
 
   if (ordering == "value") {
     node_order <- reference_df %>% dplyr::arrange(dplyr::desc(observed)) %>% dplyr::pull(node)
@@ -280,7 +302,7 @@ plotCentrality <- function(
       )
   })
   df_all_combined <- dplyr::bind_rows(df_all)
-  df_all_combined$metric <- factor(df_all_combined$metric, levels = metrics)
+  df_all_combined$statistic <- factor(df_all_combined$statistic, levels = statistics)
 
   # Ensure label_colored exists (belt & suspenders)
   if (!"label_colored" %in% names(df_all_combined)) {
@@ -288,7 +310,7 @@ plotCentrality <- function(
   }
 
   # Palette including 'Excluded'
-  cmap <- c(fit$community_palette, Excluded = "gray70")
+  cmap <- c(fit$communities$palette, Excluded = "gray70")
 
   # Label map
   lab_map <- df_all_combined %>%
@@ -303,7 +325,7 @@ plotCentrality <- function(
     ggplot2::scale_color_manual(values = c("FALSE" = "black", "TRUE" = "gray60"),
                                 na.value = "gray80", guide = "none")
 
-  plotting_edges <- all(df_all_combined$metric == "edge_weights")
+  plotting_edges <- all(df_all_combined$statistic == "edges")
 
   if (isTRUE(color_by_community) && !plotting_edges) {
     p <- p +
@@ -334,9 +356,9 @@ plotCentrality <- function(
         "Gray error bars indicate confidence intervals that include zero in the non-standardized scale."
       else NULL,
       x = x_lab,
-      y = if (standardize) "Z-score of observed value with 95% CI" else "Observed value with 95% CI"
+      y = if (standardize) "Z-score of estimated value with 95% CI" else "Estimated value with 95% CI"
     ) +
-    ggplot2::facet_wrap(~ metric, ncol = length(metrics), scales = "free_x") +
+    ggplot2::facet_wrap(~ statistic, ncol = length(statistics), scales = "free_x") +
     ggplot2::theme_minimal() +
     ggplot2::theme(
       strip.text   = ggplot2::element_text(size = 12, face = "bold"),

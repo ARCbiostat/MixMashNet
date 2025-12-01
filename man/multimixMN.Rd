@@ -32,138 +32,154 @@ multimixMN(
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
   compute_community_scores = FALSE,
   boot_what = c("general_index", "interlayer_index", "bridge_index", "excluded_index",
-    "community", "community_scores", "none")
+    "community", "community_scores", "none"),
+  progress = TRUE
 )
 }
 \arguments{
-\item{data}{A numeric matrix/data frame (n × p) with variables in columns.}
+\item{data}{A numeric matrix or data frame (n × p) with variables in columns.}
 
-\item{type}{Length-\code{p} vector of variable types (as in \pkg{mgm}).}
+\item{type}{Length-\code{p} vector of variable types as required by
+\code{mgm::mgm}.}
 
-\item{level}{Length-\code{p} vector of variable levels (as in \pkg{mgm}).}
+\item{level}{Length-\code{p} vector of variable levels as required by
+\code{mgm::mgm}.}
 
 \item{layers}{A named vector (names = variable names) assigning each node to a
 layer (character or factor). Must cover all columns of \code{data}.}
 
-\item{layer_rules}{A logical/numeric square matrix with row/column names equal
-to layer names. \code{TRUE}/1 indicates \strong{cross-layer} edges are allowed
-between the corresponding layer pair. The diagonal (intra-layer) is always
-treated as allowed; if the diagonal is \code{NA}, it is coerced to allowed.}
+\item{layer_rules}{A logical or numeric square matrix with row/column names
+equal to layer names. Values \code{TRUE} or \code{1} indicate that
+cross-layer edges are allowed between the corresponding layer pair.
+Intra-layer edges are always allowed; if the diagonal is \code{NA}, it is
+treated as allowed.}
 
-\item{scale}{Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized}
+\item{scale}{Logical; if \code{TRUE} (default) Gaussian variables
+(\code{type == "g"}) are z-standardized internally by \code{mgm()}. Use
+\code{scale = FALSE} if your data are already standardized.}
 
-\item{reps}{Integer; number of bootstrap resamples (row resampling with replacement).
-Default \code{100}.}
+\item{reps}{Integer (>= 0). Number of bootstrap replications (row resampling
+with replacement). If \code{reps = 0}, no bootstrap is performed.}
 
-\item{lambdaSel}{Character; lambda selection for \pkg{mgm} (\code{"CV"} or \code{"EBIC"}).}
+\item{lambdaSel}{Method for lambda selection in \pkg{mgm}:
+\code{"CV"} or \code{"EBIC"}.}
 
-\item{lambdaFolds}{Integer; number of folds for CV (used when \code{lambdaSel = "CV"}).}
+\item{lambdaFolds}{Number of folds for CV (if \code{lambdaSel = "CV"}).}
 
-\item{lambdaGam}{Numeric; EBIC gamma (used when \code{lambdaSel = "EBIC"}).}
+\item{lambdaGam}{EBIC gamma parameter (if \code{lambdaSel = "EBIC"}).}
 
-\item{alphaSeq}{Alpha parameters of the elastic net penalty (values from 0 to 1).}
+\item{alphaSeq}{Alpha parameters of the elastic net penalty (values in
+\eqn{(0, 1]}).}
 
-\item{alphaSel}{Method for selecting alpha parameter: \code{"CV"} or \code{"EBIC"}.}
+\item{alphaSel}{Method for selecting the alpha parameter:
+\code{"CV"} or \code{"EBIC"}.}
 
-\item{alphaFolds}{Number of folds for CV (if \code{alphaSel="CV"}).}
+\item{alphaFolds}{Number of folds for CV (if \code{alphaSel = "CV"}).}
 
-\item{alphaGam}{EBIC gamma parameter (if \code{alphaSel="EBIC"}).}
+\item{alphaGam}{EBIC gamma parameter (if \code{alphaSel = "EBIC"}).}
 
-\item{k}{Integer (>= 0), order of modeled interactions.}
+\item{k}{Integer (>= 1). Order of modeled interactions.}
 
-\item{ruleReg}{rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}.}
+\item{ruleReg}{Rule to combine neighborhood estimates:
+\code{"AND"} or \code{"OR"}.}
 
-\item{threshold}{threshold below which edge-weights are put to zero: \code{"LW"}, \code{"HW"} or \code{"none"}.}
+\item{threshold}{Threshold below which edge-weights are set to zero:
+\code{"LW"}, \code{"HW"} or \code{"none"}.}
 
-\item{overparameterize}{Logical; if TRUE uses the over-parameterized version.}
+\item{overparameterize}{Logical; if \code{TRUE} uses the over-parameterized
+version of \code{mgm}.}
 
-\item{thresholdCat}{Logical; if FALSE thresholds of categorical variables are set to zero.}
+\item{thresholdCat}{Logical; if \code{FALSE} thresholds of categorical
+variables are set to zero.}
 
-\item{exclude_from_graph}{Character vector; nodes to exclude from the \strong{graph}
-(no edges, no centralities). They will not appear in per-layer graphs.}
+\item{exclude_from_graph}{Character vector of node names. Nodes in this set
+are excluded from the global graph and from all node-level metrics.}
 
-\item{exclude_from_cluster}{Character vector; nodes excluded from \strong{clustering}
-(no membership), but can still appear in the graph. Final set is
-\code{union(exclude_from_cluster, exclude_from_graph)}.}
+\item{exclude_from_cluster}{Character vector of node names. Nodes in this set
+are excluded from community detection in addition to \code{exclude_from_graph}.}
 
-\item{seed_model}{Optional integer; seed for the initial MGM fit reproducibility.}
+\item{seed_model}{Optional integer seed for reproducibility of the initial
+MGM fit.}
 
-\item{seed_boot}{Optional integer; seed used inside \code{future.apply} for
-bootstrap reproducibility.}
+\item{seed_boot}{Optional integer seed passed to \code{future.apply} for
+reproducibility of bootstrap replications.}
 
-\item{treat_singletons_as_excluded}{Logical; if \code{TRUE}, singletons are
-treated as excluded for community-dependent metrics/plots.}
+\item{treat_singletons_as_excluded}{Logical; if \code{TRUE}, singleton
+communities (size 1) are treated as "excluded" when computing bridge
+metrics and related summaries.}
 
-\item{cluster_method}{Community detection algorithm. One of
-\code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.}
+\item{cluster_method}{Community detection algorithm applied within each
+layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
+\code{"walktrap"}, or \code{"edge_betweenness"}.}
 
-\item{compute_community_scores}{Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95\% CIs and bootstrap array.}
+\item{compute_community_scores}{Logical; if \code{TRUE}, compute community
+network scores (EGAnet standardized \code{std.scores}) with bootstrap
+arrays and confidence intervals.}
 
-\item{boot_what}{Character vector specifying which quantities to bootstrap:
-can include \code{"general_index"} (intra-layer centrality indices),
-\code{"interlayer_index"} (interlayer-only centrality indices),
-\code{"bridge_index"}, \code{"excluded_index"},
-\code{"community"}, \code{"community_scores"},
-or \code{"none"} to skip node-level bootstrap.}
+\item{boot_what}{Character vector specifying which quantities to bootstrap.
+Valid options are:
+\code{"general_index"} (intra-layer centrality indices),
+\code{"interlayer_index"} (interlayer-only node metrics),
+\code{"bridge_index"} (bridge metrics for nodes in communities),
+\code{"excluded_index"} (bridge metrics for nodes treated as excluded),
+\code{"community"} (bootstrap community memberships),
+\code{"community_scores"} (bootstrap community scores, only if
+\code{compute_community_scores = TRUE}),
+and \code{"none"} (skip all node-level bootstrap: only edge-weight
+bootstrap is performed if \code{reps > 0}).}
+
+\item{progress}{Logical; if \code{TRUE} (default), show a bootstrap progress
+bar when the \pkg{progressr} package is available.}
 }
 \value{
-An object of class \code{"multimixMN_fit"} with elements:
-\describe{
-\item{\code{layers}}{Named vector of layer assignment for all nodes.}
-\item{\code{layer_rules}}{Normalized symmetric matrix of allowed cross-layer edges.}
-\item{\code{layer_fits}}{Named list keyed by layer name. \strong{Each element is an
-object of class \code{mixMN_fit}} (single-layer fit) containing its empirical
-community structure, bootstrap matrices (\code{strength_boot}, \code{ei1_boot},
-\code{closeness_boot}, \code{betweenness_boot}, \code{edge_boot_mat}),
-bridge metrics (included & excluded) and their percentile CIs in \code{ci_results}.}
-\item{\code{interlayer}}{List with interlayer-only node metrics:
-\describe{
-\item{\code{centrality_true}}{Data frame with per-node strength, EI1, closeness, betweenness (interlayer-only).}
-\item{\code{ci_results}}{List of percentile CIs for those metrics.}
-\item{\code{strength_boot}, \code{ei1_boot}, \code{closeness_boot}, \code{betweenness_boot}}{(reps × p) bootstrap matrices.}
-\item{\code{edges}}{Named list per allowed layer pair with true cross-layer edges, bootstrap matrices, and CIs.}
-}
-}
-\item{\code{exclude_from_graph}, \code{exclude_from_cluster}}{Echo of inputs.}
-\item{\code{cluster_method}, \code{reps}, \code{seed_model}, \code{seed_boot}}{Echo of inputs.}
+An object of class \code{c("mixmashnet", "multimixMN_fit")}. The returned
+list contains at least the following components:
+\itemize{
+\item \code{call}: the matched function call.
+\item \code{settings}: list of main settings (e.g., \code{reps},
+\code{cluster_method}, \code{exclude_from_graph},
+\code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
+\code{boot_what}).
+\item \code{model}: list with the fitted masked \code{mgm} object and basic
+information on the data (\code{nodes}, \code{n}, \code{p}).
+\item \code{layers}: list describing the multilayer structure
+(assignment of nodes to layers and the \code{layer_rules} matrix used).
+\item \code{layer_fits}: named list (one element per layer) with
+single-layer fits, including community structure, node-level statistics,
+edge-level statistics, bridge metrics, and (optionally) community scores
+with bootstrap information.
+\item \code{interlayer}: list collecting interlayer-only node metrics
+(strength, expected influence, closeness, betweenness, with or without
+bootstrap) and cross-layer edge summaries for each allowed pair of
+layers.
+\item \code{graph}: list containing a global \pkg{igraph} object built on
+the retained nodes (\code{keep_nodes_graph}), with vertex attributes
+such as \code{name}, \code{layer}, \code{membership}, and edge attributes
+such as \code{weight}, \code{abs_weight}, \code{sign},
+\code{type} (intra vs inter) and \code{layer_pair}.
 }
 }
 \description{
-Estimates a \strong{multilayer} network using a masked Mixed Graphical Model (MGM).
-The mask enforces which cross-layer edges are allowed according to \code{layer_rules}
-(intra-layer edges are always allowed). For each layer, the function computes
-community structure, nonparametric row-bootstrap for node centralities and
-edge weights, and bridge metrics (including "excluded" nodes logic).
-Optionally computes community network scores with CIs and bootstrap arrays. It also
-returns \strong{interlayer-only} node metrics (strength, EI1, closeness, betweenness)
-with bootstrap confidence intervals.
+Estimates a \strong{multilayer} Mixed Graphical Model (MGM) using a mask that
+enforces which cross-layer edges are allowed according to \code{layer_rules}.
+Within each layer, the function computes community structure, non-parametric
+row-bootstrap for node centralities and edge weights, bridge metrics
+(including metrics for nodes treated as "excluded"), and (optionally)
+community network scores. It also returns interlayer-only node metrics and
+cross-layer edge summaries.
 }
 \details{
-\itemize{
-\item This function does \strong{not} call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
-\item It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
-\item Community scores use EGAnet \strong{std.scores} (z-standardized per community).
-}
-
-Internally, the function:
-\enumerate{
-\item Builds per-node masks so that each node may connect only to nodes in
-its own layer and in layers permitted by \code{layer_rules}.
-\item Fits a masked \pkg{mgm} model (\code{mgm_masked()}) to obtain signed
-weighted adjacency (\code{wadj * signs}).
-\item Splits nodes by layer and creates per-layer fits via \code{mixMN_from_wadj()},
-which assigns communities and prepares containers for bootstrap outputs.
-\item Runs \code{reps} bootstrap iterations (with \code{future.apply}) to
-recompute centralities, edge weights, bridge metrics (via
-\code{bridge_metrics()} and \code{bridge_metrics_excluded()}),
-community assignments, interlayer-only metrics, and cross-layer edge weights.
-\item Aggregates bootstrap matrices into per-layer and interlayer summaries,
-returning point estimates and percentile CIs.
-}
+This function does \strong{not} call \code{future::plan()}. To enable
+parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)}) before
+calling \code{multimixMN()}. If \code{"none"} is the only element of
+\code{boot_what} and \code{reps > 0}, node-level metrics are not
+bootstrapped, but intra- and inter-layer edge-weight bootstrap and the
+corresponding confidence intervals are still computed.
 }
 \section{Dependencies}{
 
 Relies on internal helpers \code{mgm_masked()}, \code{mixMN_from_wadj()},
-\code{bridge_metrics()}, and \code{bridge_metrics_excluded()}.
+\code{bridge_metrics()}, and \code{bridge_metrics_excluded()}, which must be
+available in the same package namespace.
 }
 

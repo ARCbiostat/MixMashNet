@@ -3,25 +3,67 @@
 #' @description
 #' Computes per-node stability given the empirical community structure and the
 #' homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
+#' Stability is expressed as the proportion of bootstrap replications that
+#' assign each node to its empirical (original) community.
 #'
-#' @param fit An object returned by \code{mixMN()} (class \code{mixMN_fit}).
-#' @param IS.plot Logical; if \code{TRUE}, prints the plot returned by
-#'   \code{membershipStab_plot()}.
+#' @param fit An object returned by \code{mixMN()} (class \code{mixMN_fit}),
+#'   containing \code{$communities$original_membership} and
+#'   \code{$communities$boot_memberships}. Bootstrap memberships must be
+#'   available, i.e. \code{reps > 0} and \code{"community" \%in\% boot_what}.
+#' @param IS.plot Logical; if \code{TRUE}, prints a stability plot via the
+#'   internal helper \code{membershipStab_plot()}.
 #'
-#' @return An object of class \code{c("membershipStab")}.
+#' @return An object of class \code{c("membershipStab")}, with components:
+#' \describe{
+#'   \item{\code{membership}}{List with:
+#'     \describe{
+#'       \item{\code{empirical}}{Named integer vector of empirical community labels}
+#'       \item{\code{bootstrap}}{Matrix of homogenized bootstrap labels
+#'         (\code{reps × p})}
+#'     }
+#'   }
+#'   \item{\code{membership.stability}}{List with:
+#'     \describe{
+#'       \item{\code{empirical.dimensions}}{Named numeric vector of node-level stability
+#'         (proportion assigned to empirical community)}
+#'       \item{\code{all.dimensions}}{Matrix (\code{p × K}) with proportions of
+#'         assignment to each community}
+#'     }
+#'   }
+#'   \item{\code{community_palette}}{Named vector of colors for communities,
+#'     if available}
+#' }
+#'
+#' @details
+#' Bootstrap community labels are first aligned to the empirical solution using
+#' \code{EGAnet::community.homogenize()}. Stability is then computed node-wise as
+#' the proportion of bootstrap runs in which the node's community matches its
+#' empirical assignment.
+#'
+#' @seealso \code{\link{plot.mixmashnet}}
+#'
 #' @importFrom EGAnet community.homogenize
 #' @export
 membershipStab <- function(fit, IS.plot = FALSE) {
   # --- Extract inputs
-  structure <- fit$original_membership
-  boot.list <- fit$boot_memberships
-  palette   <- fit$community_palette
+  structure <- fit$communities$original_membership
+  boot.list <- fit$communities$boot_memberships
+  palette   <- fit$communities$palette
 
   # --- Checks
   if (is.null(structure) || length(structure) == 0L)
     stop("original_membership is missing or empty.")
   if (any(is.na(structure)))
     stop("original_membership contains NAs. Cannot compute node stability.")
+  if (!inherits(fit, "mixMN_fit")) {
+    stop("`fit` must be an object of class 'mixMN_fit'.")
+  }
+  if (is.null(boot.list) || !length(boot.list)) {
+    stop(
+      "No bootstrap memberships found in `communities$boot_memberships`.\n",
+      "Make sure `boot_what` includes \"community\" and `reps > 0`."
+    )
+  }
 
   p <- length(structure)
   if (!is.null(names(structure))) {
@@ -32,7 +74,19 @@ membershipStab <- function(fit, IS.plot = FALSE) {
 
   # --- Bootstrap membership matrix (reps x p)
   if (!length(boot.list)) stop("boot_memberships is missing or empty.")
-  boot.wc <- do.call(rbind, boot.list)
+  boot.wc <- do.call(
+    rbind,
+    lapply(boot.list, function(z) {
+      if (is.null(z)) {
+        rep(NA_integer_, p)
+      } else {
+        if (is.null(names(z))) {
+          stop("All bootstrap membership vectors must be named.")
+        }
+        z[var_names]
+      }
+    })
+  )
   if (ncol(boot.wc) != p)
     stop("Inconsistent bootstrap membership dimensions: expected ", p, ", got ", ncol(boot.wc), ".")
   colnames(boot.wc) <- var_names

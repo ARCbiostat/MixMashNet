@@ -7,15 +7,48 @@
 membershipStab(fit, IS.plot = FALSE)
 }
 \arguments{
-\item{fit}{An object returned by \code{mixMN()} (class \code{mixMN_fit}).}
+\item{fit}{An object returned by \code{mixMN()} (class \code{mixMN_fit}),
+containing \code{$communities$original_membership} and
+\code{$communities$boot_memberships}. Bootstrap memberships must be
+available, i.e. \code{reps > 0} and \code{"community" \%in\% boot_what}.}
 
-\item{IS.plot}{Logical; if \code{TRUE}, prints the plot returned by
-\code{membershipStab_plot()}.}
+\item{IS.plot}{Logical; if \code{TRUE}, prints a stability plot via the
+internal helper \code{membershipStab_plot()}.}
 }
 \value{
-An object of class \code{c("membershipStab")}.
+An object of class \code{c("membershipStab")}, with components:
+\describe{
+\item{\code{membership}}{List with:
+\describe{
+\item{\code{empirical}}{Named integer vector of empirical community labels}
+\item{\code{bootstrap}}{Matrix of homogenized bootstrap labels
+(\code{reps × p})}
+}
+}
+\item{\code{membership.stability}}{List with:
+\describe{
+\item{\code{empirical.dimensions}}{Named numeric vector of node-level stability
+(proportion assigned to empirical community)}
+\item{\code{all.dimensions}}{Matrix (\code{p × K}) with proportions of
+assignment to each community}
+}
+}
+\item{\code{community_palette}}{Named vector of colors for communities,
+if available}
+}
 }
 \description{
 Computes per-node stability given the empirical community structure and the
 homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
+Stability is expressed as the proportion of bootstrap replications that
+assign each node to its empirical (original) community.
+}
+\details{
+Bootstrap community labels are first aligned to the empirical solution using
+\code{EGAnet::community.homogenize()}. Stability is then computed node-wise as
+the proportion of bootstrap runs in which the node's community matches its
+empirical assignment.
+}
+\seealso{
+\code{\link{plot.mixmashnet}}
 }

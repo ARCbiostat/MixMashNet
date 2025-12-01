@@ -10,5 +10,5 @@
 #' @aliases MixMashNet-package
 #' @keywords package
 #' @seealso \code{\link{mixMN}}, \code{\link{multimixMN}},
-#'   \code{\link{membershipStab}}, \code{\link{membershipStab_plot}}
+#'   \code{\link{membershipStab}}
 "_PACKAGE"

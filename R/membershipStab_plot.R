@@ -1,21 +1,22 @@
-#' Plot node stability per community
+#' Plot node stability per community (internal helper)
 #'
 #' @description
-#' Creates a horizontal bar plot of node stability. Each bar corresponds to a node,
-#' colored by community with a white fill and thick colored border. Stability values
-#' are displayed as labels at the end of each bar. A dashed vertical line at 0.7 is
-#' drawn as a common reference threshold.
+#' Internal helper used by \code{plot.mixmashnet()} and \code{membershipStab()}
+#' to visualize per-node stability by community using a horizontal barplot.
 #'
-#' @param stab_obj An object of class \code{membershipStab}, returned by
-#'   \code{membershipStab()}.
-#' @param title Character string. Plot title.
+#' @param stab_obj Stability object as returned by \code{membershipStab2()},
+#'   containing node-level stability and empirical community assignments.
+#' @param title Plot title (character). Default:
+#'   \code{"Node Stability by Community"}.
 #'
-#' @return A \code{ggplot} object.
+#' @return A \code{ggplot2} object showing node stability per community.
+#'
+#' @keywords internal
+#' @noRd
 #'
 #' @importFrom ggplot2 ggplot aes geom_col geom_text geom_vline scale_x_continuous
 #' @importFrom ggplot2 scale_color_manual scale_fill_manual theme_minimal labs theme
 #' @importFrom ggplot2 element_text element_line element_blank
-#' @export
 membershipStab_plot <- function(stab_obj, title = "Node Stability by Community") {
   stability  <- stab_obj$membership.stability$empirical.dimensions
   membership <- stab_obj$membership$empirical

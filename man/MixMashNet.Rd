@@ -13,7 +13,7 @@ safe graph assembly adapted from \pkg{mgm}.
 }
 \seealso{
 \code{\link{mixMN}}, \code{\link{multimixMN}},
-\code{\link{membershipStab}}, \code{\link{membershipStab_plot}}
+\code{\link{membershipStab}}
 }
 \author{
 \strong{Maintainer}: Maria De Martino \email{maria.demartino@uniud.it}

@@ -27,7 +27,9 @@ Imports:
     magrittr, 
     rlang,
     tibble,
-    tidyr
+    tidyr,
+    patchwork,
+    progressr
 Suggests:
     testthat (>= 3.0.0),
     knitr,

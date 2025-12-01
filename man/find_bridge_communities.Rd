@@ -9,13 +9,13 @@ find_bridge_communities(fit, node)
 \arguments{
 \item{fit}{An object of class \code{mixMN_fit} containing at least:
 \itemize{
-\item \code{$keep_nodes_graph}: character vector of node names (graph vertex set);
-\item \code{$edges_true}: data.frame with columns \code{edge} ("a--b") and \code{weight} (signed).
-\item (optional) \code{$comm_full_graph}: integer vector of communities named by node,
-or (fallback) \code{$groups}: named factor with communities.
+\item \code{$graph$keep_nodes_graph}: character vector of node names (graph vertex set);
+\item \code{$statistics$edge$true}: data.frame with columns \code{edge} ("a--b") and \code{weight} (signed).
+\item (optional) \code{$communities$groups}: named factor with communities for a subset of nodes.
 }}
 
-\item{node}{Character scalar: node of interest; must belong to \code{fit$keep_nodes_graph}.}
+\item{node}{Character scalar: node of interest; must belong to
+\code{fit$graph$keep_nodes_graph}.}
 }
 \value{
 A list with components:
@@ -44,7 +44,7 @@ that pass through the node as an \emph{intermediate} (path multiplicity is count
 \details{
 Notes:
 \itemize{
-\item The signed adjacency \eqn{W} is rebuilt \emph{exactly} from \code{fit$edges_true}
+\item The signed adjacency \eqn{W} is rebuilt \emph{exactly} from \code{fit$statistics$edge$true}
 (symmetric, diagonal set to 0).
 \item "Other communities" means targets whose community differs from the
 node's community; if the node is unassigned (NA), targets are all assigned nodes.

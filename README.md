@@ -137,33 +137,11 @@ fit0 <- mixMN(
 
 ### Quick visualization
 
-The signed adjacency matrix (weights \* signs) is extracted and plotted
-with qgraph. Nodes are colored according to their community membership.
+Nodes are colored according to their community membership.
 
 ``` r
-library(qgraph)
-
-# Signed adjacency
-W_signed <- fit0$mgm_model$pairwise$wadj * fit0$mgm_model$pairwise$signs
-dimnames(W_signed) <- list(colnames(df), colnames(df))
-
-# Keep only graph nodes (exclude age/sex/re)
-keep     <- fit0$keep_nodes_graph
-W_plot   <- W_signed[keep, keep, drop = FALSE]
-
-node_order  <- colnames(W_plot)
-node_groups <- as.character(fit0$groups[node_order])
-
-node_cols   <- fit0$community_palette[node_groups]
-
-qgraph(
-  W_plot,
-  layout    = "spring",
-  labels    = node_order,
-  label.cex = 0.8,
-  color     = node_cols,   # community colors
-  vsize     = 6
-)
+set.seed(2)
+plot(fit0)
 ```
 
 <img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
@@ -187,11 +165,10 @@ fit1 <- mixMN(
 )
 ```
 
-Compute and plot item stability:
+Plot item stability:
 
 ``` r
-stab1 <- membershipStab(fit1, IS.plot = FALSE)
-membershipStab_plot(stab1)
+plot(fit1, what = "stability")
 ```
 
 <img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
@@ -203,6 +180,7 @@ from the clustering (they will appear in grey). Singletons are also
 excluded from communities.
 
 ``` r
+stab1 <- membershipStab(fit1)
 low_stability <- names(stab1$membership.stability$empirical.dimensions)[
     stab1$membership.stability$empirical.dimensions < 0.70
   ]
@@ -225,8 +203,7 @@ fit2 <- mixMN(
 Recompute stability:
 
 ``` r
-stab2 <- membershipStab(fit2, IS.plot = FALSE)
-membershipStab_plot(stab2)
+plot(fit2, what = "stability")
 ```
 
 <img src="man/figures/README-unnamed-chunk-9-1.png" width="100%" />
@@ -237,31 +214,8 @@ Finally, plot the updated network. Excluded nodes (unstable or
 singletons) are displayed in grey.
 
 ``` r
-# Signed adjacency
-W_signed2 <- fit2$mgm_model$pairwise$wadj * fit2$mgm_model$pairwise$signs
-dimnames(W_signed2) <- list(colnames(df), colnames(df))
-
-# Keep only graph nodes
-keep2   <- fit2$keep_nodes_graph
-W_plot2 <- W_signed2[keep2, keep2, drop = FALSE]
-
-# Colors per node (grey for excluded)
-node_order  <- colnames(W_plot2)
-node_groups <- as.character(fit2$groups[node_order])
-node_groups[is.na(node_groups)] <- "Unassigned"
-
-palette_all <- c(fit2$community_palette, Unassigned = "lightgray")
-node_cols   <- palette_all[node_groups]
-node_cols[is.na(node_cols)] <- "lightgray"
-
-qgraph(
-  W_plot2,
-  layout    = "spring",
-  labels    = node_order,
-  label.cex = 0.8,
-  color     = node_cols,
-  vsize     = 6
-)
+set.seed(2)
+plot(fit2)
 ```
 
 <img src="man/figures/README-unnamed-chunk-10-1.png" width="100%" />
@@ -272,12 +226,7 @@ We can compute the edge weights with their 95% confidence intervals.
 Confidence intervals that include zero are shown in grey.
 
 ``` r
-plotCentrality(
-  fit2,
-  metrics = "edge_weights",
-  plot_nonzero_edges_only = TRUE,
-  edges_top_n = 10
-)  
+plot(fit2, statistics = "edges")
 ```
 
 <img src="man/figures/README-unnamed-chunk-11-1.png" width="100%" />
@@ -290,9 +239,8 @@ confidence intervals. Confidence intervals that include zero are
 highlighted in grey.
 
 ``` r
-plotCentrality(
-  fit2,
-  metrics = c("strength", "expected_influence", "closeness", "betweenness")
+plot(fit2,
+  statistics = c("strength", "expected_influence", "closeness", "betweenness")
 )
 ```
 
@@ -306,9 +254,9 @@ expected influence (EI1 and EI2), bridge closeness, and bridge
 betweenness, with their 95% confidence intervals.
 
 ``` r
-plotCentrality(
+plot(
   fit2,
-  metrics = c("bridge_strength", "bridge_ei1", "bridge_ei2", "bridge_closeness", "bridge_betweenness")
+  statistics = c("bridge_strength", "bridge_ei1", "bridge_ei2", "bridge_closeness", "bridge_betweenness")
 )
 ```
 
@@ -322,9 +270,9 @@ allows us to investigate their potential role in connecting existing
 communities, even if they are not assigned to one.
 
 ``` r
-plotCentrality(
+plot(
   fit2,
-  metrics = c("bridge_strength_excluded", "bridge_ei1_excluded", "bridge_ei2_excluded",
+  statistics = c("bridge_strength_excluded", "bridge_ei1_excluded", "bridge_ei2_excluded",
               "bridge_betweenness_excluded", "bridge_closeness_excluded")
 )
 ```

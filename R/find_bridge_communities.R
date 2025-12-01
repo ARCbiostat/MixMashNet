@@ -15,7 +15,7 @@
 #'
 #' Notes:
 #' \itemize{
-#'   \item The signed adjacency \eqn{W} is rebuilt \emph{exactly} from \code{fit$edges_true}
+#'   \item The signed adjacency \eqn{W} is rebuilt \emph{exactly} from \code{fit$statistics$edge$true}
 #'         (symmetric, diagonal set to 0).
 #'   \item "Other communities" means targets whose community differs from the
 #'         node's community; if the node is unassigned (NA), targets are all assigned nodes.
@@ -26,12 +26,12 @@
 #'
 #' @param fit An object of class \code{mixMN_fit} containing at least:
 #'   \itemize{
-#'     \item \code{$keep_nodes_graph}: character vector of node names (graph vertex set);
-#'     \item \code{$edges_true}: data.frame with columns \code{edge} ("a--b") and \code{weight} (signed).
-#'     \item (optional) \code{$comm_full_graph}: integer vector of communities named by node,
-#'           or (fallback) \code{$groups}: named factor with communities.
+#'     \item \code{$graph$keep_nodes_graph}: character vector of node names (graph vertex set);
+#'     \item \code{$statistics$edge$true}: data.frame with columns \code{edge} ("a--b") and \code{weight} (signed).
+#'     \item (optional) \code{$communities$groups}: named factor with communities for a subset of nodes.
 #'   }
-#' @param node Character scalar: node of interest; must belong to \code{fit$keep_nodes_graph}.
+#' @param node Character scalar: node of interest; must belong to
+#'   \code{fit$graph$keep_nodes_graph}.
 #'
 #' @return A list with components:
 #' \describe{
@@ -42,7 +42,7 @@
 #'   \item{\code{betweenness}}{list with \code{overall} and \code{by_pair} (tibble: \code{Ci}, \code{Cj}, \code{hits}).}
 #' }
 #'
-#' @importFrom igraph graph_from_adjacency_matrix delete_edges distances is_directed degree
+#' @importFrom igraph graph_from_adjacency_matrix delete_edges distances is_directed degree get.all.shortest.paths
 #' @importFrom dplyr bind_rows arrange desc
 #' @importFrom tibble tibble
 #' @importFrom tidyr separate
@@ -50,17 +50,17 @@
 find_bridge_communities <- function(fit, node) {
   # ---- guardrails ----
   stopifnot(inherits(fit, "mixMN_fit"))
-  if (is.null(fit$keep_nodes_graph) || is.null(fit$edges_true)) {
-    stop("fit must contain $keep_nodes_graph and $edges_true.")
+  if (is.null(fit$graph$keep_nodes_graph) || is.null(fit$statistics$edge$true)) {
+    stop("`fit` must contain `graph$keep_nodes_graph` and `statistics$edge$true`.")
   }
 
-  nodes <- fit$keep_nodes_graph
-  if (!length(nodes)) stop("$keep_nodes_graph is empty.")
-  if (!(node %in% nodes)) stop("Requested 'node' is not in keep_nodes_graph.")
+  nodes <- fit$graph$keep_nodes_graph
+  if (!length(nodes)) stop("`graph$keep_nodes_graph` is empty.")
+  if (!(node %in% nodes)) stop("Requested 'node' is not in `graph$keep_nodes_graph`.")
 
-  Edf <- fit$edges_true
+  Edf <- fit$statistics$edge$true
   if (!all(c("edge", "weight") %in% names(Edf))) {
-    stop("$edges_true must have columns 'edge' and 'weight'.")
+    stop("`statistics$edge$true` must have columns 'edge' and 'weight'.")
   }
 
   # ---- rebuild signed W from edges_true ----
@@ -80,11 +80,10 @@ find_bridge_communities <- function(fit, node) {
   W <- (W + t(W)) / 2
 
   # ---- membership aligned on `nodes` ----
-  if (!is.null(fit$comm_full_graph)) {
-    comm_full <- as.integer(fit$comm_full_graph[nodes]); names(comm_full) <- nodes
-  } else if (!is.null(fit$groups)) {
-    grp <- fit$groups
-    if (is.null(names(grp))) stop("$groups must be a named factor.")
+  if (!is.null(fit$communities) && !is.null(fit$communities$groups)) {
+    grp <- fit$communities$groups  # factor, named
+    if (is.null(names(grp))) stop("`communities$groups` must be a named factor.")
+    # inizialmente tutti NA
     comm_full <- setNames(rep(NA_integer_, length(nodes)), nodes)
     in_idx <- names(grp)[names(grp) %in% nodes]
     if (length(in_idx)) comm_full[in_idx] <- as.integer(grp[in_idx])

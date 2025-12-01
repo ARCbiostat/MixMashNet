@@ -1,111 +1,130 @@
 #' Multilayer MGM with bootstrap, intra-/inter-layer metrics, and CIs
 #'
 #' @description
-#' Estimates a **multilayer** network using a masked Mixed Graphical Model (MGM).
-#' The mask enforces which cross-layer edges are allowed according to `layer_rules`
-#' (intra-layer edges are always allowed). For each layer, the function computes
-#' community structure, nonparametric row-bootstrap for node centralities and
-#' edge weights, and bridge metrics (including "excluded" nodes logic).
-#' Optionally computes community network scores with CIs and bootstrap arrays. It also
-#' returns **interlayer-only** node metrics (strength, EI1, closeness, betweenness)
-#' with bootstrap confidence intervals.
+#' Estimates a \strong{multilayer} Mixed Graphical Model (MGM) using a mask that
+#' enforces which cross-layer edges are allowed according to \code{layer_rules}.
+#' Within each layer, the function computes community structure, non-parametric
+#' row-bootstrap for node centralities and edge weights, bridge metrics
+#' (including metrics for nodes treated as "excluded"), and (optionally)
+#' community network scores. It also returns interlayer-only node metrics and
+#' cross-layer edge summaries.
 #'
-#' @param data A numeric matrix/data frame (n × p) with variables in columns.
-#' @param type Length-\code{p} vector of variable types (as in \pkg{mgm}).
-#' @param level Length-\code{p} vector of variable levels (as in \pkg{mgm}).
+#' @param data A numeric matrix or data frame (n × p) with variables in columns.
+#' @param type Length-\code{p} vector of variable types as required by
+#'   \code{mgm::mgm}.
+#' @param level Length-\code{p} vector of variable levels as required by
+#'   \code{mgm::mgm}.
 #' @param layers A named vector (names = variable names) assigning each node to a
 #'   layer (character or factor). Must cover all columns of \code{data}.
-#' @param layer_rules A logical/numeric square matrix with row/column names equal
-#'   to layer names. \code{TRUE}/1 indicates **cross-layer** edges are allowed
-#'   between the corresponding layer pair. The diagonal (intra-layer) is always
-#'   treated as allowed; if the diagonal is \code{NA}, it is coerced to allowed.
-#' @param scale Logical; if TRUE (default) Gaussian variables (type == "g") are z-standardized internally by \code{mgm()}. Use \code{scale = FALSE} if your data are already standardized
-#' @param reps Integer; number of bootstrap resamples (row resampling with replacement).
-#'   Default \code{100}.
-#' @param lambdaSel Character; lambda selection for \pkg{mgm} (\code{"CV"} or \code{"EBIC"}).
-#' @param lambdaFolds Integer; number of folds for CV (used when \code{lambdaSel = "CV"}).
-#' @param lambdaGam Numeric; EBIC gamma (used when \code{lambdaSel = "EBIC"}).
-#' @param alphaSeq Alpha parameters of the elastic net penalty (values from 0 to 1).
-#' @param alphaSel Method for selecting alpha parameter: \code{"CV"} or \code{"EBIC"}.
-#' @param alphaFolds Number of folds for CV (if \code{alphaSel="CV"}).
-#' @param alphaGam EBIC gamma parameter (if \code{alphaSel="EBIC"}).
-#' @param k Integer (>= 0), order of modeled interactions.
-#' @param ruleReg  rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}.
-#' @param threshold threshold below which edge-weights are put to zero: \code{"LW"}, \code{"HW"} or \code{"none"}.
-#' @param overparameterize Logical; if TRUE uses the over-parameterized version.
-#' @param thresholdCat Logical; if FALSE thresholds of categorical variables are set to zero.
-#' @param exclude_from_graph Character vector; nodes to exclude from the **graph**
-#'   (no edges, no centralities). They will not appear in per-layer graphs.
-#' @param exclude_from_cluster Character vector; nodes excluded from **clustering**
-#'   (no membership), but can still appear in the graph. Final set is
-#'   \code{union(exclude_from_cluster, exclude_from_graph)}.
-#' @param seed_model Optional integer; seed for the initial MGM fit reproducibility.
-#' @param seed_boot Optional integer; seed used inside \code{future.apply} for
-#'   bootstrap reproducibility.
-#' @param treat_singletons_as_excluded Logical; if \code{TRUE}, singletons are
-#'   treated as excluded for community-dependent metrics/plots.
-#' @param cluster_method Community detection algorithm. One of
-#'   \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.
-#' @param compute_community_scores Logical; if TRUE, compute community network scores (EGAnet std.scores) with 95% CIs and bootstrap array.
-#' @param boot_what Character vector specifying which quantities to bootstrap:
-#'   can include \code{"general_index"} (intra-layer centrality indices),
-#'   \code{"interlayer_index"} (interlayer-only centrality indices),
-#'   \code{"bridge_index"}, \code{"excluded_index"},
-#'   \code{"community"}, \code{"community_scores"},
-#'   or \code{"none"} to skip node-level bootstrap.
+#' @param layer_rules A logical or numeric square matrix with row/column names
+#'   equal to layer names. Values \code{TRUE} or \code{1} indicate that
+#'   cross-layer edges are allowed between the corresponding layer pair.
+#'   Intra-layer edges are always allowed; if the diagonal is \code{NA}, it is
+#'   treated as allowed.
+#' @param scale Logical; if \code{TRUE} (default) Gaussian variables
+#'   (\code{type == "g"}) are z-standardized internally by \code{mgm()}. Use
+#'   \code{scale = FALSE} if your data are already standardized.
+#' @param reps Integer (>= 0). Number of bootstrap replications (row resampling
+#'   with replacement). If \code{reps = 0}, no bootstrap is performed.
+#' @param lambdaSel Method for lambda selection in \pkg{mgm}:
+#'   \code{"CV"} or \code{"EBIC"}.
+#' @param lambdaFolds Number of folds for CV (if \code{lambdaSel = "CV"}).
+#' @param lambdaGam EBIC gamma parameter (if \code{lambdaSel = "EBIC"}).
+#' @param alphaSeq Alpha parameters of the elastic net penalty (values in
+#'   \eqn{(0, 1]}).
+#' @param alphaSel Method for selecting the alpha parameter:
+#'   \code{"CV"} or \code{"EBIC"}.
+#' @param alphaFolds Number of folds for CV (if \code{alphaSel = "CV"}).
+#' @param alphaGam EBIC gamma parameter (if \code{alphaSel = "EBIC"}).
+#' @param k Integer (>= 1). Order of modeled interactions.
+#' @param ruleReg Rule to combine neighborhood estimates:
+#'   \code{"AND"} or \code{"OR"}.
+#' @param threshold Threshold below which edge-weights are set to zero:
+#'   \code{"LW"}, \code{"HW"} or \code{"none"}.
+#' @param overparameterize Logical; if \code{TRUE} uses the over-parameterized
+#'   version of \code{mgm}.
+#' @param thresholdCat Logical; if \code{FALSE} thresholds of categorical
+#'   variables are set to zero.
+#' @param exclude_from_graph Character vector of node names. Nodes in this set
+#'   are excluded from the global graph and from all node-level metrics.
+#' @param exclude_from_cluster Character vector of node names. Nodes in this set
+#'   are excluded from community detection in addition to \code{exclude_from_graph}.
+#' @param seed_model Optional integer seed for reproducibility of the initial
+#'   MGM fit.
+#' @param seed_boot Optional integer seed passed to \code{future.apply} for
+#'   reproducibility of bootstrap replications.
+#' @param treat_singletons_as_excluded Logical; if \code{TRUE}, singleton
+#'   communities (size 1) are treated as "excluded" when computing bridge
+#'   metrics and related summaries.
+#' @param cluster_method Community detection algorithm applied within each
+#'   layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
+#'   \code{"walktrap"}, or \code{"edge_betweenness"}.
+#' @param compute_community_scores Logical; if \code{TRUE}, compute community
+#'   network scores (EGAnet standardized \code{std.scores}) with bootstrap
+#'   arrays and confidence intervals.
+#' @param boot_what Character vector specifying which quantities to bootstrap.
+#'   Valid options are:
+#'   \code{"general_index"} (intra-layer centrality indices),
+#'   \code{"interlayer_index"} (interlayer-only node metrics),
+#'   \code{"bridge_index"} (bridge metrics for nodes in communities),
+#'   \code{"excluded_index"} (bridge metrics for nodes treated as excluded),
+#'   \code{"community"} (bootstrap community memberships),
+#'   \code{"community_scores"} (bootstrap community scores, only if
+#'   \code{compute_community_scores = TRUE}),
+#'   and \code{"none"} (skip all node-level bootstrap: only edge-weight
+#'   bootstrap is performed if \code{reps > 0}).
+#' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress
+#'   bar when the \pkg{progressr} package is available.
+#'
+#' @return
+#' An object of class \code{c("mixmashnet", "multimixMN_fit")}. The returned
+#' list contains at least the following components:
+#' \itemize{
+#'   \item \code{call}: the matched function call.
+#'   \item \code{settings}: list of main settings (e.g., \code{reps},
+#'     \code{cluster_method}, \code{exclude_from_graph},
+#'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
+#'     \code{boot_what}).
+#'   \item \code{model}: list with the fitted masked \code{mgm} object and basic
+#'     information on the data (\code{nodes}, \code{n}, \code{p}).
+#'   \item \code{layers}: list describing the multilayer structure
+#'     (assignment of nodes to layers and the \code{layer_rules} matrix used).
+#'   \item \code{layer_fits}: named list (one element per layer) with
+#'     single-layer fits, including community structure, node-level statistics,
+#'     edge-level statistics, bridge metrics, and (optionally) community scores
+#'     with bootstrap information.
+#'   \item \code{interlayer}: list collecting interlayer-only node metrics
+#'     (strength, expected influence, closeness, betweenness, with or without
+#'     bootstrap) and cross-layer edge summaries for each allowed pair of
+#'     layers.
+#'   \item \code{graph}: list containing a global \pkg{igraph} object built on
+#'     the retained nodes (\code{keep_nodes_graph}), with vertex attributes
+#'     such as \code{name}, \code{layer}, \code{membership}, and edge attributes
+#'     such as \code{weight}, \code{abs_weight}, \code{sign},
+#'     \code{type} (intra vs inter) and \code{layer_pair}.
+#' }
 #'
 #' @details
-#' - This function does **not** call \code{future::plan()}. Set it beforehand to enable parallel bootstrap.
-#' - It calls \code{bridge_metrics()} and \code{bridge_metrics_excluded()} internally (provide them in your package).
-#' - Community scores use EGAnet **std.scores** (z-standardized per community).
-#'
-#' Internally, the function:
-#' \enumerate{
-#'   \item Builds per-node masks so that each node may connect only to nodes in
-#'         its own layer and in layers permitted by \code{layer_rules}.
-#'   \item Fits a masked \pkg{mgm} model (\code{mgm_masked()}) to obtain signed
-#'         weighted adjacency (\code{wadj * signs}).
-#'   \item Splits nodes by layer and creates per-layer fits via \code{mixMN_from_wadj()},
-#'         which assigns communities and prepares containers for bootstrap outputs.
-#'   \item Runs \code{reps} bootstrap iterations (with \code{future.apply}) to
-#'         recompute centralities, edge weights, bridge metrics (via
-#'         \code{bridge_metrics()} and \code{bridge_metrics_excluded()}),
-#'         community assignments, interlayer-only metrics, and cross-layer edge weights.
-#'   \item Aggregates bootstrap matrices into per-layer and interlayer summaries,
-#'         returning point estimates and percentile CIs.
-#' }
-#'
-#' @return An object of class \code{"multimixMN_fit"} with elements:
-#' \describe{
-#'   \item{\code{layers}}{Named vector of layer assignment for all nodes.}
-#'   \item{\code{layer_rules}}{Normalized symmetric matrix of allowed cross-layer edges.}
-#' \item{\code{layer_fits}}{Named list keyed by layer name. **Each element is an
-#'   object of class \code{mixMN_fit}** (single-layer fit) containing its empirical
-#'   community structure, bootstrap matrices (\code{strength_boot}, \code{ei1_boot},
-#'   \code{closeness_boot}, \code{betweenness_boot}, \code{edge_boot_mat}),
-#'   bridge metrics (included & excluded) and their percentile CIs in \code{ci_results}.}
-#'   \item{\code{interlayer}}{List with interlayer-only node metrics:
-#'     \describe{
-#'       \item{\code{centrality_true}}{Data frame with per-node strength, EI1, closeness, betweenness (interlayer-only).}
-#'       \item{\code{ci_results}}{List of percentile CIs for those metrics.}
-#'       \item{\code{strength_boot}, \code{ei1_boot}, \code{closeness_boot}, \code{betweenness_boot}}{(reps × p) bootstrap matrices.}
-#'       \item{\code{edges}}{Named list per allowed layer pair with true cross-layer edges, bootstrap matrices, and CIs.}
-#'     }
-#'   }
-#'   \item{\code{exclude_from_graph}, \code{exclude_from_cluster}}{Echo of inputs.}
-#'   \item{\code{cluster_method}, \code{reps}, \code{seed_model}, \code{seed_boot}}{Echo of inputs.}
-#' }
+#' This function does \strong{not} call \code{future::plan()}. To enable
+#' parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)}) before
+#' calling \code{multimixMN()}. If \code{"none"} is the only element of
+#' \code{boot_what} and \code{reps > 0}, node-level metrics are not
+#' bootstrapped, but intra- and inter-layer edge-weight bootstrap and the
+#' corresponding confidence intervals are still computed.
 #'
 #' @section Dependencies:
 #' Relies on internal helpers \code{mgm_masked()}, \code{mixMN_from_wadj()},
-#' \code{bridge_metrics()}, and \code{bridge_metrics_excluded()}.
+#' \code{bridge_metrics()}, and \code{bridge_metrics_excluded()}, which must be
+#' available in the same package namespace.
 #'
 #' @importFrom stats setNames quantile
-#' @importFrom utils combn
+#' @importFrom utils combn capture.output
 #' @importFrom igraph graph_from_adjacency_matrix simplify ecount E V distances betweenness vcount
 #' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap cluster_walktrap cluster_edge_betweenness
 #' @importFrom future.apply future_lapply
 #' @importFrom qgraph centrality
+#' @importFrom progressr with_progress progressor
+#' @importFrom EGAnet net.scores
 #' @export
 multimixMN <- function(
     data, type, level,
@@ -126,7 +145,8 @@ multimixMN <- function(
     cluster_method = c("louvain","fast_greedy","infomap","walktrap","edge_betweenness"),
     compute_community_scores = FALSE,
     boot_what = c("general_index", "interlayer_index", "bridge_index",
-                  "excluded_index", "community", "community_scores", "none")
+                  "excluded_index", "community", "community_scores", "none"),
+    progress = TRUE
 ) {
   lambdaSel <- match.arg(lambdaSel)
   cluster_method <- match.arg(cluster_method)
@@ -279,7 +299,7 @@ multimixMN <- function(
     ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
     thresholdCat = thresholdCat,
     k = k, binarySign = TRUE, mask_list = mask_list, scale = scale,
-    signInfo = FALSE
+    signInfo = FALSE, pbar = FALSE
   )
   wadj <- mgm_model$pairwise$wadj; signs <- mgm_model$pairwise$signs
   colnames(wadj) <- rownames(wadj) <- all_nodes
@@ -309,25 +329,31 @@ multimixMN <- function(
     sub_w <- wadj_signed[nL, nL, drop=FALSE]
     fitL <- mixMN_from_wadj(
       wadj_signed = sub_w, nodes = nL,
-      exclude_from_graph = NULL,
+      exclude_from_graph   = NULL,
       exclude_from_cluster = intersect(exclude_from_cluster, nL),
       cluster_method = cluster_method,
-      reps = 0, seed_boot = NULL,
-      treat_singletons_as_excluded = treat_singletons_as_excluded
+      reps          = 0,
+      seed_boot     = NULL,
+      treat_singletons_as_excluded = treat_singletons_as_excluded,
+      boot_what     = boot_what
     )
-    if (!is.null(fitL$groups) && is.null(names(fitL$groups))) {
-      names(fitL$groups) <- names(fitL$original_membership)
+
+    membL <- fitL$communities$groups
+    if (is.factor(membL)) {
+      membL <- stats::setNames(as.integer(membL), names(membL))
     }
-    if (is.factor(fitL$groups)) fitL$groups <- stats::setNames(as.integer(fitL$groups), names(fitL$groups))
+    fitL$communities$groups <- membL
 
     ## --- COMMUNITY SCORES (TRUE) ---
     if (isTRUE(compute_community_scores)) {
-      nodes_comm <- names(fitL$groups)[!is.na(fitL$groups)]
+      membL <- fitL$communities$groups
+      nodes_comm <- names(membL)[!is.na(membL)]
       nodes_comm <- intersect(nodes_comm, nL)
+
       if (length(nodes_comm) > 0) {
         A_comm <- sub_w[nodes_comm, nodes_comm, drop = FALSE]
 
-        wc_fac <- fitL$groups[nodes_comm]
+        wc_fac <- membL[nodes_comm]
         wc_levels <- sort(unique(as.integer(wc_fac)))
         wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
         wc_int <- unname(wc_map[as.integer(wc_fac)])
@@ -353,17 +379,24 @@ multimixMN <- function(
         if (!is.null(ns_obj) && !is.null(ns_obj$scores$std.scores)) {
           cs_true <- ns_obj$scores$std.scores
         } else {
-          cs_true <- matrix(NA_real_, nrow = nrow(dat_comm), ncol = length(unique(wc_int)))
+          cs_true <- matrix(
+            NA_real_,
+            nrow = nrow(dat_comm),
+            ncol = length(unique(wc_int))
+          )
         }
         colnames(cs_true) <- paste0("NS_", sort(unique(as.integer(wc_fac))))
         rownames(cs_true) <- subject_ids
 
-        fitL$community_scores_obj <- ns_obj
-        fitL$community_scores_df  <- data.frame(id = subject_ids,
-                                                as.data.frame(cs_true),
-                                                check.names = FALSE)
-        fitL$.nodes_comm <- nodes_comm
-        fitL$.wc_int     <- wc_int
+        fitL$community_scores$obj <- ns_obj
+        fitL$community_scores$df  <- data.frame(
+          id = subject_ids,
+          as.data.frame(cs_true),
+          check.names = FALSE
+        )
+        # info per il bootstrap
+        fitL$community_scores$.nodes_comm <- nodes_comm
+        fitL$community_scores$.wc_int     <- wc_int
       }
     }
 
@@ -371,7 +404,10 @@ multimixMN <- function(
   }
 
   layer_nodes_excluded <- stats::setNames(
-    lapply(uniq_layers, function(L) setdiff(layer_nodes_graph[[L]], names(layer_fits[[L]]$groups))),
+    lapply(uniq_layers, function(L) {
+      membL <- layer_fits[[L]]$communities$groups
+      setdiff(layer_nodes_graph[[L]], names(membL))
+    }),
     uniq_layers
   )
 
@@ -400,8 +436,8 @@ multimixMN <- function(
 
   layer_boot <- lapply(uniq_layers, function(L) {
     nodes_g <- layer_nodes_graph[[L]]
-    nodes_c <- names(layer_fits[[L]]$groups)
-    if (is.null(nodes_c)) nodes_c <- character(0)
+    membL   <- layer_fits[[L]]$communities$groups
+    nodes_c <- if (!is.null(membL)) names(membL) else character(0)
     nodes_ex <- layer_nodes_excluded[[L]]
     list(
       # indici generali intra-layer
@@ -450,18 +486,22 @@ multimixMN <- function(
 
       # community scores bootstrap per layer (se richiesti)
       community_scores_boot = {
-        if (isTRUE(do_comm_scores_boot) &&
+        if (reps > 0 &&
+            isTRUE(do_comm_scores_boot) &&
             isTRUE(compute_community_scores) &&
-            !is.null(layer_fits[[L]]$.nodes_comm)) {
+            !is.null(layer_fits[[L]]$community_scores$.nodes_comm)) {
+
           subj <- rownames(data)
           if (is.null(subj)) subj <- sprintf("id_%d", seq_len(nrow(data)))
-          K <- length(unique(layer_fits[[L]]$.wc_int))
+          K <- length(unique(layer_fits[[L]]$community_scores$.wc_int))
+
           array(
-            NA_real_, dim = c(reps, length(subj), K),
+            NA_real_,
+            dim = c(reps, length(subj), K),
             dimnames = list(
               rep  = paste0("b", seq_len(reps)),
               id   = subj,
-              comm = paste0("NS_", sort(unique(layer_fits[[L]]$.wc_int)))
+              comm = paste0("NS_", sort(unique(layer_fits[[L]]$community_scores$.wc_int)))
             )
           )
         } else NULL
@@ -497,306 +537,328 @@ multimixMN <- function(
   inter_betweenness_boot <- if (do_interlayer_boot)
     matrix(NA_real_, reps, length(nodes_int), dimnames = list(NULL, nodes_int)) else NULL
 
-  # ---------- BOOTSTRAP ----------
-  if (reps > 0) {
-    boot_res <- future.apply::future_lapply(
-      X = seq_len(reps),
-      FUN = function(bi) {
-        idx <- sample(seq_len(nrow(data)), replace=TRUE)
-        Xb  <- as.matrix(data[idx, , drop=FALSE])
-        boot_model <- tryCatch(mgm_masked(
-          data = Xb, type = type, level = level,
-          lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
-          alphaSeq = alphaSeq, alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
-          ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
-          thresholdCat = thresholdCat,
-          k = k, binarySign = TRUE, mask_list = mask_list, scale = scale,
-          signInfo = FALSE
-        ), error=function(e) NULL)
-        if (is.null(boot_model)) return(NULL)
+  use_progress <- isTRUE(progress) && requireNamespace("progressr", quietly = TRUE)
+  seq_reps <- seq_len(reps)
 
-        bw   <- boot_model$pairwise$wadj
-        bsig <- boot_model$pairwise$signs
-        colnames(bw)   <- rownames(bw)   <- all_nodes
-        colnames(bsig) <- rownames(bsig) <- all_nodes
-        W <- bw
-        if (!is.null(bsig)) {
-          idxb_sign <- !is.na(bsig) & (abs(bsig) == 1)
-          W[idxb_sign] <- bw[idxb_sign] * bsig[idxb_sign]
-        }
-        W[is.na(W)] <- 0
+  .boot_rep <- function(bi, p = NULL) {
+    if (!is.null(p)) {
+      p(sprintf("Bootstrap %d/%d", bi, reps))
+    }
+    idx <- sample(seq_len(nrow(data)), replace=TRUE)
+    Xb  <- as.matrix(data[idx, , drop=FALSE])
+    boot_model <- tryCatch(mgm_masked(
+      data = Xb, type = type, level = level,
+      lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
+      alphaSeq = alphaSeq, alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
+      ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
+      thresholdCat = thresholdCat,
+      k = k, binarySign = TRUE, mask_list = mask_list, scale = scale,
+      signInfo = FALSE
+    ), error=function(e) NULL)
+    if (is.null(boot_model)) return(NULL)
 
-        per_layer <- lapply(uniq_layers, function(L) {
-          nodes_g <- layer_nodes_graph[[L]]
-          if (length(nodes_g) < 1) return(NULL)
-          Wg <- W[nodes_g, nodes_g, drop=FALSE]
-          nodes_c <- layer_nodes_cluster[[L]]
-          nodes_c <- intersect(nodes_c, nodes_g)
+    bw   <- boot_model$pairwise$wadj
+    bsig <- boot_model$pairwise$signs
+    colnames(bw)   <- rownames(bw)   <- all_nodes
+    colnames(bsig) <- rownames(bsig) <- all_nodes
+    W <- bw
+    if (!is.null(bsig)) {
+      idxb_sign <- !is.na(bsig) & (abs(bsig) == 1)
+      W[idxb_sign] <- bw[idxb_sign] * bsig[idxb_sign]
+    }
+    W[is.na(W)] <- 0
 
-          g_bridge_abs_boot    <- igraph::graph_from_adjacency_matrix(abs(Wg), mode="undirected", weighted=TRUE, diag=FALSE)
-          g_bridge_abs_boot    <- igraph::simplify(g_bridge_abs_boot, remove.multiple=TRUE, remove.loops=TRUE)
+    per_layer <- lapply(uniq_layers, function(L) {
+      nodes_g <- layer_nodes_graph[[L]]
+      if (length(nodes_g) < 1) return(NULL)
+      Wg <- W[nodes_g, nodes_g, drop=FALSE]
+      nodes_c <- layer_nodes_cluster[[L]]
+      nodes_c <- intersect(nodes_c, nodes_g)
 
-          g_bridge_signed_boot <- igraph::graph_from_adjacency_matrix(Wg,      mode="undirected", weighted=TRUE, diag=FALSE)
-          g_bridge_signed_boot <- igraph::simplify(g_bridge_signed_boot, remove.multiple=TRUE, remove.loops=TRUE)
+      g_bridge_abs_boot    <- igraph::graph_from_adjacency_matrix(abs(Wg), mode="undirected", weighted=TRUE, diag=FALSE)
+      g_bridge_abs_boot    <- igraph::simplify(g_bridge_abs_boot, remove.multiple=TRUE, remove.loops=TRUE)
 
-          g_dist  <- .make_distance_graph(Wg)
+      g_bridge_signed_boot <- igraph::graph_from_adjacency_matrix(Wg,      mode="undirected", weighted=TRUE, diag=FALSE)
+      g_bridge_signed_boot <- igraph::simplify(g_bridge_signed_boot, remove.multiple=TRUE, remove.loops=TRUE)
 
-          memb_boot <- NULL
-          if (do_community_boot && length(nodes_c) > 0) {
-            Wc <- Wg[nodes_c, nodes_c, drop = FALSE]
-            g_c <- igraph::graph_from_adjacency_matrix(
-              abs(Wc), mode = "undirected", weighted = TRUE, diag = FALSE
+      g_dist  <- .make_distance_graph(Wg)
+
+      memb_boot <- NULL
+      if (do_community_boot && length(nodes_c) > 0) {
+        Wc <- Wg[nodes_c, nodes_c, drop = FALSE]
+        g_c <- igraph::graph_from_adjacency_matrix(
+          abs(Wc), mode = "undirected", weighted = TRUE, diag = FALSE
+        )
+        g_c <- igraph::simplify(g_c, remove.multiple = TRUE, remove.loops = TRUE)
+
+        memb_boot <- tryCatch({
+          cl <- cluster_fun(g_c)
+          mb <- cl$membership
+          names(mb) <- nodes_c
+          mb
+        }, error = function(e) {
+          stats::setNames(rep(NA_integer_, length(nodes_c)), nodes_c)
+        })
+      }
+
+      # --- indici generali intra-layer ---
+      if (do_intra_general_boot) {
+        cent <- tryCatch(
+          qgraph::centrality(Wg),
+          error = function(e) list(
+            OutDegree            = rep(NA_real_, length(nodes_g)),
+            OutExpectedInfluence = rep(NA_real_, length(nodes_g))
+          )
+        )
+        clh <- tryCatch(
+          .harmonic_closeness(g_dist)[nodes_g],
+          error = function(e) rep(NA_real_, length(nodes_g))
+        )
+        btw <- tryCatch(
+          {
+            if (igraph::ecount(g_dist) > 0)
+              igraph::betweenness(
+                g_dist,
+                weights   = igraph::E(g_dist)$dist,
+                directed  = FALSE,
+                normalized = FALSE
+              )[nodes_g]
+            else rep(0, length(nodes_g))
+          },
+          error = function(e) rep(NA_real_, length(nodes_g))
+        )
+      } else {
+        cent <- list(
+          OutDegree            = rep(NA_real_, length(nodes_g)),
+          OutExpectedInfluence = rep(NA_real_, length(nodes_g))
+        )
+        clh <- rep(NA_real_, length(nodes_g))
+        btw <- rep(NA_real_, length(nodes_g))
+      }
+
+      memb_orig <- layer_fits[[L]]$communities$groups
+      memb_all  <- .align_membership(membership = memb_orig, nodes = nodes_g)
+
+      ## --- BRIDGE ---
+      bridge_vals <- NULL
+      if (do_bridge_boot) {
+        bridge_vals_abs <- tryCatch({
+          b <- bridge_metrics(g_bridge_abs_boot, membership = memb_orig)
+          b[match(nodes_g, b$node),
+            c("bridge_strength","bridge_betweenness","bridge_closeness")]
+        }, error = function(e) {
+          as.data.frame(
+            matrix(
+              NA_real_, length(nodes_g), 3,
+              dimnames = list(nodes_g, c("bridge_strength","bridge_betweenness","bridge_closeness"))
             )
-            g_c <- igraph::simplify(g_c, remove.multiple = TRUE, remove.loops = TRUE)
-
-            memb_boot <- tryCatch({
-              cl <- cluster_fun(g_c)
-              mb <- cl$membership
-              names(mb) <- nodes_c
-              mb
-            }, error = function(e) {
-              stats::setNames(rep(NA_integer_, length(nodes_c)), nodes_c)
-            })
-          }
-
-          # --- indici generali intra-layer ---
-          if (do_intra_general_boot) {
-            cent <- tryCatch(
-              qgraph::centrality(Wg),
-              error = function(e) list(
-                OutDegree            = rep(NA_real_, length(nodes_g)),
-                OutExpectedInfluence = rep(NA_real_, length(nodes_g))
-              )
-            )
-            clh <- tryCatch(
-              .harmonic_closeness(g_dist)[nodes_g],
-              error = function(e) rep(NA_real_, length(nodes_g))
-            )
-            btw <- tryCatch(
-              {
-                if (igraph::ecount(g_dist) > 0)
-                  igraph::betweenness(
-                    g_dist,
-                    weights   = igraph::E(g_dist)$dist,
-                    directed  = FALSE,
-                    normalized = FALSE
-                  )[nodes_g]
-                else rep(0, length(nodes_g))
-              },
-              error = function(e) rep(NA_real_, length(nodes_g))
-            )
-          } else {
-            cent <- list(
-              OutDegree            = rep(NA_real_, length(nodes_g)),
-              OutExpectedInfluence = rep(NA_real_, length(nodes_g))
-            )
-            clh <- rep(NA_real_, length(nodes_g))
-            btw <- rep(NA_real_, length(nodes_g))
-          }
-
-          memb_orig <- layer_fits[[L]]$groups
-          memb_all  <- .align_membership(membership=memb_orig, nodes=nodes_g)
-
-          ## --- BRIDGE ---
-          bridge_vals <- NULL
-          if (do_bridge_boot) {
-            bridge_vals_abs <- tryCatch({
-              b <- bridge_metrics(g_bridge_abs_boot, membership = memb_orig)
-              b[match(nodes_g, b$node),
-                c("bridge_strength","bridge_betweenness","bridge_closeness")]
-            }, error = function(e) {
-              as.data.frame(
-                matrix(
-                  NA_real_, length(nodes_g), 3,
-                  dimnames = list(nodes_g, c("bridge_strength","bridge_betweenness","bridge_closeness"))
-                )
-              )
-            })
-
-            bridge_vals_signed <- tryCatch({
-              b <- bridge_metrics(g_bridge_signed_boot, membership = memb_orig)
-              b[match(nodes_g, b$node), c("bridge_ei1","bridge_ei2")]
-            }, error = function(e) {
-              as.data.frame(
-                matrix(
-                  NA_real_, length(nodes_g), 2,
-                  dimnames = list(nodes_g, c("bridge_ei1","bridge_ei2"))
-                )
-              )
-            })
-
-            bridge_vals <- cbind(
-              bridge_strength    = bridge_vals_abs[,"bridge_strength"],
-              bridge_ei1         = bridge_vals_signed[,"bridge_ei1"],
-              bridge_ei2         = bridge_vals_signed[,"bridge_ei2"],
-              bridge_betweenness = bridge_vals_abs[,"bridge_betweenness"],
-              bridge_closeness   = bridge_vals_abs[,"bridge_closeness"]
-            )
-            rownames(bridge_vals) <- nodes_g
-          }
-
-          ## --- BRIDGE "excluded"  ---
-          bridge_excluded_mat <- NULL
-          if (do_excluded_boot) {
-            bridge_excluded_abs <- tryCatch({
-              bo <- bridge_metrics_excluded(g_bridge_abs_boot, membership = memb_orig)
-              idx <- match(nodes_g, bo$node)
-              df_abs <- data.frame(
-                node = nodes_g,
-                bridge_strength    = bo$bridge_strength[idx],
-                bridge_betweenness = bo$bridge_betweenness[idx],
-                bridge_closeness   = bo$bridge_closeness[idx],
-                stringsAsFactors   = FALSE
-              )
-              rownames(df_abs) <- nodes_g
-              df_abs
-            }, error = function(e) {
-              df_abs <- data.frame(
-                node = nodes_g,
-                bridge_strength    = NA_real_,
-                bridge_betweenness = NA_real_,
-                bridge_closeness   = NA_real_,
-                stringsAsFactors   = FALSE
-              )
-              rownames(df_abs) <- nodes_g
-              df_abs
-            })
-
-            bridge_excluded_signed <- tryCatch({
-              bo <- bridge_metrics_excluded(g_bridge_signed_boot, membership = memb_orig)
-              ei1 <- .pick_col(bo, c("bridge_ei1","bridge_expected_influence1"))
-              ei2 <- .pick_col(bo, c("bridge_ei2","bridge_expected_influence2"))
-              idx <- match(nodes_g, bo$node)
-              df_sgn <- data.frame(
-                node = nodes_g,
-                ei1  = ei1[idx],
-                ei2  = ei2[idx],
-                stringsAsFactors = FALSE
-              )
-              rownames(df_sgn) <- nodes_g
-              df_sgn
-            }, error = function(e) {
-              data.frame(node = nodes_g, ei1 = NA_real_, ei2 = NA_real_)
-            })
-
-            bridge_excluded_mat <- matrix(
-              NA_real_, nrow = length(nodes_g), ncol = 5,
-              dimnames = list(nodes_g, c("strength","ei1","ei2","closeness","betweenness"))
-            )
-
-            row_map_abs <- intersect(nodes_g, rownames(bridge_excluded_abs))
-            if (length(row_map_abs)) {
-              bridge_excluded_mat[row_map_abs, "strength"]    <- bridge_excluded_abs[row_map_abs, "bridge_strength"]
-              bridge_excluded_mat[row_map_abs, "closeness"]   <- bridge_excluded_abs[row_map_abs, "bridge_closeness"]
-              bridge_excluded_mat[row_map_abs, "betweenness"] <- bridge_excluded_abs[row_map_abs, "bridge_betweenness"]
-            }
-
-            row_map_sgn <- intersect(nodes_g, bridge_excluded_signed$node)
-            if (length(row_map_sgn)) {
-              idx2 <- match(row_map_sgn, bridge_excluded_signed$node)
-              bridge_excluded_mat[row_map_sgn, "ei1"] <- bridge_excluded_signed$ei1[idx2]
-              bridge_excluded_mat[row_map_sgn, "ei2"] <- bridge_excluded_signed$ei2[idx2]
-            }
-          }
-
-          ## --- ADD: COMMUNITY SCORES on bootstrap (per layer) ---
-          cs_boot <- NULL
-          if (isTRUE(do_comm_scores_boot)) {
-            nodes_comm <- layer_fits[[L]]$.nodes_comm
-            wc_comm_int <- layer_fits[[L]]$.wc_int
-            if (!is.null(nodes_comm) && length(nodes_comm) > 0) {
-              A_comm_boot <- Wg[nodes_comm, nodes_comm, drop = FALSE]
-              dat_comm_full <- as.matrix(data[, nodes_comm, drop = FALSE])
-              rownames(dat_comm_full) <- subject_ids
-              ns_obj <- tryCatch(
-                .quiet_net_scores(
-                  data = dat_comm_full,
-                  A    = A_comm_boot,
-                  wc   = wc_comm_int,
-                  loading.method = "revised",
-                  structure = "simple",
-                  rotation  = NULL,
-                  scores    = "components"
-                ),
-                error = function(e) NULL
-              )
-              if (!is.null(ns_obj) && !is.null(ns_obj$scores$std.scores)) {
-                cs_boot <- ns_obj$scores$std.scores
-                colnames(cs_boot) <- paste0("NS_", sort(unique(wc_comm_int)))
-                rownames(cs_boot) <- subject_ids
-              } else {
-                cs_boot <- matrix(NA_real_, nrow = length(subject_ids), ncol = length(unique(wc_comm_int)),
-                                  dimnames = list(subject_ids, paste0("NS_", sort(unique(wc_comm_int)))))
-              }
-            }
-          }
-
-          en <- .edge_names_lt(nodes_g)
-          evec <- if (length(en)) { v <- Wg[lower.tri(Wg)]; names(v) <- en; v } else NULL
-
-          list(
-            strength = cent$OutDegree, ei1 = cent$OutExpectedInfluence,
-            closeness = clh, betweenness = btw, edges = evec,
-            bridge_vals = bridge_vals, bridge_excluded_mat = bridge_excluded_mat,
-            membership = memb_all,
-            membership_boot = if (do_community_boot) memb_boot else NULL,
-            community_scores_boot = cs_boot
           )
         })
-        names(per_layer) <- uniq_layers
 
-        # Interlayer-only metrics for this bootstrap
-        inter_strength   <- NULL
-        ei1_inter        <- NULL
-        inter_clo        <- NULL
-        inter_btw        <- NULL
-
-        if (do_interlayer_boot) {
-          W_inter <- matrix(0, length(nodes_int), length(nodes_int),
-                            dimnames = list(nodes_int, nodes_int))
-          for (i in seq_along(nodes_int)) for (j in seq_along(nodes_int)) {
-            vi <- nodes_int[i]; vj <- nodes_int[j]
-            if (layers[vi] != layers[vj]) W_inter[vi, vj] <- W[vi, vj]
-          }
-          g_inter <- .make_distance_graph(W_inter)
-          inter_strength <- stats::setNames(rowSums(abs(W_inter), na.rm = TRUE), nodes_int)
-          ei1_inter <- tryCatch({
-            cm <- qgraph::centrality(W_inter)
-            stats::setNames(cm$OutExpectedInfluence, nodes_int)
-          }, error = function(e) stats::setNames(rep(NA_real_, length(nodes_int)), nodes_int))
-          inter_clo <- .harmonic_closeness(g_inter)[nodes_int]
-          inter_btw <- if (igraph::ecount(g_inter) > 0) {
-            b <- igraph::betweenness(
-              g_inter,
-              weights   = igraph::E(g_inter)$dist,
-              directed  = FALSE,
-              normalized = FALSE
+        bridge_vals_signed <- tryCatch({
+          b <- bridge_metrics(g_bridge_signed_boot, membership = memb_orig)
+          b[match(nodes_g, b$node), c("bridge_ei1","bridge_ei2")]
+        }, error = function(e) {
+          as.data.frame(
+            matrix(
+              NA_real_, length(nodes_g), 2,
+              dimnames = list(nodes_g, c("bridge_ei1","bridge_ei2"))
             )
-            stats::setNames(b[nodes_int], nodes_int)
-          } else {
-            stats::setNames(rep(0, length(nodes_int)), nodes_int)
-          }
+          )
+        })
+
+        bridge_vals <- cbind(
+          bridge_strength    = bridge_vals_abs[,"bridge_strength"],
+          bridge_ei1         = bridge_vals_signed[,"bridge_ei1"],
+          bridge_ei2         = bridge_vals_signed[,"bridge_ei2"],
+          bridge_betweenness = bridge_vals_abs[,"bridge_betweenness"],
+          bridge_closeness   = bridge_vals_abs[,"bridge_closeness"]
+        )
+        rownames(bridge_vals) <- nodes_g
+      }
+
+      ## --- BRIDGE "excluded"  ---
+      bridge_excluded_mat <- NULL
+      if (do_excluded_boot) {
+        bridge_excluded_abs <- tryCatch({
+          bo <- bridge_metrics_excluded(g_bridge_abs_boot, membership = memb_orig)
+          idx <- match(nodes_g, bo$node)
+          df_abs <- data.frame(
+            node = nodes_g,
+            bridge_strength    = bo$bridge_strength[idx],
+            bridge_betweenness = bo$bridge_betweenness[idx],
+            bridge_closeness   = bo$bridge_closeness[idx],
+            stringsAsFactors   = FALSE
+          )
+          rownames(df_abs) <- nodes_g
+          df_abs
+        }, error = function(e) {
+          df_abs <- data.frame(
+            node = nodes_g,
+            bridge_strength    = NA_real_,
+            bridge_betweenness = NA_real_,
+            bridge_closeness   = NA_real_,
+            stringsAsFactors   = FALSE
+          )
+          rownames(df_abs) <- nodes_g
+          df_abs
+        })
+
+        bridge_excluded_signed <- tryCatch({
+          bo <- bridge_metrics_excluded(g_bridge_signed_boot, membership = memb_orig)
+          ei1 <- .pick_col(bo, c("bridge_ei1","bridge_expected_influence1"))
+          ei2 <- .pick_col(bo, c("bridge_ei2","bridge_expected_influence2"))
+          idx <- match(nodes_g, bo$node)
+          df_sgn <- data.frame(
+            node = nodes_g,
+            ei1  = ei1[idx],
+            ei2  = ei2[idx],
+            stringsAsFactors = FALSE
+          )
+          rownames(df_sgn) <- nodes_g
+          df_sgn
+        }, error = function(e) {
+          data.frame(node = nodes_g, ei1 = NA_real_, ei2 = NA_real_)
+        })
+
+        bridge_excluded_mat <- matrix(
+          NA_real_, nrow = length(nodes_g), ncol = 5,
+          dimnames = list(nodes_g, c("strength","ei1","ei2","closeness","betweenness"))
+        )
+
+        row_map_abs <- intersect(nodes_g, rownames(bridge_excluded_abs))
+        if (length(row_map_abs)) {
+          bridge_excluded_mat[row_map_abs, "strength"]    <- bridge_excluded_abs[row_map_abs, "bridge_strength"]
+          bridge_excluded_mat[row_map_abs, "closeness"]   <- bridge_excluded_abs[row_map_abs, "bridge_closeness"]
+          bridge_excluded_mat[row_map_abs, "betweenness"] <- bridge_excluded_abs[row_map_abs, "bridge_betweenness"]
         }
 
-        # Cross-layer edges per allowed pairs (questi li puoi lasciare sempre)
-        per_pairs <- lapply(names(pairs), function(key) {
-          A <- pairs[[key]]$A; B <- pairs[[key]]$B
-          if (length(A)==0 || length(B)==0) return(NULL)
-          cross <- W[A, B, drop=FALSE]
-          v <- as.vector(cross); names(v) <- .edge_names_cross(A,B); v
-        })
-        names(per_pairs) <- names(pairs)
+        row_map_sgn <- intersect(nodes_g, bridge_excluded_signed$node)
+        if (length(row_map_sgn)) {
+          idx2 <- match(row_map_sgn, bridge_excluded_signed$node)
+          bridge_excluded_mat[row_map_sgn, "ei1"] <- bridge_excluded_signed$ei1[idx2]
+          bridge_excluded_mat[row_map_sgn, "ei2"] <- bridge_excluded_signed$ei2[idx2]
+        }
+      }
 
-        list(
-          per_layer = per_layer,
-          inter_strength   = inter_strength,
-          inter_ei1        = ei1_inter,
-          inter_closeness  = inter_clo,
-          inter_betweenness = inter_btw,
-          per_pairs = per_pairs
+      ## --- ADD: COMMUNITY SCORES on bootstrap (per layer) ---
+      cs_boot <- NULL
+      if (isTRUE(do_comm_scores_boot)) {
+        nodes_comm  <- layer_fits[[L]]$community_scores$.nodes_comm
+        wc_comm_int <- layer_fits[[L]]$community_scores$.wc_int
+        if (!is.null(nodes_comm) && length(nodes_comm) > 0) {
+          A_comm_boot <- Wg[nodes_comm, nodes_comm, drop = FALSE]
+          dat_comm_full <- as.matrix(data[, nodes_comm, drop = FALSE])
+          rownames(dat_comm_full) <- subject_ids
+          ns_obj <- tryCatch(
+            .quiet_net_scores(
+              data = dat_comm_full,
+              A    = A_comm_boot,
+              wc   = wc_comm_int,
+              loading.method = "revised",
+              structure = "simple",
+              rotation  = NULL,
+              scores    = "components"
+            ),
+            error = function(e) NULL
+          )
+          if (!is.null(ns_obj) && !is.null(ns_obj$scores$std.scores)) {
+            cs_boot <- ns_obj$scores$std.scores
+            colnames(cs_boot) <- paste0("NS_", sort(unique(wc_comm_int)))
+            rownames(cs_boot) <- subject_ids
+          } else {
+            cs_boot <- matrix(NA_real_, nrow = length(subject_ids), ncol = length(unique(wc_comm_int)),
+                              dimnames = list(subject_ids, paste0("NS_", sort(unique(wc_comm_int)))))
+          }
+        }
+      }
+
+      en <- .edge_names_lt(nodes_g)
+      evec <- if (length(en)) { v <- Wg[lower.tri(Wg)]; names(v) <- en; v } else NULL
+
+      list(
+        strength = cent$OutDegree, ei1 = cent$OutExpectedInfluence,
+        closeness = clh, betweenness = btw, edges = evec,
+        bridge_vals = bridge_vals, bridge_excluded_mat = bridge_excluded_mat,
+        membership = memb_all,
+        membership_boot = if (do_community_boot) memb_boot else NULL,
+        community_scores_boot = cs_boot
+      )
+    })
+    names(per_layer) <- uniq_layers
+
+    # Interlayer-only metrics for this bootstrap
+    inter_strength   <- NULL
+    ei1_inter        <- NULL
+    inter_clo        <- NULL
+    inter_btw        <- NULL
+
+    if (do_interlayer_boot) {
+      W_inter <- matrix(0, length(nodes_int), length(nodes_int),
+                        dimnames = list(nodes_int, nodes_int))
+      for (i in seq_along(nodes_int)) for (j in seq_along(nodes_int)) {
+        vi <- nodes_int[i]; vj <- nodes_int[j]
+        if (layers[vi] != layers[vj]) W_inter[vi, vj] <- W[vi, vj]
+      }
+      g_inter <- .make_distance_graph(W_inter)
+      inter_strength <- stats::setNames(rowSums(abs(W_inter), na.rm = TRUE), nodes_int)
+      ei1_inter <- tryCatch({
+        cm <- qgraph::centrality(W_inter)
+        stats::setNames(cm$OutExpectedInfluence, nodes_int)
+      }, error = function(e) stats::setNames(rep(NA_real_, length(nodes_int)), nodes_int))
+      inter_clo <- .harmonic_closeness(g_inter)[nodes_int]
+      inter_btw <- if (igraph::ecount(g_inter) > 0) {
+        b <- igraph::betweenness(
+          g_inter,
+          weights   = igraph::E(g_inter)$dist,
+          directed  = FALSE,
+          normalized = FALSE
         )
-      }, future.seed = seed_boot
+        stats::setNames(b[nodes_int], nodes_int)
+      } else {
+        stats::setNames(rep(0, length(nodes_int)), nodes_int)
+      }
+    }
+
+    # Cross-layer edges per allowed pairs (questi li puoi lasciare sempre)
+    per_pairs <- lapply(names(pairs), function(key) {
+      A <- pairs[[key]]$A; B <- pairs[[key]]$B
+      if (length(A)==0 || length(B)==0) return(NULL)
+      cross <- W[A, B, drop=FALSE]
+      v <- as.vector(cross); names(v) <- .edge_names_cross(A,B); v
+    })
+    names(per_pairs) <- names(pairs)
+
+    list(
+      per_layer = per_layer,
+      inter_strength   = inter_strength,
+      inter_ei1        = ei1_inter,
+      inter_closeness  = inter_clo,
+      inter_betweenness = inter_btw,
+      per_pairs = per_pairs
     )
+  }
+
+  # ---------- BOOTSTRAP ----------
+  if (reps > 0) {
+    if (use_progress) {
+      boot_res <- progressr::with_progress({
+        p <- progressr::progressor(steps = reps)
+        future.apply::future_lapply(
+          X = seq_reps,
+          FUN = .boot_rep,
+          p = p,
+          future.seed = seed_boot
+        )
+      })
+    } else {
+      boot_res <- future.apply::future_lapply(
+        X = seq_reps,
+        FUN = .boot_rep,
+        p = NULL,
+        future.seed = seed_boot
+      )
+    }
 
     # Collect bootstrap results
     for (bi in seq_len(reps)) {
@@ -827,7 +889,7 @@ multimixMN <- function(
         }
 
         nodes_g <- layer_nodes_graph[[L]]
-        nodes_c <- names(layer_fits[[L]]$groups)        # fixed
+        nodes_c <- names(layer_fits[[L]]$communities$groups)        # fixed
         if (is.null(nodes_c)) nodes_c <- character(0)
         nodes_ex <- layer_nodes_excluded[[L]]           # fixed
 
@@ -948,32 +1010,46 @@ multimixMN <- function(
     )
 
     # attach standard stuff
-    layer_fits[[L]]$reps <- reps
-    layer_fits[[L]]$ci_results <- ci_list
-    layer_fits[[L]]$boot_memberships <- LB$boot_memberships
+    layer_fits[[L]]$settings$reps <- reps
 
-    layer_fits[[L]]$strength_boot     <- LB$strength_boot
-    layer_fits[[L]]$ei1_boot          <- LB$ei1_boot
-    layer_fits[[L]]$closeness_boot    <- LB$closeness_boot
-    layer_fits[[L]]$betweenness_boot  <- LB$betweenness_boot
-    layer_fits[[L]]$edge_boot_mat     <- LB$edge_boot_mat
+    # --- NODE METRICS: boot ---
+    layer_fits[[L]]$statistics$node$boot <- list(
+      strength                    = LB$strength_boot,
+      ei1                         = LB$ei1_boot,
+      closeness                   = LB$closeness_boot,
+      betweenness                 = LB$betweenness_boot,
+      bridge_strength             = LB$bridge_strength_boot,
+      bridge_betweenness          = LB$bridge_betweenness_boot,
+      bridge_closeness            = LB$bridge_closeness_boot,
+      bridge_ei1                  = LB$bridge_ei1_boot,
+      bridge_ei2                  = LB$bridge_ei2_boot,
+      bridge_strength_excluded    = LB$bridge_strength_excl_boot,
+      bridge_betweenness_excluded = LB$bridge_betweenness_excl_boot,
+      bridge_closeness_excluded   = LB$bridge_closeness_excl_boot,
+      bridge_ei1_excluded         = LB$bridge_ei1_excl_boot,
+      bridge_ei2_excluded         = LB$bridge_ei2_excl_boot
+    )
 
-    layer_fits[[L]]$bridge_strength_boot    <- LB$bridge_strength_boot
-    layer_fits[[L]]$bridge_ei1_boot         <- LB$bridge_ei1_boot
-    layer_fits[[L]]$bridge_ei2_boot         <- LB$bridge_ei2_boot
-    layer_fits[[L]]$bridge_closeness_boot   <- LB$bridge_closeness_boot
-    layer_fits[[L]]$bridge_betweenness_boot <- LB$bridge_betweenness_boot
+    # --- NODE METRICS: CI ---
+    node_ci <- ci_list[c(
+      "strength","expected_influence","closeness","betweenness",
+      "bridge_strength","bridge_betweenness","bridge_closeness",
+      "bridge_ei1","bridge_ei2",
+      "bridge_strength_excluded","bridge_betweenness_excluded",
+      "bridge_closeness_excluded","bridge_ei1_excluded","bridge_ei2_excluded"
+    )]
+    layer_fits[[L]]$statistics$node$ci <- node_ci
 
-    layer_fits[[L]]$bridge_strength_excl_boot    <- LB$bridge_strength_excl_boot
-    layer_fits[[L]]$bridge_ei1_excl_boot         <- LB$bridge_ei1_excl_boot
-    layer_fits[[L]]$bridge_ei2_excl_boot         <- LB$bridge_ei2_excl_boot
-    layer_fits[[L]]$bridge_closeness_excl_boot   <- LB$bridge_closeness_excl_boot
-    layer_fits[[L]]$bridge_betweenness_excl_boot <- LB$bridge_betweenness_excl_boot
+    # --- EDGES: boot + CI ---
+    layer_fits[[L]]$statistics$edge$boot <- LB$edge_boot_mat
+    layer_fits[[L]]$statistics$edge$ci   <- ci_list$edge_weights
 
-    if (!is.null(LB$community_scores_boot) && !is.null(layer_fits[[L]]$community_scores_df)) {
+    # --- COMMUNITY SCORES: boot + CI ---
+    if (!is.null(LB$community_scores_boot) && !is.null(layer_fits[[L]]$community_scores$df)) {
       reps_names <- dimnames(LB$community_scores_boot)$rep
       id_names   <- dimnames(LB$community_scores_boot)$id
       comm_names <- dimnames(LB$community_scores_boot)$comm
+
       cs_list <- lapply(seq_along(reps_names), function(i) {
         mat <- LB$community_scores_boot[i, , , drop = FALSE][1, , ]
         mat <- as.matrix(mat)
@@ -981,26 +1057,40 @@ multimixMN <- function(
         as.data.frame(mat, check.names = FALSE)
       })
       names(cs_list) <- reps_names
-      layer_fits[[L]]$community_scores_boot <- cs_list
-      layer_fits[[L]]$community_scores_ci   <- ci_list$community_scores
+
+      layer_fits[[L]]$community_scores$boot <- cs_list
+      layer_fits[[L]]$community_scores$ci   <- ci_list$community_scores
     }
+
+    # --- MEMBERSHIP BOOT ---
+    layer_fits[[L]]$communities$boot_memberships <- LB$boot_memberships
   }
 
   # ---------- interlayer_fits ----------
   interlayer_fits <- list()
   for (key in names(pairs)) {
-    A <- pairs[[key]]$A; B <- pairs[[key]]$B
-    cross_true <- wadj_signed[A, B, drop=FALSE]
-    en <- .edge_names_cross(A,B)
+    A <- pairs[[key]]$A
+    B <- pairs[[key]]$B
+
+    cross_true <- wadj_signed[A, B, drop = FALSE]
+    en <- .edge_names_cross(A, B)
     edges_true <- as.vector(cross_true); names(edges_true) <- en
-    edges_true_df <- data.frame(edge=en, weight=edges_true, row.names=NULL)
+
+    edges_true_df <- data.frame(
+      edge   = en,
+      weight = edges_true,
+      row.names = NULL
+    )
+
     eb <- interlayer_boot[[key]]
     ci_edges <- if (!is.null(eb)) .calc_ci(t(eb)) else NULL
+
     interlayer_fits[[key]] <- list(
-      nodes_A = A, nodes_B = B,
-      edges_true = edges_true_df,
-      edge_boot_mat = eb,
-      ci_edges = ci_edges
+      edges   = list(
+        true = edges_true_df,   # pesi “osservati” cross-layer
+        boot = eb,              # matrice bootstrap (edge × reps)
+        ci   = ci_edges         # CIs per edge
+      )
     )
   }
 
@@ -1033,18 +1123,23 @@ multimixMN <- function(
   )
   inter_ci_results <- list(
     strength           = inter_node_ci$strength_interlayer,
-    expected_influence = inter_node_ci$ei1_interlayer,
+    ei1                = inter_node_ci$ei1_interlayer,
     closeness          = inter_node_ci$closeness_interlayer,
     betweenness        = inter_node_ci$betweenness_interlayer
   )
-  interlayer <- list(
-    centrality_true  = inter_centrality_true,
-    ci_results       = inter_ci_results,
-    strength_boot    = inter_strength_boot,
-    ei1_boot         = inter_ei1_boot,
-    closeness_boot   = inter_closeness_boot,
-    betweenness_boot = inter_betweenness_boot,
-    edges            = interlayer_fits
+  interlayer_centrality <- list(
+    true       = inter_centrality_true,
+    ci_results = inter_ci_results,
+    boot       = list(
+      strength    = inter_strength_boot,
+      ei1         = inter_ei1_boot,
+      closeness   = inter_closeness_boot,
+      betweenness = inter_betweenness_boot
+    )
+  )
+  interlayer <- c(
+    list(centrality = interlayer_centrality),
+    interlayer_fits
   )
 
   # ---------- global igraph ----------
@@ -1069,7 +1164,7 @@ multimixMN <- function(
   names(memb_all) <- keep_nodes_graph_all
 
   for (L in uniq_layers) {
-    grpL <- layer_fits[[L]]$groups
+    grpL <- layer_fits[[L]]$communities$groups
     if (!is.null(grpL) && length(grpL)) {
       grpL_int <- as.integer(grpL)
       names(grpL_int) <- names(grpL)
@@ -1090,18 +1185,40 @@ multimixMN <- function(
 
   # ---------- output ----------
   out <- list(
-    layers               = layers,
-    layer_rules          = layer_rules,
-    layer_fits           = layer_fits,
-    interlayer           = interlayer,
-    graph_igraph         = g_multi,
-    exclude_from_graph   = exclude_from_graph,
-    exclude_from_cluster = exclude_from_cluster,
-    cluster_method       = cluster_method,
-    reps                 = reps,
-    seed_model           = seed_model,
-    seed_boot            = seed_boot
+    call = match.call(),
+
+    settings = list(
+      reps                         = reps,
+      cluster_method               = cluster_method,
+      exclude_from_graph           = exclude_from_graph,
+      exclude_from_cluster         = exclude_from_cluster,
+      treat_singletons_as_excluded = treat_singletons_as_excluded,
+      boot_what                    = boot_what
+    ),
+
+    model = list(
+      mgm   = mgm_model,
+      nodes = all_nodes,
+      n     = nrow(data),
+      p     = ncol(data)
+    ),
+
+    layers = list(
+      assignment = layers,      # named vector node -> layer
+      rules      = layer_rules
+    ),
+
+    layer_fits = layer_fits,
+
+    interlayer = interlayer,
+
+    graph = list(
+      igraph            = g_multi,
+      keep_nodes_graph  = keep_nodes_graph_all,
+      keep_nodes_cluster= keep_nodes_cluster_all
+    )
   )
-  class(out) <- c("multimixMN_fit")
+
+  class(out) <- c("mixmashnet", "multimixMN_fit")
   return(out)
 }
