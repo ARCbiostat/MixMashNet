@@ -51,7 +51,7 @@
 #'     \item \code{"general_index"}: strength, expected influence 1-step,
 #'       harmonic closeness, betweenness.
 #'     \item \code{"bridge_index"}: bridge strength, bridge expected influence
-#'       1- and 2-step, bridge closeness, bridge betweenness (for nodes in
+#'       1- and 2-step, bridge closeness, bridge betweenness (nodes in
 #'       communities).
 #'     \item \code{"excluded_index"}: bridge metrics for nodes excluded from
 #'       communities (or treated as such).
