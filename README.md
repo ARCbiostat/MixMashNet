@@ -29,7 +29,7 @@ You can install the development version of MixMashNet from
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("Mariadmm96/MixMashNet")
+devtools::install_github("ARCbiostat/MixMashNet")
 ```
 
 ## Example

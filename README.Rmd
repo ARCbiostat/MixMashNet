@@ -34,7 +34,7 @@ You can install the development version of MixMashNet from [GitHub](https://gith
 
 ``` {r, eval=FALSE}
 # install.packages("devtools")
-devtools::install_github("Mariadmm96/MixMashNet")
+devtools::install_github("ARCbiostat/MixMashNet")
 ```
 
 
