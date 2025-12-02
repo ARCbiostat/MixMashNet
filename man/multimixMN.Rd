@@ -163,7 +163,7 @@ such as \code{weight}, \code{abs_weight}, \code{sign},
 Estimates a \strong{multilayer} Mixed Graphical Model (MGM) using a mask that
 enforces which cross-layer edges are allowed according to \code{layer_rules}.
 Within each layer, the function computes community structure, non-parametric
-row-bootstrap for node centralities and edge weights, bridge metrics
+row-bootstrap for node centralities and edges, bridge metrics
 (including metrics for nodes treated as "excluded"), and (optionally)
 community network scores. It also returns interlayer-only node metrics and
 cross-layer edge summaries.
