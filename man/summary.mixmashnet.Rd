@@ -6,8 +6,8 @@
 \usage{
 \method{summary}{mixmashnet}(
   object,
-  what = c("index", "edges", "interlayer_index", "interlayer_edges"),
-  metrics = NULL,
+  what = c("intra", "inter"),
+  statistics = NULL,
   layer = NULL,
   pairs = NULL,
   digits = 3,
@@ -18,43 +18,62 @@
 \item{object}{An object of class \code{"mixmashnet"} returned by
 \code{mixMN()} or \code{multimixMN()}.}
 
-\item{what}{Character vector specifying what to summarize:
+\item{what}{Character string indicating which part of the model to summarize:
 \itemize{
-\item \code{"index"}: node-level indices on the (intra-layer) graph.
-\item \code{"edges"}: intra-layer edges.
-\item \code{"interlayer_index"}: node-level indices computed on the
-interlayer-only graph (from \code{object$interlayer$centrality}).
-\item \code{"interlayer_edges"}: cross-layer edges
-(from \code{object$interlayer[[pairs]]$edges}).
+\item \code{"intra"}: intra-layer quantities (node-level indices and/or
+intra-layer edges);
+\item \code{"inter"}: interlayer quantities (node-level indices on the
+interlayer-only graph and/or cross-layer edges; multilayer fits only).
 }}
 
-\item{metrics}{Optional character vector of metrics to include. If \code{NULL},
-all available metrics in the corresponding object are used.
-For \code{what = "interlayer_index"}, valid metrics are typically
-\code{c("strength","ei1","closeness","betweenness")}.}
+\item{statistics}{Character vector specifying which statistics to include.
+For \code{what = "intra"}, valid values are:
+\code{c("edges",
+         "strength", "expected_influence", "closeness", "betweenness",
+         "bridge_strength", "bridge_closeness", "bridge_betweenness",
+         "bridge_ei1", "bridge_ei2",
+         "bridge_strength_excluded", "bridge_betweenness_excluded",
+         "bridge_closeness_excluded", "bridge_ei1_excluded",
+         "bridge_ei2_excluded")}.
 
-\item{layer}{Optional character vector of layer names to subset:
-used for \code{what = "index"} and \code{what = "edges"} in multilayer fits.
-Ignored for single-layer fits.}
+For \code{what = "inter"}, valid values are:
+\code{c("edges", "strength", "expected_influence", "closeness",
+         "betweenness")}.
 
-\item{pairs}{Optional character vector of layer-pair names (e.g. \code{"bio_dis"})
-used for \code{what = "interlayer_index"} and \code{what = "interlayer_edges"}.
-If \code{NULL}, all available layer pairs are included.
-For \code{what = "interlayer_index"}, if a single \code{pairs} is given,
-only nodes belonging to one of the two layers in that pair are reported.}
+If \code{statistics = NULL}, then:
+\itemize{
+\item for \code{what = "intra"}, all available intra-layer statistics
+(including \code{"edges"}) are returned;
+\item for \code{what = "inter"}, all available interlayer statistics
+(including \code{"edges"}) are returned.
+}}
+
+\item{layer}{Optional character vector of layer names to subset. Used for
+\code{what = "intra"} in multilayer fits. Ignored for single-layer fits.}
+
+\item{pairs}{Optional character vector of layer-pair names (e.g.
+\code{"bio_dis"}) used for \code{what = "inter"} when summarizing
+interlayer edges. If \code{NULL}, all available layer pairs are included.
+For interlayer node indices, \code{pairs} can be used to restrict the
+summary to nodes belonging to one of the layers in the given pair.}
 
 \item{digits}{Number of digits to round numeric summaries.}
 
 \item{...}{Not used (for S3 compatibility).}
 }
 \value{
-A list (class \code{"summary.mixmashnet"}) with up to four data frames:
+A list (class \code{"summary.mixmashnet"}) with up to four data
+frames:
 \itemize{
-\item \code{$index}: node-level indices (one row per node-metric).
-\item \code{$edges}: intra-layer edges (one row per edge).
-\item \code{$interlayer_index}: interlayer-only node indices.
+\item \code{$index}: intra-layer node-level indices (one row per
+node-metric);
+\item \code{$edges}: intra-layer edges (one row per edge);
+\item \code{$interlayer_index}: interlayer-only node indices;
 \item \code{$interlayer_edges}: cross-layer edges.
 }
+
+Depending on \code{what} and \code{statistics}, some of these elements may
+be \code{NULL}.
 }
 \description{
 Summarize MixMashNet fits (single- and multilayer) in long format

@@ -2,53 +2,153 @@
 #'
 #' @param object An object of class \code{"mixmashnet"} returned by
 #'   \code{mixMN()} or \code{multimixMN()}.
-#' @param what Character vector specifying what to summarize:
+#' @param what Character string indicating which part of the model to summarize:
 #'   \itemize{
-#'     \item \code{"index"}: node-level indices on the (intra-layer) graph.
-#'     \item \code{"edges"}: intra-layer edges.
-#'     \item \code{"interlayer_index"}: node-level indices computed on the
-#'       interlayer-only graph (from \code{object$interlayer$centrality}).
-#'     \item \code{"interlayer_edges"}: cross-layer edges
-#'       (from \code{object$interlayer[[pairs]]$edges}).
+#'     \item \code{"intra"}: intra-layer quantities (node-level indices and/or
+#'       intra-layer edges);
+#'     \item \code{"inter"}: interlayer quantities (node-level indices on the
+#'       interlayer-only graph and/or cross-layer edges; multilayer fits only).
 #'   }
-#' @param metrics Optional character vector of metrics to include. If \code{NULL},
-#'   all available metrics in the corresponding object are used.
-#'   For \code{what = "interlayer_index"}, valid metrics are typically
-#'   \code{c("strength","ei1","closeness","betweenness")}.
-#' @param layer Optional character vector of layer names to subset:
-#'   used for \code{what = "index"} and \code{what = "edges"} in multilayer fits.
-#'   Ignored for single-layer fits.
-#' @param pairs Optional character vector of layer-pair names (e.g. \code{"bio_dis"})
-#'   used for \code{what = "interlayer_index"} and \code{what = "interlayer_edges"}.
-#'   If \code{NULL}, all available layer pairs are included.
-#'   For \code{what = "interlayer_index"}, if a single \code{pairs} is given,
-#'   only nodes belonging to one of the two layers in that pair are reported.
+#' @param statistics Character vector specifying which statistics to include.
+#'   For \code{what = "intra"}, valid values are:
+#'   \code{c("edges",
+#'          "strength", "expected_influence", "closeness", "betweenness",
+#'          "bridge_strength", "bridge_closeness", "bridge_betweenness",
+#'          "bridge_ei1", "bridge_ei2",
+#'          "bridge_strength_excluded", "bridge_betweenness_excluded",
+#'          "bridge_closeness_excluded", "bridge_ei1_excluded",
+#'          "bridge_ei2_excluded")}.
+#'
+#'   For \code{what = "inter"}, valid values are:
+#'   \code{c("edges", "strength", "expected_influence", "closeness",
+#'          "betweenness")}.
+#'
+#'   If \code{statistics = NULL}, then:
+#'   \itemize{
+#'     \item for \code{what = "intra"}, all available intra-layer statistics
+#'       (including \code{"edges"}) are returned;
+#'     \item for \code{what = "inter"}, all available interlayer statistics
+#'       (including \code{"edges"}) are returned.
+#'   }
+#' @param layer Optional character vector of layer names to subset. Used for
+#'   \code{what = "intra"} in multilayer fits. Ignored for single-layer fits.
+#' @param pairs Optional character vector of layer-pair names (e.g.
+#'   \code{"bio_dis"}) used for \code{what = "inter"} when summarizing
+#'   interlayer edges. If \code{NULL}, all available layer pairs are included.
+#'   For interlayer node indices, \code{pairs} can be used to restrict the
+#'   summary to nodes belonging to one of the layers in the given pair.
 #' @param digits Number of digits to round numeric summaries.
 #' @param ... Not used (for S3 compatibility).
 #'
-#' @return A list (class \code{"summary.mixmashnet"}) with up to four data frames:
+#' @return A list (class \code{"summary.mixmashnet"}) with up to four data
+#'   frames:
 #'   \itemize{
-#'     \item \code{$index}: node-level indices (one row per node-metric).
-#'     \item \code{$edges}: intra-layer edges (one row per edge).
-#'     \item \code{$interlayer_index}: interlayer-only node indices.
+#'     \item \code{$index}: intra-layer node-level indices (one row per
+#'       node-metric);
+#'     \item \code{$edges}: intra-layer edges (one row per edge);
+#'     \item \code{$interlayer_index}: interlayer-only node indices;
 #'     \item \code{$interlayer_edges}: cross-layer edges.
 #'   }
+#'
+#'   Depending on \code{what} and \code{statistics}, some of these elements may
+#'   be \code{NULL}.
+#'
 #' @method summary mixmashnet
 #' @export
 summary.mixmashnet <- function(object,
-                               what       = c("index", "edges",
-                                              "interlayer_index", "interlayer_edges"),
-                               metrics    = NULL,
+                               what       = c("intra", "inter"),
+                               statistics = NULL,
                                layer      = NULL,
-                               pairs = NULL,
+                               pairs      = NULL,
                                digits     = 3,
                                ...) {
+
   if (!inherits(object, "mixmashnet")) {
     stop("`summary.mixmashnet()` expects an object of class 'mixmashnet'.")
   }
 
-  what     <- match.arg(what, several.ok = TRUE)
   is_multi <- inherits(object, "multimixMN_fit")
+
+  if (missing(what)) {
+    if (!is_multi) {
+      what <- "intra"
+
+    } else {
+      # multilayer
+      if (!is.null(statistics)) {
+        if (!is.null(layer)) {
+          what <- "intra"
+        } else {
+          stop(
+            "You are summarizing statistics on a multilayer object.\n",
+            "Please specify one of:\n",
+            "  - layer = \"...\" and what = \"intra\"   # intra-layer statistics for a specific layer\n",
+            "  - what  = \"intra\"                     # intra-layer statistics for ALL layers\n",
+            "  - what  = \"inter\"                     # interlayer statistics\n"
+          )
+        }
+      } else {
+        what <- "intra"
+      }
+    }
+  } else {
+    what <- match.arg(what)
+  }
+
+  if (what == "inter" && !is_multi) {
+    stop("`what = \"inter\"` is only available for 'multimixMN_fit' objects.")
+  }
+
+  # ----- allowed statistics -----
+  allowed_intra <- c(
+    "edges",
+    "strength", "expected_influence", "closeness", "betweenness",
+    "bridge_strength", "bridge_closeness", "bridge_betweenness",
+    "bridge_ei1", "bridge_ei2",
+    "bridge_strength_excluded", "bridge_betweenness_excluded",
+    "bridge_closeness_excluded", "bridge_ei1_excluded",
+    "bridge_ei2_excluded"
+  )
+
+  allowed_inter <- c(
+    "edges",
+    "strength", "expected_influence", "closeness", "betweenness"
+  )
+
+  if (is.null(statistics)) {
+    if (what == "intra") {
+      statistics <- allowed_intra        # tutte le intra + edges
+    } else {
+      statistics <- allowed_inter        # tutte le inter + edges
+    }
+  }
+
+  if (what == "intra") {
+    invalid <- setdiff(statistics, allowed_intra)
+    if (length(invalid)) {
+      stop(
+        "Invalid `statistics` for what = \"intra\": ",
+        paste(invalid, collapse = ", "), "\n",
+        "Valid values are: ",
+        paste(allowed_intra, collapse = ", ")
+      )
+    }
+    want_edges     <- "edges" %in% statistics
+    stats_intra_nd <- setdiff(statistics, "edges")
+
+  } else { # what == "inter"
+    invalid <- setdiff(statistics, allowed_inter)
+    if (length(invalid)) {
+      stop(
+        "Invalid `statistics` for what = \"inter\": ",
+        paste(invalid, collapse = ", "), "\n",
+        "Valid values are: ",
+        paste(allowed_inter, collapse = ", ")
+      )
+    }
+    want_edges     <- "edges" %in% statistics
+    stats_inter_nd <- setdiff(statistics, "edges")
+  }
 
   .normalize_pairs <- function(pairs_vec) {
     if (is.null(pairs_vec) || !length(pairs_vec)) return(character(0L))
@@ -70,12 +170,15 @@ summary.mixmashnet <- function(object,
     df
   }
 
-  # -------------------- 1) NODE-LEVEL INDEX (intra-layer) -------------------- #
+  # ------------------------------------------------------------------
+  # 1) INTRA-LAYER NODE-LEVEL INDICES (index)
+  # ------------------------------------------------------------------
   index_tab <- NULL
-  if ("index" %in% what) {
+
+  if (what == "intra" && length(stats_intra_nd)) {
 
     build_index_long <- function(true_df, boot_list, ci_list,
-                                 layer_label, metrics, digits) {
+                                 layer_label, stats_names, digits) {
       if (is.null(true_df) || !nrow(true_df)) return(NULL)
       if (!"node" %in% colnames(true_df)) {
         stop("`statistics$node$true` must contain a column 'node'.")
@@ -83,17 +186,14 @@ summary.mixmashnet <- function(object,
 
       nodes <- as.character(true_df$node)
 
-      # choose metrics
-      if (is.null(metrics)) {
-        metrics_block <- setdiff(colnames(true_df), "node")
-      } else {
-        metrics_block <- intersect(metrics, setdiff(colnames(true_df), "node"))
-      }
+      metrics_block <- intersect(stats_names, setdiff(colnames(true_df), "node"))
       if (!length(metrics_block)) return(NULL)
 
-      rows <- list()
+      rows <- vector("list", length(metrics_block))
 
-      for (met in metrics_block) {
+      for (k in seq_along(metrics_block)) {
+        met <- metrics_block[k]
+
         estimated <- true_df[[met]]
 
         mean_boot <- sd_boot <- rep(NA_real_, length(nodes))
@@ -130,9 +230,9 @@ summary.mixmashnet <- function(object,
             ncol(ci_list[[met]]) >= 2) {
           ci_mat <- ci_list[[met]]
           if (is.null(rownames(ci_mat))) {
-            k <- min(nrow(ci_mat), length(nodes))
-            lower[seq_len(k)] <- ci_mat[seq_len(k), 1]
-            upper[seq_len(k)] <- ci_mat[seq_len(k), 2]
+            k2 <- min(nrow(ci_mat), length(nodes))
+            lower[seq_len(k2)] <- ci_mat[seq_len(k2), 1]
+            upper[seq_len(k2)] <- ci_mat[seq_len(k2), 2]
           } else {
             common <- intersect(nodes, rownames(ci_mat))
             if (length(common)) {
@@ -144,16 +244,16 @@ summary.mixmashnet <- function(object,
           }
         }
 
-        rows[[met]] <- data.frame(
-          node                 = nodes,
-          layer                = layer_label,
-          metric               = met,
-          estimated            = estimated,
-          mean.bootstrap       = mean_boot,
-          SE.bootstrap         = sd_boot,
-          CI.lower.bootstrap   = lower,
-          CI.upper.bootstrap  = upper,
-          stringsAsFactors = FALSE
+        rows[[k]] <- data.frame(
+          node               = nodes,
+          layer              = layer_label,
+          metric             = met,
+          estimated          = estimated,
+          mean.bootstrap     = mean_boot,
+          SE.bootstrap       = sd_boot,
+          CI.lower.bootstrap = lower,
+          CI.upper.bootstrap = upper,
+          stringsAsFactors   = FALSE
         )
       }
 
@@ -181,19 +281,19 @@ summary.mixmashnet <- function(object,
         ci_list   <- fitL$statistics$node$ci
 
         blocks[[j]] <- build_index_long(
-          true_df   = true_df,
-          boot_list = boot_list,
-          ci_list   = ci_list,
+          true_df     = true_df,
+          boot_list   = boot_list,
+          ci_list     = ci_list,
           layer_label = L,
-          metrics   = metrics,
-          digits    = digits
+          stats_names = stats_intra_nd,
+          digits      = digits
         )
       }
       blocks <- Filter(Negate(is.null), blocks)
       if (length(blocks)) index_tab <- do.call(rbind, blocks)
 
     } else {
-      # single-layer: no concept of layer; use NA
+      # single-layer: no concept of layer; use "1"
       true_df   <- object$statistics$node$true
       boot_list <- object$statistics$node$boot
       ci_list   <- object$statistics$node$ci
@@ -203,15 +303,18 @@ summary.mixmashnet <- function(object,
         boot_list   = boot_list,
         ci_list     = ci_list,
         layer_label = "1",
-        metrics     = metrics,
+        stats_names = stats_intra_nd,
         digits      = digits
       )
     }
   }
 
-  # ------------------------ 2) EDGES (intra-layer) ------------------------ #
+  # ------------------------------------------------------------------
+  # 2) INTRA-LAYER EDGES (edges)
+  # ------------------------------------------------------------------
   edges_tab <- NULL
-  if ("edges" %in% what) {
+
+  if (what == "intra" && isTRUE(want_edges)) {
 
     build_edge_long <- function(true_edges, boot_mat, layer_label, digits) {
       if (is.null(true_edges) || !nrow(true_edges)) return(NULL)
@@ -219,7 +322,6 @@ summary.mixmashnet <- function(object,
         stop("`statistics$edge$true` must contain columns 'edge' and 'weight'.")
       }
 
-      # solo archi con peso osservato diverso da 0
       idx_keep <- !is.na(true_edges$weight) & (true_edges$weight != 0)
       if (!any(idx_keep)) return(NULL)
 
@@ -253,14 +355,14 @@ summary.mixmashnet <- function(object,
       }
 
       out <- data.frame(
-        edge                = edges,
-        layer               = layer_label,
-        estimated           = weight_obs,
-        mean.bootstrap      = mean_boot,
-        SE.bootstrap        = sd_boot,
-        CI.lower.bootstrap  = lower,
-        CI.upper.bootstrap  = upper,
-        stringsAsFactors    = FALSE
+        edge               = edges,
+        layer              = layer_label,
+        estimated          = weight_obs,
+        mean.bootstrap     = mean_boot,
+        SE.bootstrap       = sd_boot,
+        CI.lower.bootstrap = lower,
+        CI.upper.bootstrap = upper,
+        stringsAsFactors   = FALSE
       )
       rownames(out) <- NULL
       .round_numcols(out, digits)
@@ -302,12 +404,17 @@ summary.mixmashnet <- function(object,
     }
   }
 
-  # ------------------ 3) INTERLAYER NODE INDEX (interlayer_index) ------------------ #
+  # ------------------------------------------------------------------
+  # 3) INTERLAYER NODE INDEX (interlayer_index)
+  # ------------------------------------------------------------------
   inter_idx_tab <- NULL
-  if ("interlayer_index" %in% what && is_multi && !is.null(object$interlayer)) {
+
+  if (what == "inter" && is_multi && length(stats_inter_nd) &&
+      !is.null(object$interlayer)) {
 
     inter_cent <- object$interlayer$centrality
     if (!is.null(inter_cent) && !is.null(inter_cent$true)) {
+
       true_df   <- inter_cent$true
       boot_list <- inter_cent$boot
       ci_list   <- inter_cent$ci_results
@@ -317,22 +424,26 @@ summary.mixmashnet <- function(object,
       }
       nodes_all <- as.character(true_df$node)
 
-      # mapping metric names per interlayer: colnames vs ci_list names
-      # true_df columns: typically strength, ei1, closeness, betweenness
-      # ci_list names:   strength, expected_influence, closeness, betweenness
-      metric_map_ci <- list(
-        strength  = "strength",
-        ei1       = "expected_influence",
-        closeness = "closeness",
-        betweenness = "betweenness"
+      # mapping: user-level -> internal column names / CI keys
+      stat_to_true <- c(
+        strength           = "strength",
+        expected_influence = "ei1",
+        closeness          = "closeness",
+        betweenness        = "betweenness"
+      )
+      stat_to_ci <- c(
+        strength           = "strength",
+        expected_influence = "expected_influence",
+        closeness          = "closeness",
+        betweenness        = "betweenness"
       )
 
       # subset nodes by pairs (if given)
       nodes_use <- nodes_all
+
       if (!is.null(pairs) && length(pairs) == 1L &&
           !is.null(object$layers) && !is.null(object$layers$assignment)) {
 
-        # es. "bio_dis" -> c("bio","dis")
         parts <- strsplit(pairs, "_", fixed = TRUE)[[1]]
         parts <- parts[parts != ""]
         if (length(parts) == 2L) {
@@ -340,6 +451,7 @@ summary.mixmashnet <- function(object,
           lay_assign <- lay_assign[nodes_all]
           nodes_use  <- nodes_all[lay_assign %in% parts]
         }
+
       } else if (!is.null(layer) &&
                  !is.null(object$layers) &&
                  !is.null(object$layers$assignment)) {
@@ -349,95 +461,98 @@ summary.mixmashnet <- function(object,
         nodes_use  <- nodes_all[lay_assign %in% layer]
       }
 
-      if (!length(nodes_use)) {
-        inter_idx_tab <- NULL
-      } else {
-        # scegli metriche
-        if (is.null(metrics)) {
-          metrics_int <- setdiff(colnames(true_df), "node")
-        } else {
-          metrics_int <- intersect(metrics, setdiff(colnames(true_df), "node"))
-        }
-        if (!length(metrics_int)) {
-          inter_idx_tab <- NULL
-        } else {
-          rows <- list()
-          for (met in metrics_int) {
-            estimated <- true_df[match(nodes_use, nodes_all), met]
+      if (length(nodes_use)) {
 
-            mean_boot <- sd_boot <- rep(NA_real_, length(nodes_use))
-            lower     <- upper   <- rep(NA_real_, length(nodes_use))
+        rows <- vector("list", length(stats_inter_nd))
 
-            # boot
-            if (!is.null(boot_list) &&
-                !is.null(boot_list[[met]]) &&
-                is.matrix(boot_list[[met]])) {
+        for (k in seq_along(stats_inter_nd)) {
+          stat_name <- stats_inter_nd[k]
+          true_col  <- stat_to_true[[stat_name]]
+          ci_key    <- stat_to_ci[[stat_name]]
 
-              boot_mat <- boot_list[[met]]
-              if (is.null(colnames(boot_mat))) {
-                colnames(boot_mat) <- nodes_all[seq_len(min(ncol(boot_mat),
-                                                            length(nodes_all)))]
-              }
-              boot_full <- matrix(
-                NA_real_, nrow = nrow(boot_mat), ncol = length(nodes_use),
-                dimnames = list(rownames(boot_mat), nodes_use)
-              )
-              common <- intersect(nodes_use, colnames(boot_mat))
-              if (length(common)) {
-                boot_full[, common] <- boot_mat[, common, drop = FALSE]
-              }
-              mean_boot <- colMeans(boot_full, na.rm = TRUE)
-              sd_boot   <- apply(boot_full, 2, stats::sd, na.rm = TRUE)
-            }
-
-            # CI: attenzione alla mappa dei nomi
-            ci_key <- metric_map_ci[[met]]
-            if (!is.null(ci_key) &&
-                !is.null(ci_list) &&
-                !is.null(ci_list[[ci_key]]) &&
-                is.matrix(ci_list[[ci_key]]) &&
-                ncol(ci_list[[ci_key]]) >= 2) {
-
-              ci_mat <- ci_list[[ci_key]]
-              if (is.null(rownames(ci_mat))) {
-                k <- min(nrow(ci_mat), length(nodes_use))
-                lower[seq_len(k)] <- ci_mat[seq_len(k), 1]
-                upper[seq_len(k)] <- ci_mat[seq_len(k), 2]
-              } else {
-                common <- intersect(nodes_use, rownames(ci_mat))
-                if (length(common)) {
-                  ir   <- match(common, rownames(ci_mat))
-                  inod <- match(common, nodes_use)
-                  lower[inod] <- ci_mat[ir, 1]
-                  upper[inod] <- ci_mat[ir, 2]
-                }
-              }
-            }
-
-            rows[[met]] <- data.frame(
-              node               = nodes_use,
-              metric             = met,
-              estimated          = estimated,
-              mean.bootstrap     = mean_boot,
-              SE.bootstrap       = sd_boot,
-              CI.lower.bootstrap = lower,
-              CI.upper.bootstrap = upper,
-              stringsAsFactors = FALSE
-            )
+          if (is.na(true_col) || !true_col %in% colnames(true_df)) {
+            stop("Interlayer true table does not contain column '", true_col,
+                 "' for statistic '", stat_name, "'.")
           }
-          out <- do.call(rbind, rows)
-          rownames(out) <- NULL
-          inter_idx_tab <- .round_numcols(out, digits)
+
+          estimated <- true_df[match(nodes_use, nodes_all), true_col]
+
+          mean_boot <- sd_boot <- rep(NA_real_, length(nodes_use))
+          lower     <- upper   <- rep(NA_real_, length(nodes_use))
+
+          # bootstrap (indexed by true_col)
+          if (!is.null(boot_list) &&
+              !is.null(boot_list[[true_col]]) &&
+              is.matrix(boot_list[[true_col]])) {
+
+            boot_mat <- boot_list[[true_col]]
+            if (is.null(colnames(boot_mat))) {
+              colnames(boot_mat) <- nodes_all[seq_len(min(ncol(boot_mat),
+                                                          length(nodes_all)))]
+            }
+            boot_full <- matrix(
+              NA_real_, nrow = nrow(boot_mat), ncol = length(nodes_use),
+              dimnames = list(rownames(boot_mat), nodes_use)
+            )
+            common <- intersect(nodes_use, colnames(boot_mat))
+            if (length(common)) {
+              boot_full[, common] <- boot_mat[, common, drop = FALSE]
+            }
+            mean_boot <- colMeans(boot_full, na.rm = TRUE)
+            sd_boot   <- apply(boot_full, 2, stats::sd, na.rm = TRUE)
+          }
+
+          # CI (indexed by ci_key)
+          if (!is.null(ci_key) &&
+              !is.null(ci_list) &&
+              !is.null(ci_list[[ci_key]]) &&
+              is.matrix(ci_list[[ci_key]]) &&
+              ncol(ci_list[[ci_key]]) >= 2) {
+
+            ci_mat <- ci_list[[ci_key]]
+            if (is.null(rownames(ci_mat))) {
+              k2 <- min(nrow(ci_mat), length(nodes_use))
+              lower[seq_len(k2)] <- ci_mat[seq_len(k2), 1]
+              upper[seq_len(k2)] <- ci_mat[seq_len(k2), 2]
+            } else {
+              common <- intersect(nodes_use, rownames(ci_mat))
+              if (length(common)) {
+                ir   <- match(common, rownames(ci_mat))
+                inod <- match(common, nodes_use)
+                lower[inod] <- ci_mat[ir, 1]
+                upper[inod] <- ci_mat[ir, 2]
+              }
+            }
+          }
+
+          rows[[k]] <- data.frame(
+            node               = nodes_use,
+            metric             = stat_name,
+            estimated          = estimated,
+            mean.bootstrap     = mean_boot,
+            SE.bootstrap       = sd_boot,
+            CI.lower.bootstrap = lower,
+            CI.upper.bootstrap = upper,
+            stringsAsFactors   = FALSE
+          )
         }
+
+        out <- do.call(rbind, rows)
+        rownames(out) <- NULL
+        inter_idx_tab <- .round_numcols(out, digits)
       }
     }
   }
 
-  # ------------------ 4) INTERLAYER EDGES (interlayer_edges) ------------------ #
+  # ------------------------------------------------------------------
+  # 4) INTERLAYER EDGES (interlayer_edges)
+  # ------------------------------------------------------------------
   inter_edges_tab <- NULL
-  if ("interlayer_edges" %in% what && is_multi && !is.null(object$interlayer)) {
 
-    # tutti i nomi pairs disponibili (escluso "centrality")
+  if (what == "inter" && is_multi &&
+      isTRUE(want_edges) &&
+      !is.null(object$interlayer)) {
+
     all_pairs <- setdiff(names(object$interlayer), "centrality")
 
     if (is.null(pairs)) {
@@ -527,16 +642,17 @@ summary.mixmashnet <- function(object,
 }
 
 
-#' Print method for \code{"summary.mixmashnet"} objects
+#' Print method for "summary.mixmashnet" objects
 #'
-#' @param x A \code{"summary.mixmashnet"} object as returned by
-#'   \code{summary.mixmashnet()}.
-#' @param digits Number of digits to print.
-#' @param ... Further arguments passed to or from other methods (currently unused).
+#' @param x A "summary.mixmashnet" object
+#' @param digits Number of digits to print
+#' @param top_n Show only the top `top_n` rows per block (ranked by |estimated|).
+#'   Use `Inf` to show all rows (default).
+#' @param ... Unused
 #'
 #' @method print summary.mixmashnet
 #' @export
-print.summary.mixmashnet <- function(x, digits = 3, ...) {
+print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 
   # helper per arrotondare al volo (non tocca l'oggetto originale)
   round_df <- function(df, digits) {
@@ -576,7 +692,7 @@ print.summary.mixmashnet <- function(x, digits = 3, ...) {
 
     cn <- ifelse(cn %in% names(map), map[cn], cn)
 
-    # per il resto, solo estetica: punto -> spazio
+    # estetica: punto -> spazio
     cn <- gsub("\\.", " ", cn)
 
     colnames(df) <- cn
@@ -588,21 +704,28 @@ print.summary.mixmashnet <- function(x, digits = 3, ...) {
     cat("\nNode-level indices (intra-layer):\n")
 
     idx <- round_df(x$index, digits)
-
     metrics_idx <- unique(idx$metric)
+    original_n  <- length(unique(idx$node))
 
     for (met in metrics_idx) {
       sub_met <- idx[idx$metric == met, , drop = FALSE]
       cat("\n  Metric:", met, "\n")
 
-      # ordina per layer, poi node (quando presenti)
       sub_met <- order_by(sub_met, c("layer", "node"))
 
-      # non ristampo la colonna "metric" (già nel titolo)
+      # non ristampo "metric"
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
 
-      # nomi colonne più leggibili
       sub_met <- prettify_colnames(sub_met)
+
+      # --- TOP_N FILTER per intra node metrics ---
+      if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
+        o <- order(abs(sub_met$estimated), decreasing = TRUE)
+        sub_met <- sub_met[o, , drop = FALSE]
+        sub_met <- utils::head(sub_met, top_n)
+        message("    Showing top ", nrow(sub_met), " of ", original_n,
+                " nodes (ranked by |estimated|)")
+      }
 
       print(sub_met, row.names = FALSE)
     }
@@ -614,12 +737,19 @@ print.summary.mixmashnet <- function(x, digits = 3, ...) {
 
     ed <- round_df(x$edges, digits)
 
-    # ordina per layer, poi edge se presenti
     ed <- order_by(ed, c("layer", "edge"))
 
     ed <- prettify_colnames(ed)
 
     cat("\n")
+    # --- TOP_N FILTER per intra edges ---
+    if (is.finite(top_n) && "estimated" %in% colnames(ed)) {
+      o <- order(abs(ed$estimated), decreasing = TRUE)
+      ed <- ed[o, , drop = FALSE]
+      ed <- utils::head(ed, top_n)
+      message("    Showing top ", nrow(ed), " edges (ranked by |estimated|)")
+    }
+
     print(ed, row.names = FALSE)
   }
 
@@ -628,19 +758,28 @@ print.summary.mixmashnet <- function(x, digits = 3, ...) {
     cat("\nInterlayer-only node indices:\n")
 
     idx2 <- round_df(x$interlayer_index, digits)
-
     metrics_int <- unique(idx2$metric)
+    original_n2 <- length(unique(idx2$node))
 
     for (met in metrics_int) {
       sub_met <- idx2[idx2$metric == met, , drop = FALSE]
       cat("\n  Metric:", met, "\n")
 
-      # se in futuro aggiungi una colonna "layer", verrà usata automaticamente
+      # (per ora 'layer' potrebbe mancare, quindi uso solo 'node' se serve)
       sub_met <- order_by(sub_met, c("layer", "node"))
 
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
 
       sub_met <- prettify_colnames(sub_met)
+
+      # --- TOP_N FILTER per interlayer node metrics ---
+      if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
+        o <- order(abs(sub_met$estimated), decreasing = TRUE)
+        sub_met <- sub_met[o, , drop = FALSE]
+        sub_met <- utils::head(sub_met, top_n)
+        message("    Showing top ", nrow(sub_met), " of ", original_n2,
+                " nodes (ranked by |estimated|)")
+      }
 
       print(sub_met, row.names = FALSE)
     }
@@ -659,12 +798,32 @@ print.summary.mixmashnet <- function(x, digits = 3, ...) {
         sub_pp <- order_by(sub_pp, c("pairs", "edge"))
         sub_pp <- prettify_colnames(sub_pp)
         cat("\n  Pair:", pp, "\n")
+
+        # --- TOP_N FILTER per interlayer edges (per pair) ---
+        if (is.finite(top_n) && "estimated" %in% colnames(sub_pp)) {
+          o <- order(abs(sub_pp$estimated), decreasing = TRUE)
+          sub_pp <- sub_pp[o, , drop = FALSE]
+          sub_pp <- utils::head(sub_pp, top_n)
+          message("    Showing top ", nrow(sub_pp),
+                  " edges (ranked by |estimated|)")
+        }
+
         print(sub_pp, row.names = FALSE)
       }
     } else {
       ed2 <- order_by(ed2, c("edge"))
       ed2 <- prettify_colnames(ed2)
       cat("\n")
+
+      # --- TOP_N FILTER per interlayer edges (tutti insieme) ---
+      if (is.finite(top_n) && "estimated" %in% colnames(ed2)) {
+        o <- order(abs(ed2$estimated), decreasing = TRUE)
+        ed2 <- ed2[o, , drop = FALSE]
+        ed2 <- utils::head(ed2, top_n)
+        message("    Showing top ", nrow(ed2),
+                " edges (ranked by |estimated|)")
+      }
+
       print(ed2, row.names = FALSE)
     }
   }

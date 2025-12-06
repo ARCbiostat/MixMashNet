@@ -2,18 +2,20 @@
 % Please edit documentation in R/mixmashnet-summary.R
 \name{print.summary.mixmashnet}
 \alias{print.summary.mixmashnet}
-\title{Print method for \code{"summary.mixmashnet"} objects}
+\title{Print method for "summary.mixmashnet" objects}
 \usage{
-\method{print}{summary.mixmashnet}(x, digits = 3, ...)
+\method{print}{summary.mixmashnet}(x, digits = 3, top_n = Inf, ...)
 }
 \arguments{
-\item{x}{A \code{"summary.mixmashnet"} object as returned by
-\code{summary.mixmashnet()}.}
+\item{x}{A "summary.mixmashnet" object}
 
-\item{digits}{Number of digits to print.}
+\item{digits}{Number of digits to print}
 
-\item{...}{Further arguments passed to or from other methods (currently unused).}
+\item{top_n}{Show only the top \code{top_n} rows per block (ranked by |estimated|).
+Use \code{Inf} to show all rows (default).}
+
+\item{...}{Unused}
 }
 \description{
-Print method for \code{"summary.mixmashnet"} objects
+Print method for "summary.mixmashnet" objects
 }
