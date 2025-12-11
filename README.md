@@ -43,7 +43,7 @@ Load package and example data
 
 ``` r
 library(MixMashNet)
-data(nhgh) # example dataset bundled with the package
+data(nhgh_data) # example dataset bundled with the package
 ```
 
 Data preparation (mixed: continuous + categorical)
@@ -60,42 +60,20 @@ library(dplyr)
 #>     intersect, setdiff, setequal, union
 library(tidyr)
 
+df <- nhgh_data
+
 # Continuous nodes used in the network (will be "g" in mgm)
 cont_vars <- c("wt","ht","bmi","leg","arml","armc","tri","sub","gh","albumin","bun","SCr","age")
 
 # Categorical nodes (will be "c" in mgm)
 cat_vars  <- c("sex","re")
 
-# 1) Select variables and keep complete cases (simple for README)
-df <- nhgh %>%
-  select(all_of(c(cont_vars, cat_vars))) %>%
-  drop_na()
-
-# 2) Ensure proper types before building 'type'/'level'
-#    - categorical as factors (drop unused levels)
-#    - continuous as numeric
-df <- df %>%
-  mutate(
-    across(all_of(cat_vars), ~ droplevels(factor(.))),
-    across(all_of(cont_vars), ~ as.numeric(.))
-  )
 
 # 3) Build 'type' and 'level' vectors (ORDER must match the columns you pass to mgm)
 type  <- c(rep("g", length(cont_vars)), rep("c", length(cat_vars)))
 level <- c(rep(1L, length(cont_vars)),
-           nlevels(df$sex),
-           nlevels(df$re))
-
-# 4) Standardize continuous variables; encode categoricals for mgm:
-#    - 'sex' must be 0/1 (male=0, female=1)
-#    - 're' becomes 1..K (K = number of levels)
-df <- df %>%
-  mutate(
-    across(all_of(cont_vars), ~ as.numeric(scale(.))),
-    sex = as.integer(factor(sex, levels = c("male","female"))) - 1L, # 0/1
-    re  = as.integer(re)                                            # 1..K
-  ) %>%
-  as.data.frame()
+           length(unique(nhgh_data$sex)),
+           length(unique(nhgh_data$re)))
 ```
 
 ### Parallel execution (optional)
