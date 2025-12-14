@@ -711,22 +711,31 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
       sub_met <- idx[idx$metric == met, , drop = FALSE]
       cat("\n  Metric:", met, "\n")
 
+      if (grepl("^bridge_", met) && "estimated" %in% names(sub_met)) {
+        sub_met <- sub_met[!is.na(sub_met$estimated), , drop = FALSE]
+      }
+
+      original_n_met <- length(unique(sub_met$node))
+
+      if (!nrow(sub_met)) {
+        cat("    (no non-NA values to display)\n")
+        next
+      }
+
       sub_met <- order_by(sub_met, c("layer", "node"))
-
-      # non ristampo "metric"
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
-
       sub_met <- prettify_colnames(sub_met)
 
-      # --- TOP_N FILTER per intra node metrics ---
+      # --- TOP_N FILTER ---
       if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
         o <- order(abs(sub_met$estimated), decreasing = TRUE)
         sub_met <- sub_met[o, , drop = FALSE]
         sub_met <- utils::head(sub_met, top_n)
-        message("    Showing top ", nrow(sub_met), " of ", original_n,
-                " nodes (ranked by |estimated|)")
+        message(
+          "    Showing top ", nrow(sub_met), " of ",
+          original_n_met, " nodes (ranked by |estimated|)"
+        )
       }
-
       print(sub_met, row.names = FALSE)
     }
   }
