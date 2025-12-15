@@ -24,6 +24,7 @@ multimixMN(
   threshold = "LW",
   overparameterize = FALSE,
   thresholdCat = TRUE,
+  conf_level = 0.95,
   exclude_from_graph = NULL,
   exclude_from_cluster = NULL,
   seed_model = NULL,
@@ -91,6 +92,9 @@ version of \code{mgm}.}
 
 \item{thresholdCat}{Logical; if \code{FALSE} thresholds of categorical
 variables are set to zero.}
+
+\item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
+Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).}
 
 \item{exclude_from_graph}{Character vector of node names. Nodes in this set
 are excluded from the global graph and from all node-level metrics.}

@@ -1,8 +1,8 @@
-#' Plot bootstrap centrality with 95% CIs (nodes or edges)
+#' Plot bootstrap centrality with CIs (nodes or edges)
 #'
 #' @description
 #' Internal helper used by \code{plot.mixmashnet()} to visualize node and edge
-#' centrality with 95\% bootstrap confidence intervals.
+#' centrality with bootstrap confidence intervals.
 #'
 #' @keywords internal
 #' @noRd
@@ -22,7 +22,7 @@ plotCentrality <- function(
       "bridge_closeness_excluded", "bridge_ei1_excluded", "bridge_ei2_excluded",
       "edges"
     ),
-    title = "Bootstrap Centrality with 95% CI",
+    title = NULL,
     ordering = c("value", "alphabetical", "community"),
     exclude_nodes = NULL,
     standardize = FALSE,
@@ -34,6 +34,23 @@ plotCentrality <- function(
   if (is.null(fit$statistics) || is.null(fit$statistics$node))
     stop("`fit$statistics$node` is missing. Did you run mixMN() with bootstrap?")
 
+  # ---- inherit CI level from fit ----
+  conf_level <- fit$settings$conf_level
+  if (is.null(conf_level) || !is.numeric(conf_level) || length(conf_level) != 1L ||
+      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
+    conf_level <- 0.95
+  }
+  alpha <- (1 - conf_level) / 2
+  p_lo  <- alpha
+  p_hi  <- 1 - alpha
+  lab_lo <- paste0(formatC(100 * p_lo, format = "f", digits = 1), "%")
+  lab_hi <- paste0(formatC(100 * p_hi, format = "f", digits = 1), "%")
+
+  ci_txt <- paste0(round(100 * conf_level), "% CI")
+
+  if (is.null(title)) {
+    title <- paste0("Bootstrap Centrality with ", ci_txt)
+  }
 
   statistics  <- match.arg(statistics, several.ok = TRUE)
   ordering <- match.arg(ordering, choices = c("value","alphabetical","community"))
@@ -78,6 +95,36 @@ plotCentrality <- function(
     edges = "edges"
   )
 
+  .pick_ci_cols <- function(ci_mat, ids, lab_lo, lab_hi) {
+    if (is.null(ci_mat)) return(list(lower = rep(NA_real_, length(ids)),
+                                     upper = rep(NA_real_, length(ids))))
+    ci_mat <- as.matrix(ci_mat)
+    if (!is.null(rownames(ci_mat))) {
+      ci_mat <- ci_mat[match(ids, rownames(ci_mat)), , drop = FALSE]
+    }
+    rownames(ci_mat) <- NULL
+    cn <- colnames(ci_mat)
+    # 1) standard "x%" columns
+    if (!is.null(cn) && all(c(lab_lo, lab_hi) %in% cn)) {
+      return(list(lower = as.numeric(ci_mat[, lab_lo]),
+                  upper = as.numeric(ci_mat[, lab_hi])))
+    }
+    # 2) allow "lower"/"upper"
+    if (!is.null(cn) && all(c("lower", "upper") %in% cn)) {
+      return(list(lower = as.numeric(ci_mat[, "lower"]),
+                  upper = as.numeric(ci_mat[, "upper"])))
+    }
+
+    if (ncol(ci_mat) >= 2) {
+      return(list(lower = as.numeric(ci_mat[, 1]),
+                  upper = as.numeric(ci_mat[, 2])))
+    }
+
+    list(lower = rep(NA_real_, length(ids)),
+         upper = rep(NA_real_, length(ids)))
+  }
+
+
   df_all <- list()
 
   for (statistic in statistics) {
@@ -90,16 +137,18 @@ plotCentrality <- function(
 
       edges_true <- edges_true[edges_true$weight != 0, , drop = FALSE]
 
-      ci <- ci[match(edges_true$edge, rownames(ci)), , drop = FALSE]
+      edge_set <- edges_true$edge
+      ci_pair <- .pick_ci_cols(ci, edge_set, lab_lo, lab_hi)
 
       df <- data.frame(
-        node = edges_true$edge,
+        node = edge_set,
         observed = edges_true$weight,
-        lower = ci[, "2.5%"],
-        upper = ci[, "97.5%"],
+        lower = ci_pair$lower,
+        upper = ci_pair$upper,
         statistic = "edges",
         community = NA
       )
+
       df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA, df$lower <= 0 & df$upper >= 0)
 
       if (!is.null(edges_top_n) && is.finite(edges_top_n) && edges_top_n > 0) {
@@ -160,31 +209,15 @@ plotCentrality <- function(
                        bridge_ei1_excluded         = fit$statistics$node$boot$bridge_ei1_excluded,
                        bridge_ei2_excluded         = fit$statistics$node$boot$bridge_ei2_excluded)
 
-    ci <- fit$statistics$node$ci[[statistic]]
     if (is.null(mat_boot) || ncol(mat_boot) == 0) {
       stop(sprintf("Bootstrap matrix for statistic '%s' is empty or NULL.", statistic))
     }
-
     node_set <- colnames(mat_boot)
 
-    ## --- allinea e PULISCI i CI ---
-    if (!is.null(ci)) {
-      ci <- as.matrix(ci)
-
-      # riordina le righe secondo node_set (se possibile)
-      if (!is.null(rownames(ci))) {
-        ci <- ci[match(node_set, rownames(ci)), , drop = FALSE]
-      }
-
-      # togli completamente i rownames per evitare che finiscano come row.names del data.frame
-      rownames(ci) <- NULL
-
-      lower_vec <- as.numeric(ci[, "2.5%"])
-      upper_vec <- as.numeric(ci[, "97.5%"])
-    } else {
-      lower_vec <- rep(NA_real_, length(node_set))
-      upper_vec <- rep(NA_real_, length(node_set))
-    }
+    ci <- fit$statistics$node$ci[[statistic]]
+    ci_pair <- .pick_ci_cols(ci, node_set, lab_lo, lab_hi)
+    lower_vec <- ci_pair$lower
+    upper_vec <- ci_pair$upper
 
     ## --- osservati e community ---
     ct_filtered <- fit$statistics$node$true %>%
@@ -353,10 +386,13 @@ plotCentrality <- function(
     ggplot2::labs(
       title = title,
       subtitle = if (standardize)
-        "Gray error bars indicate confidence intervals that include zero in the non-standardized scale."
+        paste0("Gray error bars indicate confidence intervals that include zero in the non-standardized scale. (", ci_txt, ")")
       else NULL,
       x = x_lab,
-      y = if (standardize) "Z-score of estimated value with 95% CI" else "Estimated value with 95% CI"
+      y = if (standardize)
+        paste0("Z-score of estimated value with ", ci_txt)
+      else
+        paste0("Estimated value with ", ci_txt)
     ) +
     ggplot2::facet_wrap(~ statistic, ncol = length(statistics), scales = "free_x") +
     ggplot2::theme_minimal() +

@@ -69,6 +69,19 @@ summary.mixmashnet <- function(object,
 
   is_multi <- inherits(object, "multimixMN_fit")
 
+  .get_conf_level <- function(fit, default = 0.95) {
+    cl <- fit$settings$conf_level
+    if (is.null(cl) || !is.numeric(cl) || length(cl) != 1L ||
+        is.na(cl) || cl <= 0 || cl >= 1) cl <- default
+    cl
+  }
+
+  # quantile probs from conf_level
+  .ci_probs <- function(conf_level) {
+    alpha <- (1 - conf_level) / 2
+    c(alpha, 1 - alpha)
+  }
+
   if (missing(what)) {
     if (!is_multi) {
       what <- "intra"
@@ -170,6 +183,9 @@ summary.mixmashnet <- function(object,
     df
   }
 
+  conf_level <- .get_conf_level(object, default = 0.95)
+  pr_global  <- .ci_probs(conf_level)
+
   # ------------------------------------------------------------------
   # 1) INTRA-LAYER NODE-LEVEL INDICES (index)
   # ------------------------------------------------------------------
@@ -186,25 +202,34 @@ summary.mixmashnet <- function(object,
 
       nodes <- as.character(true_df$node)
 
-      metrics_block <- intersect(stats_names, setdiff(colnames(true_df), "node"))
+      # mapping statistic name -> column name in true_df / boot_list / ci_list
+      map_intra <- c(
+        expected_influence = "ei1"
+      )
+
+      metrics_block <- stats_names[
+        stats_names %in% setdiff(colnames(true_df), "node") |
+          stats_names %in% names(map_intra)
+      ]
       if (!length(metrics_block)) return(NULL)
 
       rows <- vector("list", length(metrics_block))
 
       for (k in seq_along(metrics_block)) {
         met <- metrics_block[k]
+        met_col <- if (met %in% names(map_intra)) map_intra[[met]] else met
 
-        estimated <- true_df[[met]]
+        estimated <- true_df[[met_col]]
 
         mean_boot <- sd_boot <- rep(NA_real_, length(nodes))
         lower     <- upper   <- rep(NA_real_, length(nodes))
 
         # bootstrap (if available)
         if (!is.null(boot_list) &&
-            !is.null(boot_list[[met]]) &&
-            is.matrix(boot_list[[met]])) {
+            !is.null(boot_list[[met_col]]) &&
+            is.matrix(boot_list[[met_col]])) {
 
-          boot_mat <- boot_list[[met]]
+          boot_mat <- boot_list[[met_col]]
           # ensure columns are named by nodes
           if (is.null(colnames(boot_mat))) {
             colnames(boot_mat) <- nodes[seq_len(min(ncol(boot_mat), length(nodes)))]
@@ -348,10 +373,10 @@ summary.mixmashnet <- function(object,
         mean_boot <- rowMeans(boot_full, na.rm = TRUE)
         sd_boot   <- apply(boot_full, 1, stats::sd, na.rm = TRUE)
 
-        lower <- apply(boot_full, 1, stats::quantile,
-                       probs = 0.025, na.rm = TRUE, type = 6)
-        upper <- apply(boot_full, 1, stats::quantile,
-                       probs = 0.975, na.rm = TRUE, type = 6)
+        pr <- .ci_probs(conf_level)
+        lower <- apply(boot_full, 1, stats::quantile, probs = pr[1], na.rm = TRUE, type = 6)
+        upper <- apply(boot_full, 1, stats::quantile, probs = pr[2], na.rm = TRUE, type = 6)
+
       }
 
       out <- data.frame(
@@ -433,7 +458,7 @@ summary.mixmashnet <- function(object,
       )
       stat_to_ci <- c(
         strength           = "strength",
-        expected_influence = "expected_influence",
+        expected_influence = "ei1",
         closeness          = "closeness",
         betweenness        = "betweenness"
       )
@@ -598,10 +623,8 @@ summary.mixmashnet <- function(object,
         mean_boot <- rowMeans(boot_full, na.rm = TRUE)
         sd_boot   <- apply(boot_full, 1, stats::sd, na.rm = TRUE)
 
-        lower <- apply(boot_full, 1, stats::quantile,
-                       probs = 0.025, na.rm = TRUE, type = 6)
-        upper <- apply(boot_full, 1, stats::quantile,
-                       probs = 0.975, na.rm = TRUE, type = 6)
+        lower <- apply(boot_full, 1, stats::quantile, probs = pr_global[1], na.rm = TRUE, type = 6)
+        upper <- apply(boot_full, 1, stats::quantile, probs = pr_global[2], na.rm = TRUE, type = 6)
       }
 
       out <- data.frame(
@@ -635,7 +658,8 @@ summary.mixmashnet <- function(object,
     index            = index_tab,
     edges            = edges_tab,
     interlayer_index = inter_idx_tab,
-    interlayer_edges = inter_edges_tab
+    interlayer_edges = inter_edges_tab,
+    conf_level       = if (is_multi) .get_conf_level(object) else .get_conf_level(object)
   )
   class(out) <- c("summary.mixmashnet", "list")
   out
@@ -677,24 +701,21 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
   }
 
   # helper per rendere i nomi delle colonne più leggibili in stampa
-  prettify_colnames <- function(df) {
+  prettify_colnames <- function(df, conf_level = 0.95) {
     if (is.null(df) || !nrow(df)) return(df)
 
-    cn <- colnames(df)
+    ci_pct <- paste0(round(100 * conf_level), "%")
 
-    # mapping esplicito per le colonne bootstrap
     map <- c(
       "mean.bootstrap"      = "mean (bootstrap)",
       "SE.bootstrap"        = "SE (bootstrap)",
-      "CI.lower.bootstrap"  = "95% CI lower (bootstrap)",
-      "CI.upper.bootstrap"  = "95% CI upper (bootstrap)"
+      "CI.lower.bootstrap"  = paste0(ci_pct, " CI lower (bootstrap)"),
+      "CI.upper.bootstrap"  = paste0(ci_pct, " CI upper (bootstrap)")
     )
 
+    cn <- colnames(df)
     cn <- ifelse(cn %in% names(map), map[cn], cn)
-
-    # estetica: punto -> spazio
     cn <- gsub("\\.", " ", cn)
-
     colnames(df) <- cn
     df
   }
@@ -722,9 +743,9 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
         next
       }
 
-      sub_met <- order_by(sub_met, c("layer", "node"))
+      sub_met <- order_by(sub_met, c("node"))
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
-      sub_met <- prettify_colnames(sub_met)
+      sub_met <- prettify_colnames(sub_met, conf_level = x$conf_level %||% 0.95)
 
       # --- TOP_N FILTER ---
       if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
@@ -748,7 +769,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 
     ed <- order_by(ed, c("layer", "edge"))
 
-    ed <- prettify_colnames(ed)
+    ed <- prettify_colnames(ed, conf_level = x$conf_level %||% 0.95)
 
     cat("\n")
     # --- TOP_N FILTER per intra edges ---
@@ -779,7 +800,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
 
-      sub_met <- prettify_colnames(sub_met)
+      sub_met <- prettify_colnames(sub_met, conf_level = x$conf_level %||% 0.95)
 
       # --- TOP_N FILTER per interlayer node metrics ---
       if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
@@ -805,7 +826,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
       for (pp in pairs_vals) {
         sub_pp <- ed2[ed2$pairs == pp, , drop = FALSE]
         sub_pp <- order_by(sub_pp, c("pairs", "edge"))
-        sub_pp <- prettify_colnames(sub_pp)
+        sub_pp <- prettify_colnames(sub_pp, conf_level = x$conf_level %||% 0.95)
         cat("\n  Pair:", pp, "\n")
 
         # --- TOP_N FILTER per interlayer edges (per pair) ---
@@ -821,7 +842,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
       }
     } else {
       ed2 <- order_by(ed2, c("edge"))
-      ed2 <- prettify_colnames(ed2)
+      ed2 <- prettify_colnames(ed2, conf_level = x$conf_level %||% 0.95)
       cat("\n")
 
       # --- TOP_N FILTER per interlayer edges (tutti insieme) ---

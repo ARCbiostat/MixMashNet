@@ -23,6 +23,7 @@ mixMN(
   threshold = "LW",
   overparameterize = FALSE,
   thresholdCat = TRUE,
+  conf_level = 0.95,
   exclude_from_graph = NULL,
   exclude_from_cluster = NULL,
   treat_singletons_as_excluded = FALSE,
@@ -73,6 +74,9 @@ version of \code{mgm}.}
 \item{thresholdCat}{Logical; if \code{FALSE} thresholds of categorical
 variables are set to zero.}
 
+\item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
+Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).}
+
 \item{exclude_from_graph}{Character vector. Nodes excluded from the graph and
 from all node-level metrics.}
 
@@ -92,7 +96,7 @@ absolute adjacency matrix:
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
 \item{compute_community_scores}{Logical; if \code{TRUE}, compute community
-network scores (EGAnet \code{std.scores}) with 95\\% CIs and bootstrap
+network scores (EGAnet \code{std.scores}) with CIs and bootstrap
 arrays.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
@@ -172,7 +176,7 @@ from communities also
 \code{boot} (list of bootstrap matrices for each metric, each of
 dimension \code{reps × length(keep_nodes_graph)}, possibly \code{NULL}
 if the metric was not requested or if \code{reps = 0}); and
-\code{ci} (list of percentile 95\\% CIs for each node metric, one
+\code{ci} (list of CIs for each node metric, one
 \code{p × 2} matrix per metric, with columns \code{2.5\%} and
 \code{97.5\%}, or \code{NULL} if no bootstrap was performed).
 
@@ -181,7 +185,7 @@ if the metric was not requested or if \code{reps = 0}); and
 all unique undirected edges among \code{keep_nodes_graph});
 \code{boot} (matrix of bootstrap edge weights of dimension
 \code{n_edges × reps}); and
-\code{ci} (matrix of 95\\\% CIs for edge weights,
+\code{ci} (matrix of CIs for edge weights,
 \code{n_edges × 2}, with columns \code{2.5\%} and \code{97.5\%}, or
 \code{NULL} if \code{reps = 0}).
 }\if{html}{\out{</div>}}
@@ -195,7 +199,7 @@ score computation failed),
 \code{df} (data frame with subject IDs in column \code{id} and
 standardized community scores in the remaining columns),
 \code{ci} (list with \code{lower} and \code{upper} matrices,
-subjects × communities, with 95\\% CIs for community scores, or
+subjects × communities, with CIs for community scores, or
 \code{NULL} if no bootstrap was performed), and
 \code{boot} (list of data frames, one per bootstrap replication, with
 community scores, or \code{NULL} if \code{"community_scores"} was not

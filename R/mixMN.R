@@ -29,6 +29,8 @@
 #'   version of \code{mgm}.
 #' @param thresholdCat Logical; if \code{FALSE} thresholds of categorical
 #'   variables are set to zero.
+#' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
+#'   Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
 #' @param exclude_from_graph Character vector. Nodes excluded from the graph and
 #'   from all node-level metrics.
 #' @param exclude_from_cluster Character vector. Nodes excluded from community
@@ -43,7 +45,7 @@
 #'   \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
 #' @param compute_community_scores Logical; if \code{TRUE}, compute community
-#'   network scores (EGAnet \code{std.scores}) with 95\% CIs and bootstrap
+#'   network scores (EGAnet \code{std.scores}) with CIs and bootstrap
 #'   arrays.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Can include:
@@ -121,7 +123,7 @@
 #'     \code{boot} (list of bootstrap matrices for each metric, each of
 #'     dimension \code{reps × length(keep_nodes_graph)}, possibly \code{NULL}
 #'     if the metric was not requested or if \code{reps = 0}); and
-#'     \code{ci} (list of percentile 95\% CIs for each node metric, one
+#'     \code{ci} (list of CIs for each node metric, one
 #'     \code{p × 2} matrix per metric, with columns \code{2.5\%} and
 #'     \code{97.5\%}, or \code{NULL} if no bootstrap was performed).
 #'
@@ -130,7 +132,7 @@
 #'     all unique undirected edges among \code{keep_nodes_graph});
 #'     \code{boot} (matrix of bootstrap edge weights of dimension
 #'     \code{n_edges × reps}); and
-#'     \code{ci} (matrix of 95\% CIs for edge weights,
+#'     \code{ci} (matrix of CIs for edge weights,
 #'     \code{n_edges × 2}, with columns \code{2.5\%} and \code{97.5\%}, or
 #'     \code{NULL} if \code{reps = 0}).
 #'   }
@@ -142,7 +144,7 @@
 #'     \code{df} (data frame with subject IDs in column \code{id} and
 #'     standardized community scores in the remaining columns),
 #'     \code{ci} (list with \code{lower} and \code{upper} matrices,
-#'     subjects × communities, with 95\% CIs for community scores, or
+#'     subjects × communities, with CIs for community scores, or
 #'     \code{NULL} if no bootstrap was performed), and
 #'     \code{boot} (list of data frames, one per bootstrap replication, with
 #'     community scores, or \code{NULL} if \code{"community_scores"} was not
@@ -186,6 +188,7 @@ mixMN <- function(
     threshold = "LW",
     overparameterize = FALSE,
     thresholdCat = TRUE,
+    conf_level = 0.95,
     exclude_from_graph = NULL,
     exclude_from_cluster = NULL,
     treat_singletons_as_excluded = FALSE,
@@ -208,6 +211,15 @@ mixMN <- function(
     rownames(data) <- sprintf("id_%d", seq_len(nrow(data)))
   }
   subject_ids <- rownames(data)
+
+  # confidence interval
+  if (!is.numeric(conf_level) || length(conf_level) != 1L ||
+      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
+    stop("`conf_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
+  }
+  alpha <- 1 - conf_level
+  probs <- c(alpha/2, 1 - alpha/2)
+
 
   # ---- helpers ----
   tiny <- 1e-10
@@ -949,11 +961,14 @@ mixMN <- function(
       names(community_scores_boot_list) <- reps_names
     }
 
-    ## funzione di CI
-    calc_ci <- function(mat) {
+    ## CI function
+    calc_ci <- function(mat, probs) {
       ci <- apply(mat, 2, function(x) {
-        if (all(is.na(x))) c(`2.5%` = NA_real_, `97.5%` = NA_real_)
-        else stats::quantile(x, probs = c(0.025, 0.975), na.rm = TRUE)
+        if (all(is.na(x))) {
+          setNames(c(NA_real_, NA_real_), paste0(100*probs, "%"))
+        } else {
+          stats::quantile(x, probs = probs, na.rm = TRUE, names = TRUE)
+        }
       })
       t(ci)
     }
@@ -961,40 +976,41 @@ mixMN <- function(
     ci_results <- list()
 
     if (isTRUE(do_general_boot) && !is.null(strength_boot)) {
-      ci_results$strength           <- calc_ci(strength_boot)
-      ci_results$expected_influence <- calc_ci(ei1_boot)
-      ci_results$closeness          <- calc_ci(closeness_boot)
-      ci_results$betweenness        <- calc_ci(betweenness_boot)
+      ci_results$strength           <- calc_ci(strength_boot, probs)
+      ci_results$expected_influence <- calc_ci(ei1_boot, probs)
+      ci_results$closeness          <- calc_ci(closeness_boot, probs)
+      ci_results$betweenness        <- calc_ci(betweenness_boot, probs)
     }
 
     if (isTRUE(do_bridge_boot) && !is.null(bridge_strength_boot)) {
-      ci_results$bridge_strength    <- calc_ci(bridge_strength_boot)
-      ci_results$bridge_betweenness <- calc_ci(bridge_betweenness_boot)
-      ci_results$bridge_closeness   <- calc_ci(bridge_closeness_boot)
-      ci_results$bridge_ei1         <- calc_ci(bridge_ei1_boot)
-      ci_results$bridge_ei2         <- calc_ci(bridge_ei2_boot)
+      ci_results$bridge_strength    <- calc_ci(bridge_strength_boot, probs)
+      ci_results$bridge_betweenness <- calc_ci(bridge_betweenness_boot, probs)
+      ci_results$bridge_closeness   <- calc_ci(bridge_closeness_boot, probs)
+      ci_results$bridge_ei1         <- calc_ci(bridge_ei1_boot, probs)
+      ci_results$bridge_ei2         <- calc_ci(bridge_ei2_boot, probs)
     }
 
     if (isTRUE(do_excluded_boot) && !is.null(bridge_strength_excl_boot)) {
-      ci_results$bridge_strength_excluded    <- calc_ci(bridge_strength_excl_boot)
-      ci_results$bridge_betweenness_excluded <- calc_ci(bridge_betweenness_excl_boot)
-      ci_results$bridge_closeness_excluded   <- calc_ci(bridge_closeness_excl_boot)
-      ci_results$bridge_ei1_excluded         <- calc_ci(bridge_ei1_excl_boot)
-      ci_results$bridge_ei2_excluded         <- calc_ci(bridge_ei2_excl_boot)
+      ci_results$bridge_strength_excluded    <- calc_ci(bridge_strength_excl_boot, probs)
+      ci_results$bridge_betweenness_excluded <- calc_ci(bridge_betweenness_excl_boot, probs)
+      ci_results$bridge_closeness_excluded   <- calc_ci(bridge_closeness_excl_boot, probs)
+      ci_results$bridge_ei1_excluded         <- calc_ci(bridge_ei1_excl_boot, probs)
+      ci_results$bridge_ei2_excluded         <- calc_ci(bridge_ei2_excl_boot, probs)
     }
 
     ## edges sempre
-    ci_results$edge_weights <- calc_ci(t(edge_boot_mat))
+    ci_results$edge_weights <- calc_ci(t(edge_boot_mat), probs)
 
     ## Community score CIs
     if (isTRUE(do_comm_scores_boot) && !is.null(community_scores_true)) {
       qfun <- function(x, p) if (all(is.na(x))) NA_real_ else stats::quantile(x, probs = p, na.rm = TRUE)
-      cs_ci_low  <- apply(community_scores_boot_arr, c(2, 3), qfun, p = 0.025)
-      cs_ci_high <- apply(community_scores_boot_arr, c(2, 3), qfun, p = 0.975)
+      cs_ci_low  <- apply(community_scores_boot_arr, c(2, 3), qfun, p = probs[1])
+      cs_ci_high <- apply(community_scores_boot_arr, c(2, 3), qfun, p = probs[2])
       dimnames(cs_ci_low)  <- dimnames(community_scores_true)
       dimnames(cs_ci_high) <- dimnames(community_scores_true)
       community_scores_ci <- list(lower = cs_ci_low, upper = cs_ci_high)
     }
+
   } # end if reps > 0
 
   edges_true_df <- data.frame(edge = edge_names, weight = edge_mat_true, row.names = NULL)
@@ -1058,7 +1074,8 @@ mixMN <- function(
       exclude_from_graph           = exclude_from_graph,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
-      boot_what                    = boot_what
+      boot_what                    = boot_what,
+      conf_level = conf_level
     ),
 
     model = list(

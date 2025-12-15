@@ -45,6 +45,8 @@
 #'   version of \code{mgm}.
 #' @param thresholdCat Logical; if \code{FALSE} thresholds of categorical
 #'   variables are set to zero.
+#' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
+#'   Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
 #' @param exclude_from_graph Character vector of node names. Nodes in this set
 #'   are excluded from the global graph and from all node-level metrics.
 #' @param exclude_from_cluster Character vector of node names. Nodes in this set
@@ -138,6 +140,7 @@ multimixMN <- function(
     alphaFolds = 5, alphaGam = 0.25,
     k = 2, ruleReg = "AND", threshold = "LW",
     overparameterize = FALSE, thresholdCat = TRUE,
+    conf_level = 0.95,
     exclude_from_graph = NULL,
     exclude_from_cluster = NULL,
     seed_model = NULL, seed_boot = NULL,
@@ -151,6 +154,14 @@ multimixMN <- function(
   lambdaSel <- match.arg(lambdaSel)
   cluster_method <- match.arg(cluster_method)
   if (!is.null(seed_model)) set.seed(seed_model)
+
+  # confidence interval
+  if (!is.numeric(conf_level) || length(conf_level) != 1L ||
+      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
+    stop("`conf_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
+  }
+  alpha <- 1 - conf_level
+  probs <- c(alpha/2, 1 - alpha/2)
 
   # --- parse 'boot_what' argument ---
   boot_what <- match.arg(
@@ -248,11 +259,15 @@ multimixMN <- function(
     D <- igraph::distances(g, weights = igraph::E(g)$dist); diag(D) <- NA
     cl <- rowSums(1/D, na.rm=TRUE) / (nrow(D)-1); names(cl) <- igraph::V(g)$name; cl
   }
-  .calc_ci <- function(mat) {
+  .calc_ci <- function(mat, probs) {
     if (is.null(mat)) return(NULL)
-    ci <- apply(mat, 2, function(x)
-      if (all(is.na(x))) c(`2.5%`=NA_real_, `97.5%`=NA_real_)
-      else stats::quantile(x, probs=c(0.025,0.975), na.rm=TRUE))
+    ci <- apply(mat, 2, function(x) {
+      if (all(is.na(x))) {
+        setNames(c(NA_real_, NA_real_), paste0(100*probs, "%"))
+      } else {
+        stats::quantile(x, probs = probs, na.rm = TRUE, names = TRUE)
+      }
+    })
     t(ci)
   }
   .edge_names_lt <- function(nodes) utils::combn(nodes, 2, FUN=function(x) paste(x[1],x[2],sep="--"))
@@ -329,6 +344,7 @@ multimixMN <- function(
     sub_w <- wadj_signed[nL, nL, drop=FALSE]
     fitL <- mixMN_from_wadj(
       wadj_signed = sub_w, nodes = nL,
+      conf_level = conf_level,
       exclude_from_graph   = NULL,
       exclude_from_cluster = intersect(exclude_from_cluster, nL),
       cluster_method = cluster_method,
@@ -964,46 +980,46 @@ multimixMN <- function(
 
     ci_list <- list(
       strength           = if (do_intra_general_boot && !is.null(LB$strength_boot))
-        .calc_ci(LB$strength_boot) else NULL,
+        .calc_ci(LB$strength_boot, probs) else NULL,
       expected_influence = if (do_intra_general_boot && !is.null(LB$ei1_boot))
-        .calc_ci(LB$ei1_boot) else NULL,
+        .calc_ci(LB$ei1_boot, probs) else NULL,
       closeness          = if (do_intra_general_boot && !is.null(LB$closeness_boot))
-        .calc_ci(LB$closeness_boot) else NULL,
+        .calc_ci(LB$closeness_boot, probs) else NULL,
       betweenness        = if (do_intra_general_boot && !is.null(LB$betweenness_boot))
-        .calc_ci(LB$betweenness_boot) else NULL,
+        .calc_ci(LB$betweenness_boot, probs) else NULL,
 
       edge_weights       = if (!is.null(LB$edge_boot_mat))
-        .calc_ci(t(LB$edge_boot_mat)) else NULL,
+        .calc_ci(t(LB$edge_boot_mat), probs) else NULL,
 
       bridge_strength    = if (do_bridge_boot && !is.null(LB$bridge_strength_boot))
-        .calc_ci(LB$bridge_strength_boot) else NULL,
+        .calc_ci(LB$bridge_strength_boot, probs) else NULL,
       bridge_betweenness = if (do_bridge_boot && !is.null(LB$bridge_betweenness_boot))
-        .calc_ci(LB$bridge_betweenness_boot) else NULL,
+        .calc_ci(LB$bridge_betweenness_boot, probs) else NULL,
       bridge_closeness   = if (do_bridge_boot && !is.null(LB$bridge_closeness_boot))
-        .calc_ci(LB$bridge_closeness_boot) else NULL,
+        .calc_ci(LB$bridge_closeness_boot, probs) else NULL,
       bridge_ei1         = if (do_bridge_boot && !is.null(LB$bridge_ei1_boot))
-        .calc_ci(LB$bridge_ei1_boot) else NULL,
+        .calc_ci(LB$bridge_ei1_boot, probs) else NULL,
       bridge_ei2         = if (do_bridge_boot && !is.null(LB$bridge_ei2_boot))
-        .calc_ci(LB$bridge_ei2_boot) else NULL,
+        .calc_ci(LB$bridge_ei2_boot, probs) else NULL,
 
       bridge_strength_excluded    = if (do_excluded_boot && !is.null(LB$bridge_strength_excl_boot))
-        .calc_ci(LB$bridge_strength_excl_boot) else NULL,
+        .calc_ci(LB$bridge_strength_excl_boot, probs) else NULL,
       bridge_betweenness_excluded = if (do_excluded_boot && !is.null(LB$bridge_betweenness_excl_boot))
-        .calc_ci(LB$bridge_betweenness_excl_boot) else NULL,
+        .calc_ci(LB$bridge_betweenness_excl_boot, probs) else NULL,
       bridge_closeness_excluded   = if (do_excluded_boot && !is.null(LB$bridge_closeness_excl_boot))
-        .calc_ci(LB$bridge_closeness_excl_boot) else NULL,
+        .calc_ci(LB$bridge_closeness_excl_boot, probs) else NULL,
       bridge_ei1_excluded         = if (do_excluded_boot && !is.null(LB$bridge_ei1_excl_boot))
-        .calc_ci(LB$bridge_ei1_excl_boot) else NULL,
+        .calc_ci(LB$bridge_ei1_excl_boot, probs) else NULL,
       bridge_ei2_excluded         = if (do_excluded_boot && !is.null(LB$bridge_ei2_excl_boot))
-        .calc_ci(LB$bridge_ei2_excl_boot) else NULL,
+        .calc_ci(LB$bridge_ei2_excl_boot, probs) else NULL,
 
       community_scores = {
         CSB <- LB$community_scores_boot
         if (isTRUE(do_comm_scores_boot) && !is.null(CSB)) {
           qfun <- function(x, p) if (all(is.na(x))) NA_real_ else
             stats::quantile(x, probs = p, na.rm = TRUE)
-          low  <- apply(CSB, c(2, 3), qfun, p = 0.025)
-          up   <- apply(CSB, c(2, 3), qfun, p = 0.975)
+          low <- apply(CSB, c(2, 3), qfun, p = probs[1])
+          up  <- apply(CSB, c(2, 3), qfun, p = probs[2])
           list(lower = low, upper = up)
         } else NULL
       }
@@ -1083,7 +1099,7 @@ multimixMN <- function(
     )
 
     eb <- interlayer_boot[[key]]
-    ci_edges <- if (!is.null(eb)) .calc_ci(t(eb)) else NULL
+    ci_edges <- if (!is.null(eb)) .calc_ci(t(eb), probs) else NULL
 
     interlayer_fits[[key]] <- list(
       edges   = list(
@@ -1105,13 +1121,13 @@ multimixMN <- function(
   )
   inter_node_ci <- list(
     strength_interlayer    = if (do_interlayer_boot && !is.null(inter_strength_boot))
-      .calc_ci(inter_strength_boot) else NULL,
+      .calc_ci(inter_strength_boot, probs) else NULL,
     ei1_interlayer         = if (do_interlayer_boot && !is.null(inter_ei1_boot))
-      .calc_ci(inter_ei1_boot) else NULL,
+      .calc_ci(inter_ei1_boot, probs) else NULL,
     closeness_interlayer   = if (do_interlayer_boot && !is.null(inter_closeness_boot))
-      .calc_ci(inter_closeness_boot) else NULL,
+      .calc_ci(inter_closeness_boot, probs) else NULL,
     betweenness_interlayer = if (do_interlayer_boot && !is.null(inter_betweenness_boot))
-      .calc_ci(inter_betweenness_boot) else NULL
+      .calc_ci(inter_betweenness_boot, probs) else NULL
   )
   inter_centrality_true <- data.frame(
     node        = inter_node_true$node,
@@ -1193,7 +1209,8 @@ multimixMN <- function(
       exclude_from_graph           = exclude_from_graph,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
-      boot_what                    = boot_what
+      boot_what                    = boot_what,
+      conf_level = conf_level
     ),
 
     model = list(

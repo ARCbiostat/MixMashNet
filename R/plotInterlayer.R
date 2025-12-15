@@ -41,7 +41,7 @@ interlayerPairs <- function(object) {
 }
 
 
-#' Plot interlayer node metrics or interlayer edge weights with 95% CIs
+#' Plot interlayer node metrics or interlayer edge weights with CIs
 #'
 #' @description
 #' Internal helper used by \code{plot.mixmashnet()} to visualize interlayer
@@ -100,11 +100,55 @@ plotInterlayer <- function(
     }, character(1))
   }
 
+  # ---- inherit CI level from fit ----
+  conf_level <- fit_multi$settings$conf_level
+  if (is.null(conf_level) || !is.numeric(conf_level) || length(conf_level) != 1L ||
+      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
+    conf_level <- 0.95
+  }
+  ci_txt <- paste0(round(100 * conf_level), "% CI")
+
+  alpha <- (1 - conf_level) / 2
+  p_lo  <- alpha
+  p_hi  <- 1 - alpha
+  lab_lo <- paste0(formatC(100 * p_lo, format = "f", digits = 1), "%")
+  lab_hi <- paste0(formatC(100 * p_hi, format = "f", digits = 1), "%")
+
+  .pick_ci_cols <- function(ci_mat, ids, lab_lo, lab_hi) {
+    if (is.null(ci_mat)) return(list(lower = rep(NA_real_, length(ids)),
+                                     upper = rep(NA_real_, length(ids))))
+    ci_mat <- as.matrix(ci_mat)
+
+    if (!is.null(rownames(ci_mat))) {
+      ci_mat <- ci_mat[match(ids, rownames(ci_mat)), , drop = FALSE]
+    }
+    rownames(ci_mat) <- NULL
+    cn <- colnames(ci_mat)
+    if (!is.null(cn) && all(c(lab_lo, lab_hi) %in% cn)) {
+      return(list(lower = as.numeric(ci_mat[, lab_lo]),
+                  upper = as.numeric(ci_mat[, lab_hi])))
+    }
+    if (!is.null(cn) && all(c("2.5%", "97.5%") %in% cn)) {
+      return(list(lower = as.numeric(ci_mat[, "2.5%"]),
+                  upper = as.numeric(ci_mat[, "97.5%"])))
+    }
+    if (!is.null(cn) && all(c("lower", "upper") %in% cn)) {
+      return(list(lower = as.numeric(ci_mat[, "lower"]),
+                  upper = as.numeric(ci_mat[, "upper"])))
+    }
+    if (ncol(ci_mat) >= 2) {
+      return(list(lower = as.numeric(ci_mat[, 1]),
+                  upper = as.numeric(ci_mat[, 2])))
+    }
+    list(lower = rep(NA_real_, length(ids)),
+         upper = rep(NA_real_, length(ids)))
+  }
+
   # ---------- NODE METRICS BRANCH ----------
   if (types_selected["node"]) {
     # Title default for nodes
     if (is.null(title)) {
-      title <- "Interlayer node metrics (95% CI)"
+      title <- paste0("Interlayer node metrics (", ci_txt, ")")
     }
 
     ct <- interlayer$centrality$true
@@ -143,15 +187,14 @@ plotInterlayer <- function(
       internal <- name_map[[m]]
 
       ci <- ci_all[[internal]]
-      if (is.null(ci)) return(NULL)
-      ci <- ci[match(ct$node, rownames(ci)), , drop = FALSE]
+      ci_pair <- .pick_ci_cols(ci, ct$node, lab_lo, lab_hi)
 
       data.frame(
         node     = ct$node,
         metric   = m,
         observed = ct[[internal]],
-        lower    = ci[, "2.5%"],
-        upper    = ci[, "97.5%"],
+        lower    = ci_pair$lower,
+        upper    = ci_pair$upper,
         stringsAsFactors = FALSE
       )
     })
@@ -211,7 +254,7 @@ plotInterlayer <- function(
       ggplot2::labs(
         title = title,
         x = "Nodes",
-        y = if (standardize) "Z-score (95% CI)" else "Estimated (95% CI)"
+        y = if (standardize) paste0("Z-score (", ci_txt, ")") else paste0("Estimated (", ci_txt, ")")
       ) +
       ggplot2::facet_wrap(~ metric, ncol = length(stats_node), scales = "free_x") +
       ggplot2::theme_minimal() +
@@ -236,7 +279,7 @@ plotInterlayer <- function(
 
   # Title default per edges
   if (is.null(title)) {
-    title <- "Interlayer edge weights (95% CI)"
+    title <- paste0("Interlayer edge weights (", ci_txt, ")")
   }
 
   nms <- names(interlayer)
@@ -303,14 +346,14 @@ plotInterlayer <- function(
     et <- et[et$weight != 0, , drop = FALSE]
     if (!nrow(et)) return(NULL)
 
-    ci <- ci[match(et$edge, rownames(ci)), , drop = FALSE]
+    ci_pair <- .pick_ci_cols(ci, et$edge, lab_lo, lab_hi)
 
     data.frame(
       pair     = pk_norm,
       edge     = et$edge,
       observed = et$weight,
-      lower    = ci[, "2.5%"],
-      upper    = ci[, "97.5%"],
+      lower    = ci_pair$lower,
+      upper    = ci_pair$upper,
       stringsAsFactors = FALSE
     )
   })
@@ -389,7 +432,7 @@ plotInterlayer <- function(
     ggplot2::labs(
       title = title,
       x = "Edges",
-      y = if (standardize) "Z-score (95% CI)" else "Estimated (95% CI)"
+      y = if (standardize) paste0("Z-score (", ci_txt, ")") else paste0("Estimated (", ci_txt, ")")
     ) +
     ggplot2::facet_wrap(~ pair, scales = "free_x") +
     ggplot2::theme_minimal() +

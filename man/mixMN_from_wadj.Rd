@@ -7,6 +7,7 @@
 mixMN_from_wadj(
   wadj_signed,
   nodes,
+  conf_level = 0.95,
   exclude_from_graph = NULL,
   exclude_from_cluster = NULL,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
@@ -23,6 +24,9 @@ mixMN_from_wadj(
 
 \item{nodes}{Character vector of node names (must match
 \code{rownames(wadj_signed)} and \code{colnames(wadj_signed)}).}
+
+\item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
+Stored in \code{$settings} for consistency with \code{mixMN()}.}
 
 \item{exclude_from_graph}{Character vector of nodes to exclude entirely
 from the graph (no edges, no centralities).}

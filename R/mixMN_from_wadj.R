@@ -13,6 +13,8 @@
 #'   (rows/columns = nodes). Typically \code{wadj * signs} from \pkg{mgm}.
 #' @param nodes Character vector of node names (must match
 #'   \code{rownames(wadj_signed)} and \code{colnames(wadj_signed)}).
+#' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
+#'   Stored in \code{$settings} for consistency with \code{mixMN()}.
 #' @param exclude_from_graph Character vector of nodes to exclude entirely
 #'   from the graph (no edges, no centralities).
 #' @param exclude_from_cluster Character vector of nodes to exclude only
@@ -73,6 +75,7 @@
 mixMN_from_wadj <- function(
     wadj_signed,
     nodes,
+    conf_level = 0.95,
     exclude_from_graph = NULL,
     exclude_from_cluster = NULL,
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
@@ -83,6 +86,21 @@ mixMN_from_wadj <- function(
                   "excluded_index", "community", "community_scores", "none")
 ) {
   cluster_method <- match.arg(cluster_method)
+
+  boot_what <- match.arg(
+    boot_what,
+    choices = c("general_index","interlayer_index","bridge_index",
+                "excluded_index","community","community_scores","none"),
+    several.ok = TRUE
+  )
+
+  # confidence interval
+  if (!is.numeric(conf_level) || length(conf_level) != 1L ||
+      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
+    stop("`conf_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
+  }
+  alpha <- 1 - conf_level
+  ci_probs <- c(alpha/2, 1 - alpha/2)
 
   all_nodes <- nodes
 
@@ -309,7 +327,8 @@ mixMN_from_wadj <- function(
       exclude_from_graph           = exclude_from_graph,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
-      boot_what                    = boot_what
+      boot_what                    = boot_what,
+      conf_level = conf_level
     ),
 
     model = list(
