@@ -26,7 +26,9 @@ layout_multilayer_fr <- function(g, layer_attr = "layer") {
   stopifnot(igraph::is_igraph(g))
   layer <- as.factor(igraph::V(g)$layer)
 
-  if (is.null(layer)) stop("Vertex attribute '", layer_attr, "' not found.")
+  layer_raw <- igraph::vertex_attr(g, layer_attr)
+  if (is.null(layer_raw)) stop("Vertex attribute '", layer_attr, "' not found.")
+  layer <- factor(layer_raw)
 
   L <- nlevels(layer)
   n         <- igraph::vcount(g)
@@ -47,14 +49,17 @@ layout_multilayer_fr <- function(g, layer_attr = "layer") {
       if (all(w == 0)) w <- rep(1, length(w))
       xy <- igraph::layout_with_fr(subg, weights = w, niter = 300)
     } else {
-      # se il layer è totalmente scollegato → un piccolo cerchio
       k  <- length(idx)
       ang <- seq(0, 2*pi, length.out = k + 1L)[-1L]
       xy <- cbind(cos(ang), sin(ang))
     }
 
     # normalizzo dimensione del layer
-    xy <- scale(xy)  # ~ raggio 1
+    if (nrow(xy) == 1L) {
+      xy <- matrix(c(0, 0), nrow = 1)
+    } else {
+      xy <- scale(xy)
+    }
     coords[idx, ] <- xy
   }
 
@@ -86,81 +91,59 @@ layout_multilayer_fr <- function(g, layer_attr = "layer") {
     color_by = c("community", "none"),
     edge_color_by = c("sign", "none"),
     edge_scale = 4,
-    vertex_size = 12,
-    vertex_label_cex = 0.8,
-    layout = c("fr"),
+    layout_type = c("fr"),
     ...
 ) {
-  color_by     <- match.arg(color_by)
+  color_by      <- match.arg(color_by)
   edge_color_by <- match.arg(edge_color_by)
-  layout       <- match.arg(layout)
+  layout_type   <- match.arg(layout_type)
 
-  # --- recupero grafo ---
   g <- x$graph$igraph
   if (is.null(g)) stop("No igraph object found in x$graph$igraph.")
-
   vnames <- igraph::V(g)$name
 
-  # --- edge weights (assicurati che abs_weight esista) ---
-  if (is.null(igraph::E(g)$abs_weight)) {
-    igraph::E(g)$abs_weight <- abs(igraph::E(g)$weight)
-  }
+  abs_w <- abs(igraph::E(g)$weight)
+  abs_w[is.na(abs_w)] <- 0
+  if (length(abs_w) > 0 && all(abs_w == 0)) abs_w <- rep(1, length(abs_w))
 
-  # --- layout: default fruchterman-reingold pesato ---
-  lay <- igraph::layout_with_fr(g, weights = igraph::E(g)$abs_weight)
+  lay <- switch(
+    layout_type,
+    fr = igraph::layout_with_fr(g, weights = abs_w)
+  )
 
-  # ======================
-  #  Vertex colors
-  # ======================
-
+  # vertex colors
   if (color_by == "none") {
     vcol <- rep("skyblue", length(vnames))
   } else {
-    # color_by = "community"
-    memb    <- x$communities$groups   # named vector
-    palette <- x$communities$palette  # named palette
-
-    memb <- memb[vnames]  # allineo
-
-    # default: esclusi in grigio
+    memb    <- x$communities$groups
+    palette <- x$communities$palette
+    memb <- memb[vnames]
     vcol <- rep("grey80", length(vnames))
-
     idx <- !is.na(memb)
     if (any(idx)) {
       pal <- palette[as.character(memb[idx])]
-      pal[is.na(pal)] <- "orange"   # fallback in caso di mismatch
+      pal[is.na(pal)] <- "orange"
       vcol[idx] <- pal
     }
   }
 
-  # ======================
-  #  Edge colors & widths
-  # ======================
-
-  ew <- edge_scale * igraph::E(g)$abs_weight
-
-  if (edge_color_by == "sign") {
-    ecol <- ifelse(igraph::E(g)$weight > 0, "darkgreen", "red")
+  # edge colors
+  ecol <- if (edge_color_by == "sign") {
+    ifelse(igraph::E(g)$weight > 0, "darkgreen", "red")
   } else {
-    ecol <- rep("grey40", igraph::ecount(g))
+    rep("grey40", igraph::ecount(g))
   }
 
-  # ======================
-  #  Drawing
-  # ======================
+  dots <- list(...)
+  if (is.null(dots$layout))           dots$layout <- lay
+  if (is.null(dots$vertex.color))     dots$vertex.color <- vcol
+  if (is.null(dots$vertex.label))     dots$vertex.label <- vnames
+  if (is.null(dots$vertex.size))      dots$vertex.size <- 12
+  if (is.null(dots$vertex.label.cex)) dots$vertex.label.cex <- 0.8
+  if (is.null(dots$edge.color))       dots$edge.color <- ecol
+  if (is.null(dots$edge.width))       dots$edge.width <- edge_scale * abs_w
 
-  graphics::plot(
-    g,
-    layout = lay,
-    vertex.color = vcol,
-    vertex.size  = vertex_size,
-    vertex.label = vnames,
-    vertex.label.cex = vertex_label_cex,
-    edge.width  = ew,
-    edge.color  = ecol,
-    ...
-  )
-
+  do.call(graphics::plot, c(list(x = g), dots))
   invisible(x)
 }
 
@@ -170,45 +153,42 @@ layout_multilayer_fr <- function(g, layer_attr = "layer") {
     color_by = c("layer", "community", "none"),
     edge_color_by = c("sign", "none"),
     edge_scale = 4,
-    vertex_size = 10,
-    vertex_label_cex = 0.7,
-    layout = c("multilayer_fr", "fr"),
+    layout_type = c("multilayer_fr", "fr"),
+    layer_attr = "layer",
     ...
 ) {
   color_by      <- match.arg(color_by)
   edge_color_by <- match.arg(edge_color_by)
-  layout        <- match.arg(layout)
+  layout_type   <- match.arg(layout_type)
 
   g <- x$graph$igraph
-  if (is.null(g)) {
-    stop("No igraph object found in x$graph$igraph.")
-  }
+  if (is.null(g)) stop("No igraph object found in x$graph$igraph.")
 
   vnames <- igraph::V(g)$name
 
-  # edge weights / abs_weight
-  if (is.null(igraph::E(g)$abs_weight)) {
-    igraph::E(g)$abs_weight <- abs(igraph::E(g)$weight)
-  }
+  # --- local abs weights (no side effects on g) ---
+  abs_w <- abs(igraph::E(g)$weight)
+  abs_w[is.na(abs_w)] <- 0
+  if (length(abs_w) > 0 && all(abs_w == 0)) abs_w <- rep(1, length(abs_w))
 
-  # layout
+  # --- choose default layout (only if user does not pass layout in ...) ---
   lay <- switch(
-    layout,
-    multilayer_fr = layout_multilayer_fr(g, layer_attr = "layer"),
-    fr            = igraph::layout_with_fr(g, weights = igraph::E(g)$abs_weight)
+    layout_type,
+    multilayer_fr = layout_multilayer_fr(g, layer_attr = layer_attr),
+    fr            = igraph::layout_with_fr(g, weights = abs_w)
   )
 
-  # ---------- vertex colors ----------
+  # ======================
+  # Vertex colors
+  # ======================
   vcol <- rep("grey80", igraph::vcount(g))
-  vnames <- igraph::V(g)$name
-  names(vcol) <- vnames
 
   if (color_by == "none") {
     vcol[] <- "skyblue"
 
   } else if (color_by == "layer") {
-    layers_vec <- as.character(igraph::V(g)$layer)
-    ulay       <- sort(unique(layers_vec[!is.na(layers_vec)]))
+    layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
+    ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
     if (length(ulay) > 0) {
       pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dark 3")
       names(pal) <- ulay
@@ -217,51 +197,63 @@ layout_multilayer_fr <- function(g, layer_attr = "layer") {
     }
 
   } else if (color_by == "community") {
-    layers_vec <- as.character(igraph::V(g)$layer)
-    memb_vec   <- igraph::V(g)$membership   # numeri di cluster
+    # assumes membership stored as vertex attribute 'membership'
+    layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
+    memb_vec   <- igraph::vertex_attr(g, "membership")
 
-    for (i in seq_along(vnames)) {
-      node  <- vnames[i]
-      L     <- layers_vec[i]
-      cl_id <- memb_vec[i]
+    # fallback if missing membership
+    if (is.null(memb_vec)) {
+      warning("Vertex attribute 'membership' not found; falling back to color_by = 'layer'.")
+      layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
+      ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
+      if (length(ulay) > 0) {
+        pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dark 3")
+        names(pal) <- ulay
+        idx <- !is.na(layers_vec)
+        vcol[idx] <- pal[layers_vec[idx]]
+      }
+    } else {
+      for (i in seq_along(vnames)) {
+        L     <- layers_vec[i]
+        cl_id <- memb_vec[i]
 
-      if (is.na(L) || is.na(cl_id)) next
+        if (is.na(L) || is.na(cl_id)) next
+        fitL <- x$layer_fits[[L]]
+        if (is.null(fitL)) next
 
-      # palette del layer corrispondente
-      fitL <- x$layer_fits[[L]]
-      if (is.null(fitL)) next
+        palL <- fitL$communities$palette
+        if (is.null(palL)) next
 
-      palL <- fitL$communities$palette  # named vector cluster -> colore
-      if (is.null(palL)) next
-
-      col_i <- palL[as.character(cl_id)]
-      if (!is.na(col_i)) {
-        vcol[i] <- col_i
+        col_i <- palL[as.character(cl_id)]
+        if (!is.na(col_i)) vcol[i] <- col_i
       }
     }
   }
 
-  # ---------- edge colors & width ----------
-  ew <- edge_scale * igraph::E(g)$abs_weight
-
-  if (edge_color_by == "sign") {
-    ecol <- ifelse(igraph::E(g)$weight > 0, "darkgreen", "red")
+  # ======================
+  # Edge colors
+  # ======================
+  ecol <- if (edge_color_by == "sign") {
+    ifelse(igraph::E(g)$weight > 0, "darkgreen", "red")
   } else {
-    ecol <- rep("grey40", igraph::ecount(g))
+    rep("grey40", igraph::ecount(g))
   }
 
-  graphics::plot(
-    g,
-    layout = lay,
-    vertex.color = vcol,
-    vertex.size  = vertex_size,
-    vertex.label = vnames,
-    vertex.label.cex = vertex_label_cex,
-    edge.width  = ew,
-    edge.color  = ecol,
-    ...
-  )
+  # ======================
+  # Forward igraph args
+  # ======================
+  dots <- list(...)
 
+  # set defaults only when absent (igraph-first behaviour)
+  if (is.null(dots$layout))           dots$layout <- lay
+  if (is.null(dots$vertex.color))     dots$vertex.color <- vcol
+  if (is.null(dots$vertex.label))     dots$vertex.label <- vnames
+  if (is.null(dots$vertex.size))      dots$vertex.size <- 10
+  if (is.null(dots$vertex.label.cex)) dots$vertex.label.cex <- 0.7
+  if (is.null(dots$edge.color))       dots$edge.color <- ecol
+  if (is.null(dots$edge.width))       dots$edge.width <- edge_scale * abs_w
+
+  do.call(graphics::plot, c(list(x = g), dots))
   invisible(x)
 }
 
@@ -419,7 +411,7 @@ plot.mixmashnet <- function(
       # se layer specificato, puoi decidere se plottare solo quel layer:
       if (!is.null(layer)) {
         subfit <- get_layer_fit(x, layer)
-        .plot_network_single(subfit, layer = layer, ...)
+        .plot_network_single(subfit, ...)
       } else {
         # plot multilayer globale
         .plot_network_multi(x, ...)
