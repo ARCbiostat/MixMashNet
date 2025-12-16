@@ -1,264 +1,3 @@
-#' Fruchterman–Reingold layout for multilayer graphs
-#'
-#' @description
-#' Internal helper that computes 2D coordinates for a multilayer \pkg{igraph}
-#' object by:
-#' \itemize{
-#'   \item running a weighted Fruchterman–Reingold layout separately within
-#'         each layer (using intra-layer edges only);
-#'   \item normalizing the scale of each layer;
-#'   \item placing layer centroids on a larger circle so that layers are
-#'         visually separated but interlayer edges remain readable.
-#' }
-#'
-#' @param g An \code{igraph} object with a vertex attribute containing layer
-#'   membership (see \code{layer_attr}).
-#' @param layer_attr Character string; name of the vertex attribute that stores
-#'   the layer label (default \code{"layer"}).
-#'
-#' @return A numeric matrix with two columns (x, y) and one row per vertex.
-#'   The row order matches \code{V(g)}.
-#'
-#' @keywords internal
-#' @importFrom igraph is_igraph V vcount induced_subgraph ecount E layout_with_fr
-#' @noRd
-layout_multilayer_fr <- function(g, layer_attr = "layer") {
-  stopifnot(igraph::is_igraph(g))
-  layer <- as.factor(igraph::V(g)$layer)
-
-  layer_raw <- igraph::vertex_attr(g, layer_attr)
-  if (is.null(layer_raw)) stop("Vertex attribute '", layer_attr, "' not found.")
-  layer <- factor(layer_raw)
-
-  L <- nlevels(layer)
-  n         <- igraph::vcount(g)
-
-  coords <- matrix(NA_real_, nrow = n, ncol = 2)
-
-  # 1) layout FR separato per ciascun layer (solo archi intra-layer)
-  for (i in seq_len(L)) {
-    idx <- which(layer == levels(layer)[i])
-    if (length(idx) == 0L) next
-
-    subg <- igraph::induced_subgraph(g, vids = idx)
-
-    # pesi positivi per il layout
-    if (igraph::ecount(subg) > 0) {
-      w <- abs(igraph::E(subg)$weight)
-      w[is.na(w)] <- 0
-      if (all(w == 0)) w <- rep(1, length(w))
-      xy <- igraph::layout_with_fr(subg, weights = w, niter = 300)
-    } else {
-      k  <- length(idx)
-      ang <- seq(0, 2*pi, length.out = k + 1L)[-1L]
-      xy <- cbind(cos(ang), sin(ang))
-    }
-
-    # normalizzo dimensione del layer
-    if (nrow(xy) == 1L) {
-      xy <- matrix(c(0, 0), nrow = 1)
-    } else {
-      xy <- scale(xy)
-    }
-    coords[idx, ] <- xy
-  }
-
-  # 2) posiziono i layer su un cerchio più grande
-  angles_layer <- seq(0, 2*pi, length.out = L + 1L)[-1L]
-  radius_layer <- 4  # distanza tra i centri dei layer
-
-  for (i in seq_len(L)) {
-    idx <- which(layer == levels(layer)[i])
-    if (length(idx) == 0L) next
-
-    center_now <- colMeans(coords[idx, , drop = FALSE])
-    target     <- c(radius_layer * cos(angles_layer[i]),
-                    radius_layer * sin(angles_layer[i]))
-    shift      <- target - center_now
-    coords[idx, ] <- sweep(coords[idx, , drop = FALSE], 2, shift, "+")
-  }
-
-  coords
-}
-
-
-# -------------------------------------------------------------------
-# Internal network plotters (single-layer and multilayer)
-# -------------------------------------------------------------------
-
-.plot_network_single <- function(
-    x,
-    color_by = c("community", "none"),
-    edge_color_by = c("sign", "none"),
-    edge_scale = 4,
-    layout_type = c("fr"),
-    ...
-) {
-  color_by      <- match.arg(color_by)
-  edge_color_by <- match.arg(edge_color_by)
-  layout_type   <- match.arg(layout_type)
-
-  g <- x$graph$igraph
-  if (is.null(g)) stop("No igraph object found in x$graph$igraph.")
-  vnames <- igraph::V(g)$name
-
-  abs_w <- abs(igraph::E(g)$weight)
-  abs_w[is.na(abs_w)] <- 0
-  if (length(abs_w) > 0 && all(abs_w == 0)) abs_w <- rep(1, length(abs_w))
-
-  lay <- switch(
-    layout_type,
-    fr = igraph::layout_with_fr(g, weights = abs_w)
-  )
-
-  # vertex colors
-  if (color_by == "none") {
-    vcol <- rep("skyblue", length(vnames))
-  } else {
-    memb    <- x$communities$groups
-    palette <- x$communities$palette
-    memb <- memb[vnames]
-    vcol <- rep("grey80", length(vnames))
-    idx <- !is.na(memb)
-    if (any(idx)) {
-      pal <- palette[as.character(memb[idx])]
-      pal[is.na(pal)] <- "orange"
-      vcol[idx] <- pal
-    }
-  }
-
-  # edge colors
-  ecol <- if (edge_color_by == "sign") {
-    ifelse(igraph::E(g)$weight > 0, "darkgreen", "red")
-  } else {
-    rep("grey40", igraph::ecount(g))
-  }
-
-  dots <- list(...)
-  if (is.null(dots$layout))           dots$layout <- lay
-  if (is.null(dots$vertex.color))     dots$vertex.color <- vcol
-  if (is.null(dots$vertex.label))     dots$vertex.label <- vnames
-  if (is.null(dots$vertex.size))      dots$vertex.size <- 12
-  if (is.null(dots$vertex.label.cex)) dots$vertex.label.cex <- 0.8
-  if (is.null(dots$edge.color))       dots$edge.color <- ecol
-  if (is.null(dots$edge.width))       dots$edge.width <- edge_scale * abs_w
-
-  do.call(graphics::plot, c(list(x = g), dots))
-  invisible(x)
-}
-
-
-.plot_network_multi <- function(
-    x,
-    color_by = c("layer", "community", "none"),
-    edge_color_by = c("sign", "none"),
-    edge_scale = 4,
-    layout_type = c("multilayer_fr", "fr"),
-    layer_attr = "layer",
-    ...
-) {
-  color_by      <- match.arg(color_by)
-  edge_color_by <- match.arg(edge_color_by)
-  layout_type   <- match.arg(layout_type)
-
-  g <- x$graph$igraph
-  if (is.null(g)) stop("No igraph object found in x$graph$igraph.")
-
-  vnames <- igraph::V(g)$name
-
-  # --- local abs weights (no side effects on g) ---
-  abs_w <- abs(igraph::E(g)$weight)
-  abs_w[is.na(abs_w)] <- 0
-  if (length(abs_w) > 0 && all(abs_w == 0)) abs_w <- rep(1, length(abs_w))
-
-  # --- choose default layout (only if user does not pass layout in ...) ---
-  lay <- switch(
-    layout_type,
-    multilayer_fr = layout_multilayer_fr(g, layer_attr = layer_attr),
-    fr            = igraph::layout_with_fr(g, weights = abs_w)
-  )
-
-  # ======================
-  # Vertex colors
-  # ======================
-  vcol <- rep("grey80", igraph::vcount(g))
-
-  if (color_by == "none") {
-    vcol[] <- "skyblue"
-
-  } else if (color_by == "layer") {
-    layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
-    ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
-    if (length(ulay) > 0) {
-      pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dark 3")
-      names(pal) <- ulay
-      idx <- !is.na(layers_vec)
-      vcol[idx] <- pal[layers_vec[idx]]
-    }
-
-  } else if (color_by == "community") {
-    # assumes membership stored as vertex attribute 'membership'
-    layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
-    memb_vec   <- igraph::vertex_attr(g, "membership")
-
-    # fallback if missing membership
-    if (is.null(memb_vec)) {
-      warning("Vertex attribute 'membership' not found; falling back to color_by = 'layer'.")
-      layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
-      ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
-      if (length(ulay) > 0) {
-        pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dark 3")
-        names(pal) <- ulay
-        idx <- !is.na(layers_vec)
-        vcol[idx] <- pal[layers_vec[idx]]
-      }
-    } else {
-      for (i in seq_along(vnames)) {
-        L     <- layers_vec[i]
-        cl_id <- memb_vec[i]
-
-        if (is.na(L) || is.na(cl_id)) next
-        fitL <- x$layer_fits[[L]]
-        if (is.null(fitL)) next
-
-        palL <- fitL$communities$palette
-        if (is.null(palL)) next
-
-        col_i <- palL[as.character(cl_id)]
-        if (!is.na(col_i)) vcol[i] <- col_i
-      }
-    }
-  }
-
-  # ======================
-  # Edge colors
-  # ======================
-  ecol <- if (edge_color_by == "sign") {
-    ifelse(igraph::E(g)$weight > 0, "darkgreen", "red")
-  } else {
-    rep("grey40", igraph::ecount(g))
-  }
-
-  # ======================
-  # Forward igraph args
-  # ======================
-  dots <- list(...)
-
-  # set defaults only when absent (igraph-first behaviour)
-  if (is.null(dots$layout))           dots$layout <- lay
-  if (is.null(dots$vertex.color))     dots$vertex.color <- vcol
-  if (is.null(dots$vertex.label))     dots$vertex.label <- vnames
-  if (is.null(dots$vertex.size))      dots$vertex.size <- 10
-  if (is.null(dots$vertex.label.cex)) dots$vertex.label.cex <- 0.7
-  if (is.null(dots$edge.color))       dots$edge.color <- ecol
-  if (is.null(dots$edge.width))       dots$edge.width <- edge_scale * abs_w
-
-  do.call(graphics::plot, c(list(x = g), dots))
-  invisible(x)
-}
-
-
-
 #' Plot method for MixMashNet objects
 #'
 #' @description
@@ -325,13 +64,10 @@ layout_multilayer_fr <- function(g, layer_attr = "layer") {
 #' For \code{what = "network"}, the corresponding network plotting helper
 #' is called for its side-effect and \code{x} is returned invisibly.
 #'
-#' @import patchwork
 #' @export
 plot.mixmashnet <- function(
     x,
-    what  = c("network", "intra",
-              "inter",
-              "stability"),
+    what  = c("network","intra","inter","stability"),
     layer = NULL,
     ...
 ) {
@@ -348,7 +84,7 @@ plot.mixmashnet <- function(
 
   centrality_args <- c(
     "statistics", "ordering", "standardize",
-    "edges_top_n", "exclude_nodes", "color_by_community", "title"
+    "edges_top_n", "exclude_nodes", "color_by_community"
   )
   wants_centrality <- any(names(dots) %in% centrality_args)
 
@@ -363,7 +99,7 @@ plot.mixmashnet <- function(
       stop(
         "You are plotting statistics on a multilayer object.\n",
         "Please specify one of:\n",
-        "  - layer = \" \"                 # intra-layer statistics for a specific layer\n",
+        "  - layer = \"bio\"   # intra-layer statistics for a specific layer\n",
         "  - what  = \"intra\" # intra-layer statistics for ALL layers\n",
         "  - what  = \"inter\" # interlayer statistics\n"
       )
@@ -382,7 +118,7 @@ plot.mixmashnet <- function(
   }
 
   ## --- helper per gestire layer in oggetti multilayer ---
-  get_layer_fit <- function(obj, layer_name) {
+  .get_layer_fit <- function(obj, layer_name) {
     if (is.null(obj$layer_fits) || !length(obj$layer_fits)) {
       stop("No 'layer_fits' found in this 'multimixMN_fit' object.")
     }
@@ -410,7 +146,7 @@ plot.mixmashnet <- function(
     } else {
       # se layer specificato, puoi decidere se plottare solo quel layer:
       if (!is.null(layer)) {
-        subfit <- get_layer_fit(x, layer)
+        subfit <- .get_layer_fit(x, layer)
         .plot_network_single(subfit, ...)
       } else {
         # plot multilayer globale
@@ -447,7 +183,7 @@ plot.mixmashnet <- function(
       # ---- multilayer ----
       if (!is.null(layer)) {
         # caso 1: multilayer + layer specificato → intra-layer per quel layer
-        subfit <- get_layer_fit(x, layer)
+        subfit <- .get_layer_fit(x, layer)
         args <- dots
         if (!has_statistics) {
           args$statistics <- default_stats
@@ -488,8 +224,6 @@ plot.mixmashnet <- function(
       stop("Interlayer node statistics are only available for 'multimixMN_fit' objects.")
     }
 
-    dots <- list(...)
-
     default_stats  <- c("strength", "expected_influence", "closeness", "betweenness")
     has_statistics <- "statistics" %in% names(dots)
 
@@ -525,7 +259,7 @@ plot.mixmashnet <- function(
     } else {
       # multilayer
       if (!is.null(layer)) {
-        subfit <- get_layer_fit(x, layer)
+        subfit <- .get_layer_fit(x, layer)
         stab <- membershipStab(subfit, IS.plot = FALSE)
         p <- membershipStab_plot(stab, ...)
         return(p)
