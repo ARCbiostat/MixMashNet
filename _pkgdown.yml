@@ -1,4 +1,17 @@
 url: ~
 template:
   bootstrap: 5
+  bootswatch: flatly
 
+navbar:
+  structure:
+    left: [home, reference, apps]
+
+  components:
+    apps:
+      text: Apps
+      menu:
+        - text: Single-layer
+          href: articles/shiny-single.html
+        - text: Multilayer
+          href: articles/shiny-multilayer.html

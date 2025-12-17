@@ -1,4 +1,6 @@
-# MixMashNet
+# <img src="man/figures/MixMashNet_logo.png" align="right" alt="MixMashNet logo" width=150 style="margin-right: 0px;vertical-align:middle"/> <span style="font-size:38px"> MixMashNet </span>
+
+&nbsp;
 
 **MixMashNet** is an R package that provides a unified framework for estimating
 and analysing single-layer and multilayer networks using **Mixed Graphical
