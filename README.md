@@ -1,6 +1,8 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+# <img src="man/figures/MixMashNet_logo.png" align="right" width=150>
+
 # MixMashNet
 
 **MixMashNet** is an R package for estimating and analyzing **Mixed
@@ -85,6 +87,7 @@ Linux**.
 ``` r
 library(future)
 library(future.apply)
+#> Warning: package 'future.apply' was built under R version 4.5.2
 
 # Use separate R sessions (cross-platform, safe in RStudio)
 plan(multisession, workers = max(1, parallel::detectCores() - 1))
