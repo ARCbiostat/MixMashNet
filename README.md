@@ -61,6 +61,7 @@ library(dplyr)
 #> 
 #>     intersect, setdiff, setequal, union
 library(tidyr)
+#> Warning: package 'tidyr' was built under R version 4.5.2
 
 df <- nhgh_data
 
@@ -125,7 +126,7 @@ set.seed(2)
 plot(fit0)
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-5-1.png" alt="" width="100%" />
 
 ### Node stability
 
@@ -152,7 +153,7 @@ Plot item stability:
 plot(fit1, what = "stability")
 ```
 
-<img src="man/figures/README-unnamed-chunk-7-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" alt="" width="100%" />
 
 ### Excluding unstable nodes
 
@@ -187,7 +188,7 @@ Recompute stability:
 plot(fit2, what = "stability")
 ```
 
-<img src="man/figures/README-unnamed-chunk-9-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-9-1.png" alt="" width="100%" />
 
 ### Visualization with excluded nodes
 
@@ -199,7 +200,7 @@ set.seed(2)
 plot(fit2)
 ```
 
-<img src="man/figures/README-unnamed-chunk-10-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-10-1.png" alt="" width="100%" />
 
 ### Edge weights
 
@@ -210,7 +211,7 @@ Confidence intervals that include zero are shown in grey.
 plot(fit2, statistics = "edges")
 ```
 
-<img src="man/figures/README-unnamed-chunk-11-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-11-1.png" alt="" width="100%" />
 
 ### General centrality indices
 
@@ -225,7 +226,7 @@ plot(fit2,
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-12-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-12-1.png" alt="" width="100%" />
 
 ### Bridge centrality indices
 
@@ -241,7 +242,7 @@ plot(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-13-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-13-1.png" alt="" width="100%" />
 
 ### Bridge centrality indices for excluded nodes
 
@@ -258,7 +259,7 @@ plot(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-14-1.png" width="100%" />
+<img src="man/figures/README-unnamed-chunk-14-1.png" alt="" width="100%" />
 
 ✨ That’s it! With just a few lines of code, you can mix, mash, and
 explore your networks.
