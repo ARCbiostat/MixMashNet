@@ -56,7 +56,7 @@
   ecol <- if (edge_color_by == "sign") {
     w0 <- igraph::E(g)$weight
     if (is.null(w0)) w0 <- rep(1, igraph::ecount(g))
-    ifelse(w0 > 0, "darkgreen", "red")
+    ifelse(w0 > 0, "blue", "red")
   } else {
     rep("grey40", igraph::ecount(g))
   }
@@ -69,12 +69,13 @@
     )
     dots$layout <- lay
   }
-  if (is.null(dots$vertex.color))     dots$vertex.color <- vcol
-  if (is.null(dots$vertex.label))     dots$vertex.label <- vnames
-  if (is.null(dots$vertex.size))      dots$vertex.size <- 12
-  if (is.null(dots$vertex.label.cex)) dots$vertex.label.cex <- 0.8
-  if (is.null(dots$edge.color))       dots$edge.color <- ecol
-  if (is.null(dots$edge.width))       dots$edge.width <- edge_scale * abs_w
+  if (is.null(dots$vertex.color))       dots$vertex.color <- vcol
+  if (is.null(dots$vertex.label))       dots$vertex.label <- vnames
+  if (is.null(dots$vertex.size))        dots$vertex.size <- 12
+  if (is.null(dots$vertex.label.cex))   dots$vertex.label.cex <- 0.8
+  if (is.null(dots$vertex.label.color)) dots$vertex.label.color <- "black"
+  if (is.null(dots$edge.color))         dots$edge.color <- ecol
+  if (is.null(dots$edge.width))         dots$edge.width <- edge_scale * abs_w
 
   do.call(graphics::plot, c(list(x = g), dots))
   invisible(x)
@@ -161,7 +162,7 @@
   ecol <- if (edge_color_by == "sign") {
     w0 <- igraph::E(g)$weight
     if (is.null(w0)) w0 <- rep(1, igraph::ecount(g))
-    ifelse(w0 > 0, "darkgreen", "red")
+    ifelse(w0 > 0, "blue", "red")
   } else {
     rep("grey40", igraph::ecount(g))
   }
@@ -181,12 +182,13 @@
     )
     dots$layout <- lay
   }
-  if (is.null(dots$vertex.color))     dots$vertex.color <- vcol
-  if (is.null(dots$vertex.label))     dots$vertex.label <- vnames
-  if (is.null(dots$vertex.size))      dots$vertex.size <- 10
-  if (is.null(dots$vertex.label.cex)) dots$vertex.label.cex <- 0.7
-  if (is.null(dots$edge.color))       dots$edge.color <- ecol
-  if (is.null(dots$edge.width))       dots$edge.width <- edge_scale * abs_w
+  if (is.null(dots$vertex.color))       dots$vertex.color <- vcol
+  if (is.null(dots$vertex.label))       dots$vertex.label <- vnames
+  if (is.null(dots$vertex.size))        dots$vertex.size <- 10
+  if (is.null(dots$vertex.label.cex))   dots$vertex.label.cex <- 0.7
+  if (is.null(dots$vertex.label.color)) dots$vertex.label.color <- "black"
+  if (is.null(dots$edge.color))         dots$edge.color <- ecol
+  if (is.null(dots$edge.width))         dots$edge.width <- edge_scale * abs_w
 
   do.call(graphics::plot, c(list(x = g), dots))
   invisible(x)
