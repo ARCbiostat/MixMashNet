@@ -65,7 +65,7 @@
 #'   subject and community.
 #'   \item If bootstrap loadings are missing, the function errors when CI is requested.
 #' }
-#'
+#' @export
 community_scores <- function(
     fit,
     data = NULL,
