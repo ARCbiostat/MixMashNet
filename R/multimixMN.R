@@ -6,7 +6,7 @@
 #' Within each layer, the function computes community structure, non-parametric
 #' row-bootstrap for node centralities and edges, bridge metrics
 #' (including metrics for nodes treated as "excluded"), and (optionally)
-#' community network scores. It also returns interlayer-only node metrics and
+#' within-layer community loadings. It also returns interlayer-only node metrics and
 #' cross-layer edge summaries.
 #'
 #' @param data A numeric matrix or data frame (n × p) with variables in columns.
@@ -61,9 +61,8 @@
 #' @param cluster_method Community detection algorithm applied within each
 #'   layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
-#' @param compute_community_scores Logical; if \code{TRUE}, compute community
-#'   network scores (EGAnet standardized \code{std.scores}) with bootstrap
-#'   arrays and confidence intervals.
+#' @param compute_loadings Logical; if TRUE (default),
+#'   compute network loadings (EGAnet net.loads) for communities.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Valid options are:
 #'   \code{"general_index"} (intra-layer centrality indices),
@@ -71,10 +70,11 @@
 #'   \code{"bridge_index"} (bridge metrics for nodes in communities),
 #'   \code{"excluded_index"} (bridge metrics for nodes treated as excluded),
 #'   \code{"community"} (bootstrap community memberships),
-#'   \code{"community_scores"} (bootstrap community scores, only if
-#'   \code{compute_community_scores = TRUE}),
+#'   \code{"loadings"} (bootstrap within-layer community loadings, only if
+#'   \code{compute_loadings = TRUE}),
 #'   and \code{"none"} (skip all node-level bootstrap: only edge-weight
 #'   bootstrap is performed if \code{reps > 0}).
+#' @param save_data Logical; if TRUE, store the original data in the output object.
 #' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress
 #'   bar when the \pkg{progressr} package is available.
 #'
@@ -93,7 +93,7 @@
 #'     (assignment of nodes to layers and the \code{layer_rules} matrix used).
 #'   \item \code{layer_fits}: named list (one element per layer) with
 #'     single-layer fits, including community structure, node-level statistics,
-#'     edge-level statistics, bridge metrics, and (optionally) community scores
+#'     edge-level statistics, bridge metrics, and (optionally) community loadings
 #'     with bootstrap information.
 #'   \item \code{interlayer}: list collecting interlayer-only node metrics
 #'     (strength, expected influence, closeness, betweenness, with or without
@@ -126,7 +126,7 @@
 #' @importFrom future.apply future_lapply
 #' @importFrom qgraph centrality
 #' @importFrom progressr with_progress progressor
-#' @importFrom EGAnet net.scores
+#' @importFrom EGAnet net.loads
 #' @export
 multimixMN <- function(
     data, type, level,
@@ -146,9 +146,10 @@ multimixMN <- function(
     seed_model = NULL, seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
     cluster_method = c("louvain","fast_greedy","infomap","walktrap","edge_betweenness"),
-    compute_community_scores = FALSE,
+    compute_loadings = TRUE,
     boot_what = c("general_index", "interlayer_index", "bridge_index",
-                  "excluded_index", "community", "community_scores", "none"),
+                  "excluded_index", "community", "loadings", "none"),
+    save_data = FALSE,
     progress = TRUE
 ) {
   lambdaSel <- match.arg(lambdaSel)
@@ -168,25 +169,24 @@ multimixMN <- function(
     boot_what,
     choices = c("general_index", "interlayer_index",
                 "bridge_index", "excluded_index",
-                "community", "community_scores", "none"),
+                "community", "loadings", "none"),
     several.ok = TRUE
   )
 
   if ("none" %in% boot_what && length(boot_what) == 1L) {
-    do_intra_general_boot <- FALSE  # intra-layer strength/EI1/close/betw
-    do_interlayer_boot    <- FALSE  # interlayer-only strength/EI1/close/betw
+    do_intra_general_boot <- FALSE
+    do_interlayer_boot    <- FALSE
     do_bridge_boot        <- FALSE
     do_excluded_boot      <- FALSE
     do_community_boot     <- FALSE
-    do_comm_scores_boot   <- FALSE
+    do_loadings_boot      <- FALSE
   } else {
     do_intra_general_boot <- "general_index"    %in% boot_what
     do_interlayer_boot    <- "interlayer_index" %in% boot_what
     do_bridge_boot        <- "bridge_index"     %in% boot_what
     do_excluded_boot      <- "excluded_index"   %in% boot_what
     do_community_boot     <- "community"        %in% boot_what
-    do_comm_scores_boot   <- isTRUE(compute_community_scores) &&
-      ("community_scores" %in% boot_what)
+    do_loadings_boot      <- isTRUE(compute_loadings) && ("loadings" %in% boot_what)
   }
 
   all_nodes <- colnames(data); p <- ncol(data)
@@ -234,18 +234,26 @@ multimixMN <- function(
   # ---------- helpers ----------
   tiny <- 1e-10
 
-  .quiet_net_scores <- function(...) {
-    withCallingHandlers({
-      out <- NULL
-      invisible(capture.output(out <- EGAnet::net.scores(...)))
-      out
-    }, message = function(m) {
-      txt <- conditionMessage(m)
-      if (grepl("default 'loading.method'.*revised", txt, ignore.case = TRUE)) invokeRestart("muffleMessage")
-    }, warning = function(w) {
-      txt <- conditionMessage(w)
-      if (grepl("default 'loading.method'.*revised", txt, ignore.case = TRUE)) invokeRestart("muffleWarning")
-    })
+  .quiet_net_loads <- function(...) {
+    withCallingHandlers(
+      {
+        out <- NULL
+        invisible(capture.output(out <- EGAnet::net.loads(...)))
+        out
+      },
+      message = function(m) {
+        txt <- conditionMessage(m)
+        if (grepl("default 'loading.method'.*changed to \"revised\".*EGAnet", txt, ignore.case = TRUE)) {
+          invokeRestart("muffleMessage")
+        }
+      },
+      warning = function(w) {
+        txt <- conditionMessage(w)
+        if (grepl("default 'loading.method'.*changed to \"revised\".*EGAnet", txt, ignore.case = TRUE)) {
+          invokeRestart("muffleWarning")
+        }
+      }
+    )
   }
 
   .make_distance_graph <- function(W_signed) {
@@ -360,59 +368,54 @@ multimixMN <- function(
     }
     fitL$communities$groups <- membL
 
-    ## --- COMMUNITY SCORES (TRUE) ---
-    if (isTRUE(compute_community_scores)) {
-      membL <- fitL$communities$groups
-      nodes_comm <- names(membL)[!is.na(membL)]
-      nodes_comm <- intersect(nodes_comm, nL)
+    # ---- COMMUNITY LOADINGS (TRUE, per-layer) ----
+    fitL$community_loadings <- list(
+      nodes = character(0),
+      wc    = integer(0),
+      true  = NULL,
+      boot  = NULL
+    )
 
-      if (length(nodes_comm) > 0) {
+    if (isTRUE(compute_loadings)) {
+
+      groups_L <- fitL$communities$groups
+      nodes_comm <- names(groups_L)[!is.na(groups_L)]
+      nodes_comm <- intersect(nodes_comm, fitL$graph$keep_nodes_graph)
+
+      if (length(nodes_comm) > 1) {
+
         A_comm <- sub_w[nodes_comm, nodes_comm, drop = FALSE]
 
-        wc_fac <- membL[nodes_comm]
+        wc_fac <- groups_L[nodes_comm]
         wc_levels <- sort(unique(as.integer(wc_fac)))
         wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
         wc_int <- unname(wc_map[as.integer(wc_fac)])
 
-        dat_comm <- as.matrix(data[, nodes_comm, drop = FALSE])
-        subject_ids <- rownames(dat_comm)
-        if (is.null(subject_ids)) subject_ids <- sprintf("id_%d", seq_len(nrow(dat_comm)))
-        rownames(dat_comm) <- subject_ids
-
-        ns_obj <- tryCatch(
-          .quiet_net_scores(
-            data = dat_comm,
-            A    = A_comm,
-            wc   = wc_int,
+        loads_obj <- tryCatch(
+          .quiet_net_loads(
+            A = A_comm,
+            wc = wc_int,
             loading.method = "revised",
-            structure = "simple",
-            rotation  = NULL,
-            scores    = "components"
+            rotation = NULL
           ),
           error = function(e) NULL
         )
 
-        if (!is.null(ns_obj) && !is.null(ns_obj$scores$std.scores)) {
-          cs_true <- ns_obj$scores$std.scores
+        if (!is.null(loads_obj) && !is.null(loads_obj$std)) {
+          L_true <- loads_obj$std
+          L_true <- L_true[nodes_comm, , drop = FALSE]
         } else {
-          cs_true <- matrix(
-            NA_real_,
-            nrow = nrow(dat_comm),
-            ncol = length(unique(wc_int))
-          )
+          K <- length(unique(wc_int))
+          L_true <- matrix(NA_real_, nrow = length(nodes_comm), ncol = K,
+                           dimnames = list(nodes_comm, paste0("C", seq_len(K))))
         }
-        colnames(cs_true) <- paste0("NS_", sort(unique(as.integer(wc_fac))))
-        rownames(cs_true) <- subject_ids
 
-        fitL$community_scores$obj <- ns_obj
-        fitL$community_scores$df  <- data.frame(
-          id = subject_ids,
-          as.data.frame(cs_true),
-          check.names = FALSE
+        fitL$community_loadings <- list(
+          nodes = nodes_comm,
+          wc    = wc_int,
+          true  = L_true,
+          boot  = NULL
         )
-        # info per il bootstrap
-        fitL$community_scores$.nodes_comm <- nodes_comm
-        fitL$community_scores$.wc_int     <- wc_int
       }
     }
 
@@ -476,6 +479,13 @@ multimixMN <- function(
       # membership bootstrap solo se richiesto
       boot_memberships  = if (do_community_boot) vector("list", reps) else vector("list", 0),
 
+      # loadings bootstrap (list of matrices, one per replication)
+      loadings_boot = if (isTRUE(do_loadings_boot) &&
+                          !is.null(layer_fits[[L]]$community_loadings$true) &&
+                          nrow(layer_fits[[L]]$community_loadings$true) > 0) {
+        vector("list", reps)
+      } else NULL,
+
       # bridge intra-layer
       bridge_strength_boot     = if (do_bridge_boot && length(nodes_c) > 0)
         matrix(NA_real_, reps, length(nodes_c), dimnames = list(NULL, nodes_c)) else NULL,
@@ -498,30 +508,7 @@ multimixMN <- function(
       bridge_closeness_excl_boot    = if (do_excluded_boot && length(nodes_ex) > 0)
         matrix(NA_real_, reps, length(nodes_ex), dimnames = list(NULL, nodes_ex)) else NULL,
       bridge_betweenness_excl_boot  = if (do_excluded_boot && length(nodes_ex) > 0)
-        matrix(NA_real_, reps, length(nodes_ex), dimnames = list(NULL, nodes_ex)) else NULL,
-
-      # community scores bootstrap per layer (se richiesti)
-      community_scores_boot = {
-        if (reps > 0 &&
-            isTRUE(do_comm_scores_boot) &&
-            isTRUE(compute_community_scores) &&
-            !is.null(layer_fits[[L]]$community_scores$.nodes_comm)) {
-
-          subj <- rownames(data)
-          if (is.null(subj)) subj <- sprintf("id_%d", seq_len(nrow(data)))
-          K <- length(unique(layer_fits[[L]]$community_scores$.wc_int))
-
-          array(
-            NA_real_,
-            dim = c(reps, length(subj), K),
-            dimnames = list(
-              rep  = paste0("b", seq_len(reps)),
-              id   = subj,
-              comm = paste0("NS_", sort(unique(layer_fits[[L]]$community_scores$.wc_int)))
-            )
-          )
-        } else NULL
-      }
+        matrix(NA_real_, reps, length(nodes_ex), dimnames = list(NULL, nodes_ex)) else NULL
     )
   })
   names(layer_boot) <- uniq_layers
@@ -615,6 +602,46 @@ multimixMN <- function(
         }, error = function(e) {
           stats::setNames(rep(NA_integer_, length(nodes_c)), nodes_c)
         })
+      }
+
+      # --- LOADINGS bootstrap (per-layer) ---
+      L_boot <- NULL
+      if (isTRUE(do_loadings_boot)) {
+
+        info <- layer_fits[[L]]$community_loadings
+        nodes_comm <- info$nodes
+        wc_int     <- info$wc
+
+        if (!is.null(nodes_comm) && length(nodes_comm) > 1) {
+
+          A_comm_boot <- Wg[nodes_comm, nodes_comm, drop = FALSE]
+
+          loads_obj_b <- tryCatch(
+            .quiet_net_loads(
+              A = A_comm_boot,
+              wc = wc_int,
+              loading.method = "revised",
+              rotation = NULL
+            ),
+            error = function(e) NULL
+          )
+
+          if (!is.null(loads_obj_b) && !is.null(loads_obj_b$std)) {
+            L_boot <- loads_obj_b$std
+            L_boot <- L_boot[nodes_comm, , drop = FALSE]
+          } else {
+            K <- if (!is.null(info$true)) ncol(info$true) else length(unique(wc_int))
+            L_boot <- matrix(
+              NA_real_,
+              nrow = length(nodes_comm),
+              ncol = K,
+              dimnames = list(
+                nodes_comm,
+                if (!is.null(info$true) && !is.null(colnames(info$true))) colnames(info$true) else paste0("C", seq_len(K))
+              )
+            )
+          }
+        }
       }
 
       # --- indici generali intra-layer ---
@@ -757,38 +784,6 @@ multimixMN <- function(
         }
       }
 
-      ## --- ADD: COMMUNITY SCORES on bootstrap (per layer) ---
-      cs_boot <- NULL
-      if (isTRUE(do_comm_scores_boot)) {
-        nodes_comm  <- layer_fits[[L]]$community_scores$.nodes_comm
-        wc_comm_int <- layer_fits[[L]]$community_scores$.wc_int
-        if (!is.null(nodes_comm) && length(nodes_comm) > 0) {
-          A_comm_boot <- Wg[nodes_comm, nodes_comm, drop = FALSE]
-          dat_comm_full <- as.matrix(data[, nodes_comm, drop = FALSE])
-          rownames(dat_comm_full) <- subject_ids
-          ns_obj <- tryCatch(
-            .quiet_net_scores(
-              data = dat_comm_full,
-              A    = A_comm_boot,
-              wc   = wc_comm_int,
-              loading.method = "revised",
-              structure = "simple",
-              rotation  = NULL,
-              scores    = "components"
-            ),
-            error = function(e) NULL
-          )
-          if (!is.null(ns_obj) && !is.null(ns_obj$scores$std.scores)) {
-            cs_boot <- ns_obj$scores$std.scores
-            colnames(cs_boot) <- paste0("NS_", sort(unique(wc_comm_int)))
-            rownames(cs_boot) <- subject_ids
-          } else {
-            cs_boot <- matrix(NA_real_, nrow = length(subject_ids), ncol = length(unique(wc_comm_int)),
-                              dimnames = list(subject_ids, paste0("NS_", sort(unique(wc_comm_int)))))
-          }
-        }
-      }
-
       en <- .edge_names_lt(nodes_g)
       evec <- if (length(en)) { v <- Wg[lower.tri(Wg)]; names(v) <- en; v } else NULL
 
@@ -798,7 +793,7 @@ multimixMN <- function(
         bridge_vals = bridge_vals, bridge_excluded_mat = bridge_excluded_mat,
         membership = memb_all,
         membership_boot = if (do_community_boot) memb_boot else NULL,
-        community_scores_boot = cs_boot
+        loadings_boot = L_boot
       )
     })
     names(per_layer) <- uniq_layers
@@ -884,24 +879,8 @@ multimixMN <- function(
         if (is.null(layer_boot[[L]])) next
         pl <- boot_res[[bi]]$per_layer[[L]]; if (is.null(pl)) next
 
-        if (!is.null(layer_boot[[L]]$community_scores_boot) && !is.null(pl$community_scores_boot)) {
-          # array [rep, id, comm]
-          ids   <- dimnames(layer_boot[[L]]$community_scores_boot)$id
-          comms <- dimnames(layer_boot[[L]]$community_scores_boot)$comm
-          mat <- pl$community_scores_boot
-          # allinea
-          miss_rows <- setdiff(ids, rownames(mat))
-          if (length(miss_rows)) {
-            mat <- rbind(mat, matrix(NA_real_, nrow = length(miss_rows), ncol = ncol(mat),
-                                     dimnames = list(miss_rows, colnames(mat))))
-          }
-          miss_cols <- setdiff(comms, colnames(mat))
-          if (length(miss_cols)) {
-            mat <- cbind(mat, matrix(NA_real_, nrow = nrow(mat), ncol = length(miss_cols),
-                                     dimnames = list(rownames(mat), miss_cols)))
-          }
-          mat <- mat[ids, comms, drop = FALSE]
-          layer_boot[[L]]$community_scores_boot[bi, , ] <- mat
+        if (!is.null(layer_boot[[L]]$loadings_boot)) {
+          layer_boot[[L]]$loadings_boot[[bi]] <- pl$loadings_boot
         }
 
         nodes_g <- layer_nodes_graph[[L]]
@@ -1011,22 +990,16 @@ multimixMN <- function(
       bridge_ei1_excluded         = if (do_excluded_boot && !is.null(LB$bridge_ei1_excl_boot))
         .calc_ci(LB$bridge_ei1_excl_boot, probs) else NULL,
       bridge_ei2_excluded         = if (do_excluded_boot && !is.null(LB$bridge_ei2_excl_boot))
-        .calc_ci(LB$bridge_ei2_excl_boot, probs) else NULL,
-
-      community_scores = {
-        CSB <- LB$community_scores_boot
-        if (isTRUE(do_comm_scores_boot) && !is.null(CSB)) {
-          qfun <- function(x, p) if (all(is.na(x))) NA_real_ else
-            stats::quantile(x, probs = p, na.rm = TRUE)
-          low <- apply(CSB, c(2, 3), qfun, p = probs[1])
-          up  <- apply(CSB, c(2, 3), qfun, p = probs[2])
-          list(lower = low, upper = up)
-        } else NULL
-      }
+        .calc_ci(LB$bridge_ei2_excl_boot, probs) else NULL
     )
 
     # attach standard stuff
     layer_fits[[L]]$settings$reps <- reps
+
+    # --- LOADINGS: boot ---
+    if (!is.null(LB$loadings_boot) && length(LB$loadings_boot) > 0) {
+      layer_fits[[L]]$community_loadings$boot <- LB$loadings_boot
+    }
 
     # --- NODE METRICS: boot ---
     layer_fits[[L]]$statistics$node$boot <- list(
@@ -1059,24 +1032,6 @@ multimixMN <- function(
     # --- EDGES: boot + CI ---
     layer_fits[[L]]$statistics$edge$boot <- LB$edge_boot_mat
     layer_fits[[L]]$statistics$edge$ci   <- ci_list$edge_weights
-
-    # --- COMMUNITY SCORES: boot + CI ---
-    if (!is.null(LB$community_scores_boot) && !is.null(layer_fits[[L]]$community_scores$df)) {
-      reps_names <- dimnames(LB$community_scores_boot)$rep
-      id_names   <- dimnames(LB$community_scores_boot)$id
-      comm_names <- dimnames(LB$community_scores_boot)$comm
-
-      cs_list <- lapply(seq_along(reps_names), function(i) {
-        mat <- LB$community_scores_boot[i, , , drop = FALSE][1, , ]
-        mat <- as.matrix(mat)
-        dimnames(mat) <- list(id_names, comm_names)
-        as.data.frame(mat, check.names = FALSE)
-      })
-      names(cs_list) <- reps_names
-
-      layer_fits[[L]]$community_scores$boot <- cs_list
-      layer_fits[[L]]$community_scores$ci   <- ci_list$community_scores
-    }
 
     # --- MEMBERSHIP BOOT ---
     layer_fits[[L]]$communities$boot_memberships <- LB$boot_memberships
@@ -1217,7 +1172,8 @@ multimixMN <- function(
       mgm   = mgm_model,
       nodes = all_nodes,
       n     = nrow(data),
-      p     = ncol(data)
+      p     = ncol(data),
+      data  = if (isTRUE(save_data)) data else NULL
     ),
 
     layers = list(

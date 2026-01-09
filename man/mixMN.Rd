@@ -30,9 +30,10 @@ mixMN(
   seed_model = NULL,
   seed_boot = NULL,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-  compute_community_scores = FALSE,
+  compute_loadings = TRUE,
   boot_what = c("general_index", "bridge_index", "excluded_index", "community",
-    "community_scores", "none"),
+    "loadings", "none"),
+  save_data = FALSE,
   progress = TRUE
 )
 }
@@ -95,9 +96,8 @@ absolute adjacency matrix:
 \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
-\item{compute_community_scores}{Logical; if \code{TRUE}, compute community
-network scores (EGAnet \code{std.scores}) with CIs and bootstrap
-arrays.}
+\item{compute_loadings}{Logical; if TRUE (default),
+compute network loadings (EGAnet net.loads) for communities.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
 Can include:
@@ -110,11 +110,13 @@ communities).
 \item \code{"excluded_index"}: bridge metrics for nodes excluded from
 communities (or treated as such).
 \item \code{"community"}: bootstrap community memberships.
-\item \code{"community_scores"}: bootstrap community network scores
-(only if \code{compute_community_scores = TRUE}).
+\item \code{"loadings"}: bootstrap loadings
+(only if \code{compute_loadings = TRUE}).
 \item \code{"none"}: skip node-level bootstrap (edge-weight bootstrap is
 still performed if \code{reps > 0}).
 }}
+
+\item{save_data}{Logical; if TRUE, store the original data in the output object.}
 
 \item{progress}{Logical; if \code{TRUE} (default), show a bootstrap progress
 bar when the \pkg{progressr} package is available.}
@@ -136,8 +138,9 @@ List of main settings used in the call, including
 List with:
 \code{mgm} (the fitted \code{mgm} object),
 \code{nodes} (character vector of all node names),
-\code{n} (number of observations), and
-\code{p} (number of variables).
+\code{n} (number of observations),
+\code{p} (number of variables), and
+\code{data}.
 }
 \item{\code{graph}}{
 List describing the graph:
@@ -191,19 +194,15 @@ all unique undirected edges among \code{keep_nodes_graph});
 }\if{html}{\out{</div>}}
 
 }
-\item{\code{community_scores}}{
-List containing community network scores (only if
-\code{compute_community_scores = TRUE}):
-\code{obj} (the \code{EGAnet::net.scores} object, or \code{NULL} if
-score computation failed),
-\code{df} (data frame with subject IDs in column \code{id} and
-standardized community scores in the remaining columns),
-\code{ci} (list with \code{lower} and \code{upper} matrices,
-subjects × communities, with CIs for community scores, or
-\code{NULL} if no bootstrap was performed), and
-\code{boot} (list of data frames, one per bootstrap replication, with
-community scores, or \code{NULL} if \code{"community_scores"} was not
-requested in \code{boot_what} or if \code{reps = 0}).
+\item{\code{community_loadings}}{
+List containing community-loading information (based on
+\code{EGAnet::net.loads}) for later community-score computation on new
+data:
+\code{nodes} (nodes used for loadings),
+\code{wc} (integer community labels aligned with \code{nodes}),
+\code{true} (matrix of standardized loadings, nodes × communities),
+and \code{boot} (list of bootstrap loading matrices, one per replication,
+or \code{NULL} if not bootstrapped).
 }
 }
 }
@@ -211,8 +210,8 @@ requested in \code{boot_what} or if \code{reps = 0}).
 Estimates a Mixed Graphical Model (MGM) network on the original data and
 performs non-parametric bootstrap (row resampling) to compute centrality
 indices, bridge metrics, clustering stability, and confidence intervals (CIs)
-for node metrics and edge weights. Optionally computes community network
-scores with CIs and bootstrap arrays.
+for node metrics and edge weights. Optionally compute community score loadings
+(for later prediction on new data); optionally bootstrap loadings.
 }
 \details{
 This function does \strong{not} call \code{future::plan()}. To enable

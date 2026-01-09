@@ -5,8 +5,8 @@
 #' Estimates a Mixed Graphical Model (MGM) network on the original data and
 #' performs non-parametric bootstrap (row resampling) to compute centrality
 #' indices, bridge metrics, clustering stability, and confidence intervals (CIs)
-#' for node metrics and edge weights. Optionally computes community network
-#' scores with CIs and bootstrap arrays.
+#' for node metrics and edge weights. Optionally compute community score loadings
+#' (for later prediction on new data); optionally bootstrap loadings.
 #'
 #' @param data Matrix or data.frame (n × p) with variables in columns.
 #' @param type,level Vectors as required by \code{mgm::mgm}.
@@ -44,9 +44,8 @@
 #'   absolute adjacency matrix:
 #'   \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
-#' @param compute_community_scores Logical; if \code{TRUE}, compute community
-#'   network scores (EGAnet \code{std.scores}) with CIs and bootstrap
-#'   arrays.
+#' @param compute_loadings Logical; if TRUE (default),
+#'   compute network loadings (EGAnet net.loads) for communities.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Can include:
 #'   \itemize{
@@ -58,11 +57,12 @@
 #'     \item \code{"excluded_index"}: bridge metrics for nodes excluded from
 #'       communities (or treated as such).
 #'     \item \code{"community"}: bootstrap community memberships.
-#'     \item \code{"community_scores"}: bootstrap community network scores
-#'       (only if \code{compute_community_scores = TRUE}).
+#'     \item \code{"loadings"}: bootstrap loadings
+#'       (only if \code{compute_loadings = TRUE}).
 #'     \item \code{"none"}: skip node-level bootstrap (edge-weight bootstrap is
 #'       still performed if \code{reps > 0}).
 #'   }
+#' @param save_data Logical; if TRUE, store the original data in the output object.
 #' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress
 #'   bar when the \pkg{progressr} package is available.
 #'
@@ -83,8 +83,9 @@
 #'     List with:
 #'     \code{mgm} (the fitted \code{mgm} object),
 #'     \code{nodes} (character vector of all node names),
-#'     \code{n} (number of observations), and
-#'     \code{p} (number of variables).
+#'     \code{n} (number of observations),
+#'     \code{p} (number of variables), and
+#'     \code{data}.
 #'   }
 #'   \item{\code{graph}}{
 #'     List describing the graph:
@@ -136,21 +137,17 @@
 #'     \code{n_edges × 2}, with columns \code{2.5\%} and \code{97.5\%}, or
 #'     \code{NULL} if \code{reps = 0}).
 #'   }
-#'   \item{\code{community_scores}}{
-#'     List containing community network scores (only if
-#'     \code{compute_community_scores = TRUE}):
-#'     \code{obj} (the \code{EGAnet::net.scores} object, or \code{NULL} if
-#'     score computation failed),
-#'     \code{df} (data frame with subject IDs in column \code{id} and
-#'     standardized community scores in the remaining columns),
-#'     \code{ci} (list with \code{lower} and \code{upper} matrices,
-#'     subjects × communities, with CIs for community scores, or
-#'     \code{NULL} if no bootstrap was performed), and
-#'     \code{boot} (list of data frames, one per bootstrap replication, with
-#'     community scores, or \code{NULL} if \code{"community_scores"} was not
-#'     requested in \code{boot_what} or if \code{reps = 0}).
+#'   \item{\code{community_loadings}}{
+#'     List containing community-loading information (based on
+#'     \code{EGAnet::net.loads}) for later community-score computation on new
+#'     data:
+#'     \code{nodes} (nodes used for loadings),
+#'     \code{wc} (integer community labels aligned with \code{nodes}),
+#'     \code{true} (matrix of standardized loadings, nodes × communities),
+#'     and \code{boot} (list of bootstrap loading matrices, one per replication,
+#'     or \code{NULL} if not bootstrapped).
 #'   }
-#' }
+#'   }
 #'
 #' @details
 #' This function does \strong{not} call \code{future::plan()}. To enable
@@ -160,7 +157,7 @@
 #' bootstrap and corresponding CIs are still computed.
 #'
 #' @importFrom mgm mgm
-#' @importFrom EGAnet net.scores
+#' @importFrom EGAnet net.loads
 #' @importFrom igraph graph_from_adjacency_matrix simplify E ecount V distances betweenness vcount
 #' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap cluster_walktrap cluster_edge_betweenness
 #' @importFrom qgraph centrality
@@ -195,9 +192,10 @@ mixMN <- function(
     seed_model = NULL,
     seed_boot = NULL,
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-    compute_community_scores = FALSE,
+    compute_loadings = TRUE,
     boot_what = c("general_index", "bridge_index", "excluded_index",
-                  "community", "community_scores", "none"),
+                  "community", "loadings", "none"),
+    save_data = FALSE,
     progress = TRUE
 ) {
   lambdaSel <- match.arg(lambdaSel)
@@ -225,12 +223,12 @@ mixMN <- function(
   tiny <- 1e-10
 
   # --- silence EGAnet message ---
-  .quiet_net_scores <- function(...) {
+  .quiet_net_loads <- function(...) {
     withCallingHandlers(
       {
         out <- NULL
         invisible(capture.output(
-          out <- EGAnet::net.scores(...)
+          out <- EGAnet::net.loads(...)
         ))
         out
       },
@@ -373,60 +371,37 @@ mixMN <- function(
   }
 
   # --- placeholders per community score ---
-  community_scores_obj  <- NULL
-  community_scores_df   <- NULL
-  community_scores_true <- NULL
-  community_scores_boot_arr <- NULL
-  community_scores_ci   <- NULL
+  community_loadings_true <- NULL   # matrix p × K (std loadings)
+  community_loadings_boot <- NULL   # list length reps (oppure array)
+  nodes_comm <- character(0)
+  wc_comm_int <- integer(0)
 
   # ========== Community network scores (original, conditional) ==========
-  nodes_comm <- integer(0)
-  wc_comm_int <- integer(0)
-  if (isTRUE(compute_community_scores)) {
-    nodes_comm <- intersect(names(groups)[!is.na(groups)], keep_nodes_graph)
+  nodes_comm <- intersect(names(groups)[!is.na(groups)], keep_nodes_graph)
+  A_comm <- wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE]
+  wc_comm <- groups[nodes_comm]
+  wc_levels <- sort(unique(as.integer(wc_comm)))
+  wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
+  wc_comm_int <- unname(wc_map[as.integer(wc_comm)])
 
-    if (length(nodes_comm) > 0) {
-      A_comm <- wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE]
+  if (isTRUE(compute_loadings) && length(nodes_comm) > 1) {
 
-      wc_comm <- groups[nodes_comm]
-      wc_levels <- sort(unique(as.integer(wc_comm)))
-      wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
-      wc_comm_int <- unname(wc_map[as.integer(wc_comm)]) # dense 1..K
+    loads_obj <- tryCatch(
+      .quiet_net_loads(
+        A = A_comm,
+        wc = wc_comm_int,
+        loading.method = "revised",
+        rotation = NULL
+      ),
+      error = function(e) NULL
+    )
 
-      dat_comm <- as.matrix(data[, nodes_comm, drop = FALSE])
-      rownames(dat_comm) <- subject_ids
-
-      community_scores_obj <- tryCatch(
-        {
-          .quiet_net_scores(
-            data = dat_comm,
-            A = A_comm,
-            wc = wc_comm_int,
-            loading.method = "revised",
-            structure = "simple",
-            rotation = NULL,
-            scores = "components"
-          )
-        },
-        error = function(e) NULL
-      )
-
-      if (!is.null(community_scores_obj)) {
-        community_scores_true <- community_scores_obj$scores$std.scores  # std.scores
-      } else {
-        community_scores_true <- matrix(NA_real_, nrow = nrow(dat_comm), ncol = length(unique(wc_comm_int)))
-      }
-
-      K <- ncol(community_scores_true)
-      colnames(community_scores_true) <- paste0("NS_", sort(unique(as.integer(wc_comm))))
-      rownames(community_scores_true) <- subject_ids
-
-      community_scores_df <- data.frame(
-        id = subject_ids,
-        as.data.frame(community_scores_true[subject_ids, , drop = FALSE]),
-        row.names = NULL,
-        check.names = FALSE
-      )
+    if (!is.null(loads_obj) && !is.null(loads_obj$std)) {
+      community_loadings_true <- loads_obj$std
+      community_loadings_true <- community_loadings_true[nodes_comm, , drop = FALSE]
+    } else {
+      community_loadings_true <- matrix(NA_real_, nrow = length(nodes_comm), ncol = length(unique(wc_comm_int)),
+                                        dimnames = list(nodes_comm, paste0("C", seq_len(length(unique(wc_comm_int))))))
     }
   }
 
@@ -553,7 +528,7 @@ mixMN <- function(
   boot_what <- match.arg(
     boot_what,
     choices = c("general_index", "bridge_index", "excluded_index",
-                "community", "community_scores", "none"),
+                "community", "loadings", "none"),
     several.ok = TRUE
   )
 
@@ -562,14 +537,13 @@ mixMN <- function(
     do_bridge_boot      <- FALSE
     do_excluded_boot    <- FALSE
     do_community_boot   <- FALSE
-    do_comm_scores_boot <- FALSE
+    do_loadings_boot    <- FALSE
   } else {
     do_general_boot   <- "general_index"  %in% boot_what
     do_bridge_boot    <- "bridge_index"   %in% boot_what
     do_excluded_boot  <- "excluded_index" %in% boot_what
     do_community_boot <- "community"      %in% boot_what
-    do_comm_scores_boot <- isTRUE(compute_community_scores) &&
-      ("community_scores" %in% boot_what)
+    do_loadings_boot  <- isTRUE(compute_loadings) && ("loadings" %in% boot_what)
   }
 
   # ---- Bootstrap containers ----
@@ -581,8 +555,7 @@ mixMN <- function(
   bridge_strength_excl_boot <- bridge_betweenness_excl_boot <- NULL
   bridge_closeness_excl_boot <- bridge_ei1_excl_boot <- bridge_ei2_excl_boot <- NULL
   edge_boot_mat <- NULL
-  community_scores_boot_arr  <- NULL
-  community_scores_boot_list <- NULL
+  community_loadings_boot <- NULL
 
   use_progress <- isTRUE(progress) && requireNamespace("progressr", quietly = TRUE)
   seq_reps <- seq_len(reps)
@@ -620,7 +593,7 @@ mixMN <- function(
         membership   = if (isTRUE(do_community_boot)) rep(NA_integer_, length(keep_nodes_cluster)) else NULL,
         centralities = if (central_len > 0) rep(NA_real_, central_len) else numeric(0),
         edges_boot   = NULL,
-        nscores_boot = NULL
+        loadings_boot = NULL
       ))
     }
 
@@ -772,47 +745,38 @@ mixMN <- function(
     edge_values <- boot_edges[lower.tri(boot_edges)]
     names(edge_values) <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
 
-    ## community scores bootstrap (solo se richieste)
-    nscores_boot <- NULL
-    if (isTRUE(do_comm_scores_boot) && length(nodes_comm) > 0) {
+    # --- community loadings bootstrap (only if requested) ---
+    loadings_boot <- NULL
+    if (isTRUE(do_loadings_boot) && length(nodes_comm) > 1) {
+
       A_comm_boot <- boot_wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE]
 
-      dat_comm_full <- as.matrix(data[, nodes_comm, drop = FALSE])
-
-      ns_obj <- tryCatch(
-        {
-          .quiet_net_scores(
-            data = dat_comm_full,
-            A = A_comm_boot,
-            wc = wc_comm_int,
-            loading.method = "revised",
-            structure = "simple",
-            rotation = NULL,
-            scores = "components"
-          )
-        },
+      loads_obj_b <- tryCatch(
+        .quiet_net_loads(
+          A = A_comm_boot,
+          wc = wc_comm_int,
+          loading.method = "revised",
+          rotation = NULL
+        ),
         error = function(e) NULL
       )
 
-      if (!is.null(ns_obj)) {
-        nscores_boot <- ns_obj$scores$std.scores
+      if (!is.null(loads_obj_b) && !is.null(loads_obj_b$std)) {
+        loadings_boot <- loads_obj_b$std
+        loadings_boot <- loadings_boot[nodes_comm, , drop = FALSE]
       } else {
-        nscores_boot <- matrix(NA_real_, nrow = length(subject_ids), ncol = length(unique(wc_comm_int)))
+        K <- if (!is.null(community_loadings_true)) ncol(community_loadings_true) else length(unique(wc_comm_int))
+        loadings_boot <- matrix(NA_real_, nrow = length(nodes_comm), ncol = K,
+                                dimnames = list(nodes_comm,
+                                                if (!is.null(community_loadings_true)) colnames(community_loadings_true) else paste0("C", seq_len(K))))
       }
-
-      if (!is.null(community_scores_true)) {
-        colnames(nscores_boot) <- colnames(community_scores_true)
-      } else {
-        colnames(nscores_boot) <- paste0("NS_", sort(unique(as.integer(wc_comm_int))))
-      }
-      rownames(nscores_boot) <- subject_ids
     }
 
     list(
       membership   = boot_membership,
       centralities = centralities_vec,
       edges_boot   = edge_values,
-      nscores_boot = nscores_boot
+      loadings_boot = loadings_boot
     )
   }
 
@@ -900,67 +864,6 @@ mixMN <- function(
       colnames(bridge_ei2_excl_boot)         <- keep_nodes_graph
     }
 
-    ## --- Community scores: costruzione array e lista ---
-    if (isTRUE(do_comm_scores_boot) && !is.null(community_scores_true) &&
-        ncol(community_scores_true) > 0) {
-
-      n_subj     <- length(subject_ids)
-      comm_names <- colnames(community_scores_true)
-      K          <- length(comm_names)
-
-      community_scores_boot_arr <- array(
-        NA_real_, dim = c(reps, n_subj, K),
-        dimnames = list(
-          rep  = paste0("b", seq_len(reps)),
-          id   = subject_ids,
-          comm = comm_names
-        )
-      )
-
-      for (i in seq_len(reps)) {
-        ns_i <- boot_output[[i]]$nscores_boot
-        if (is.null(ns_i)) next
-
-        ns_i <- as.matrix(ns_i)
-
-        ## allinea righe (id)
-        miss_rows <- setdiff(subject_ids, rownames(ns_i))
-        if (length(miss_rows)) {
-          ns_i <- rbind(
-            ns_i,
-            matrix(NA_real_, nrow = length(miss_rows), ncol = ncol(ns_i),
-                   dimnames = list(miss_rows, colnames(ns_i)))
-          )
-        }
-
-        ## allinea colonne (comunità)
-        miss_cols <- setdiff(comm_names, colnames(ns_i))
-        if (length(miss_cols)) {
-          ns_i <- cbind(
-            ns_i,
-            matrix(NA_real_, nrow = nrow(ns_i), ncol = length(miss_cols),
-                   dimnames = list(rownames(ns_i), miss_cols))
-          )
-        }
-
-        ns_i <- ns_i[subject_ids, comm_names, drop = FALSE]
-        community_scores_boot_arr[i, , ] <- ns_i
-      }
-
-      ## converto array in lista di data.frame
-      reps_names <- dimnames(community_scores_boot_arr)$rep
-      id_names   <- dimnames(community_scores_boot_arr)$id
-      comm_names <- dimnames(community_scores_boot_arr)$comm
-
-      community_scores_boot_list <- lapply(seq_along(reps_names), function(j) {
-        mat <- community_scores_boot_arr[j, , , drop = FALSE][1, , ]
-        mat <- as.matrix(mat)
-        dimnames(mat) <- list(id_names, comm_names)
-        as.data.frame(mat, check.names = FALSE)
-      })
-      names(community_scores_boot_list) <- reps_names
-    }
-
     ## CI function
     calc_ci <- function(mat, probs) {
       ci <- apply(mat, 2, function(x) {
@@ -1001,14 +904,13 @@ mixMN <- function(
     ## edges sempre
     ci_results$edge_weights <- calc_ci(t(edge_boot_mat), probs)
 
-    ## Community score CIs
-    if (isTRUE(do_comm_scores_boot) && !is.null(community_scores_true)) {
-      qfun <- function(x, p) if (all(is.na(x))) NA_real_ else stats::quantile(x, probs = p, na.rm = TRUE)
-      cs_ci_low  <- apply(community_scores_boot_arr, c(2, 3), qfun, p = probs[1])
-      cs_ci_high <- apply(community_scores_boot_arr, c(2, 3), qfun, p = probs[2])
-      dimnames(cs_ci_low)  <- dimnames(community_scores_true)
-      dimnames(cs_ci_high) <- dimnames(community_scores_true)
-      community_scores_ci <- list(lower = cs_ci_low, upper = cs_ci_high)
+    # --- collect bootstrap loadings (one matrix per replication) ---
+    if (isTRUE(do_loadings_boot) && !is.null(community_loadings_true)) {
+      community_loadings_boot <- lapply(boot_output, function(x) x$loadings_boot)
+      community_loadings_boot <- lapply(community_loadings_boot, function(L) {
+        if (is.null(L)) return(community_loadings_true * NA_real_)
+        L
+      })
     }
 
   } # end if reps > 0
@@ -1082,7 +984,8 @@ mixMN <- function(
       mgm   = mgm_model,
       nodes = all_nodes,
       n     = nrow(data),
-      p     = ncol(data)
+      p     = ncol(data),
+      data  = if (isTRUE(save_data)) data else NULL
     ),
 
     graph = list(
@@ -1126,11 +1029,11 @@ mixMN <- function(
       )
     ),
 
-    community_scores = list(
-      obj  = if (isTRUE(compute_community_scores)) community_scores_obj  else NULL,
-      df   = if (isTRUE(compute_community_scores)) community_scores_df   else NULL,
-      ci   = if (isTRUE(compute_community_scores)) community_scores_ci   else NULL,
-      boot = if (isTRUE(compute_community_scores)) community_scores_boot_list else NULL
+    community_loadings = list(
+      nodes = nodes_comm,
+      wc    = wc_comm_int,
+      true  = community_loadings_true,
+      boot  = community_loadings_boot
     )
   )
 

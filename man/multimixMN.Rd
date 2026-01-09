@@ -31,9 +31,10 @@ multimixMN(
   seed_boot = NULL,
   treat_singletons_as_excluded = FALSE,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-  compute_community_scores = FALSE,
+  compute_loadings = TRUE,
   boot_what = c("general_index", "interlayer_index", "bridge_index", "excluded_index",
-    "community", "community_scores", "none"),
+    "community", "loadings", "none"),
+  save_data = FALSE,
   progress = TRUE
 )
 }
@@ -116,9 +117,8 @@ metrics and related summaries.}
 layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
-\item{compute_community_scores}{Logical; if \code{TRUE}, compute community
-network scores (EGAnet standardized \code{std.scores}) with bootstrap
-arrays and confidence intervals.}
+\item{compute_loadings}{Logical; if TRUE (default),
+compute network loadings (EGAnet net.loads) for communities.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
 Valid options are:
@@ -127,10 +127,12 @@ Valid options are:
 \code{"bridge_index"} (bridge metrics for nodes in communities),
 \code{"excluded_index"} (bridge metrics for nodes treated as excluded),
 \code{"community"} (bootstrap community memberships),
-\code{"community_scores"} (bootstrap community scores, only if
-\code{compute_community_scores = TRUE}),
+\code{"loadings"} (bootstrap within-layer community loadings, only if
+\code{compute_loadings = TRUE}),
 and \code{"none"} (skip all node-level bootstrap: only edge-weight
 bootstrap is performed if \code{reps > 0}).}
+
+\item{save_data}{Logical; if TRUE, store the original data in the output object.}
 
 \item{progress}{Logical; if \code{TRUE} (default), show a bootstrap progress
 bar when the \pkg{progressr} package is available.}
@@ -150,7 +152,7 @@ information on the data (\code{nodes}, \code{n}, \code{p}).
 (assignment of nodes to layers and the \code{layer_rules} matrix used).
 \item \code{layer_fits}: named list (one element per layer) with
 single-layer fits, including community structure, node-level statistics,
-edge-level statistics, bridge metrics, and (optionally) community scores
+edge-level statistics, bridge metrics, and (optionally) community loadings
 with bootstrap information.
 \item \code{interlayer}: list collecting interlayer-only node metrics
 (strength, expected influence, closeness, betweenness, with or without
@@ -169,7 +171,7 @@ enforces which cross-layer edges are allowed according to \code{layer_rules}.
 Within each layer, the function computes community structure, non-parametric
 row-bootstrap for node centralities and edges, bridge metrics
 (including metrics for nodes treated as "excluded"), and (optionally)
-community network scores. It also returns interlayer-only node metrics and
+within-layer community loadings. It also returns interlayer-only node metrics and
 cross-layer edge summaries.
 }
 \details{
