@@ -9,7 +9,7 @@
 #' within-layer community loadings. It also returns interlayer-only node metrics and
 #' cross-layer edge summaries.
 #'
-#' @param data A numeric matrix or data frame (n × p) with variables in columns.
+#' @param data A numeric matrix or data frame (n x p) with variables in columns.
 #' @param type Length-\code{p} vector of variable types as required by
 #'   \code{mgm::mgm}.
 #' @param level Length-\code{p} vector of variable levels as required by
@@ -852,6 +852,8 @@ multimixMN <- function(
 
   # ---------- BOOTSTRAP ----------
   if (reps > 0) {
+    t0 <- Sys.time()
+
     if (use_progress) {
       boot_res <- progressr::with_progress({
         p <- progressr::progressor(steps = reps)
@@ -870,6 +872,13 @@ multimixMN <- function(
         future.seed = seed_boot
       )
     }
+
+    elapsed <- difftime(Sys.time(), t0, units = "secs")
+    message(sprintf(
+      "Total computation time: %.1f seconds (~ %.2f minutes).",
+      as.numeric(elapsed),
+      as.numeric(elapsed) / 60
+    ))
 
     # Collect bootstrap results
     for (bi in seq_len(reps)) {
@@ -1058,8 +1067,8 @@ multimixMN <- function(
 
     interlayer_fits[[key]] <- list(
       edges   = list(
-        true = edges_true_df,   # pesi “osservati” cross-layer
-        boot = eb,              # matrice bootstrap (edge × reps)
+        true = edges_true_df,   # cross-layer edges
+        boot = eb,              # matrice bootstrap (edge x reps)
         ci   = ci_edges         # CIs per edge
       )
     )

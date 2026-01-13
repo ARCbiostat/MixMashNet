@@ -38,7 +38,7 @@ mixMN(
 )
 }
 \arguments{
-\item{data}{Matrix or data.frame (n × p) with variables in columns.}
+\item{data}{Matrix or data.frame (n x p) with variables in columns.}
 
 \item{type, level}{Vectors as required by \code{mgm::mgm}.}
 
@@ -177,19 +177,19 @@ from communities also
 \code{bridge_closeness_excluded},
 \code{bridge_ei1_excluded}, \code{bridge_ei2_excluded});
 \code{boot} (list of bootstrap matrices for each metric, each of
-dimension \code{reps × length(keep_nodes_graph)}, possibly \code{NULL}
+dimension \code{reps x length(keep_nodes_graph)}, possibly \code{NULL}
 if the metric was not requested or if \code{reps = 0}); and
 \code{ci} (list of CIs for each node metric, one
-\code{p × 2} matrix per metric, with columns \code{2.5\%} and
+\code{p x 2} matrix per metric, with columns \code{2.5\%} and
 \code{97.5\%}, or \code{NULL} if no bootstrap was performed).
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{\code{edge} is a list with:
 \code{true} (data frame with columns \code{edge} and \code{weight} for
 all unique undirected edges among \code{keep_nodes_graph});
 \code{boot} (matrix of bootstrap edge weights of dimension
-\code{n_edges × reps}); and
+\code{n_edges x reps}); and
 \code{ci} (matrix of CIs for edge weights,
-\code{n_edges × 2}, with columns \code{2.5\%} and \code{97.5\%}, or
+\code{n_edges x 2}, with columns \code{2.5\%} and \code{97.5\%}, or
 \code{NULL} if \code{reps = 0}).
 }\if{html}{\out{</div>}}
 
@@ -200,7 +200,7 @@ List containing community-loading information (based on
 data:
 \code{nodes} (nodes used for loadings),
 \code{wc} (integer community labels aligned with \code{nodes}),
-\code{true} (matrix of standardized loadings, nodes × communities),
+\code{true} (matrix of standardized loadings, nodes x communities),
 and \code{boot} (list of bootstrap loading matrices, one per replication,
 or \code{NULL} if not bootstrapped).
 }

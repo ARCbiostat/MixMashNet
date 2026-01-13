@@ -8,7 +8,7 @@
 #' for node metrics and edge weights. Optionally compute community score loadings
 #' (for later prediction on new data); optionally bootstrap loadings.
 #'
-#' @param data Matrix or data.frame (n × p) with variables in columns.
+#' @param data Matrix or data.frame (n x p) with variables in columns.
 #' @param type,level Vectors as required by \code{mgm::mgm}.
 #' @param reps Integer (>= 0). Number of bootstrap replications.
 #' @param scale Logical; if \code{TRUE} (default) Gaussian variables
@@ -122,19 +122,19 @@
 #'     \code{bridge_closeness_excluded},
 #'     \code{bridge_ei1_excluded}, \code{bridge_ei2_excluded});
 #'     \code{boot} (list of bootstrap matrices for each metric, each of
-#'     dimension \code{reps × length(keep_nodes_graph)}, possibly \code{NULL}
+#'     dimension \code{reps x length(keep_nodes_graph)}, possibly \code{NULL}
 #'     if the metric was not requested or if \code{reps = 0}); and
 #'     \code{ci} (list of CIs for each node metric, one
-#'     \code{p × 2} matrix per metric, with columns \code{2.5\%} and
+#'     \code{p x 2} matrix per metric, with columns \code{2.5\%} and
 #'     \code{97.5\%}, or \code{NULL} if no bootstrap was performed).
 #'
 #'     \code{edge} is a list with:
 #'     \code{true} (data frame with columns \code{edge} and \code{weight} for
 #'     all unique undirected edges among \code{keep_nodes_graph});
 #'     \code{boot} (matrix of bootstrap edge weights of dimension
-#'     \code{n_edges × reps}); and
+#'     \code{n_edges x reps}); and
 #'     \code{ci} (matrix of CIs for edge weights,
-#'     \code{n_edges × 2}, with columns \code{2.5\%} and \code{97.5\%}, or
+#'     \code{n_edges x 2}, with columns \code{2.5\%} and \code{97.5\%}, or
 #'     \code{NULL} if \code{reps = 0}).
 #'   }
 #'   \item{\code{community_loadings}}{
@@ -143,7 +143,7 @@
 #'     data:
 #'     \code{nodes} (nodes used for loadings),
 #'     \code{wc} (integer community labels aligned with \code{nodes}),
-#'     \code{true} (matrix of standardized loadings, nodes × communities),
+#'     \code{true} (matrix of standardized loadings, nodes x communities),
 #'     and \code{boot} (list of bootstrap loading matrices, one per replication,
 #'     or \code{NULL} if not bootstrapped).
 #'   }
@@ -371,7 +371,7 @@ mixMN <- function(
   }
 
   # --- placeholders per community score ---
-  community_loadings_true <- NULL   # matrix p × K (std loadings)
+  community_loadings_true <- NULL   # matrix p x K (std loadings)
   community_loadings_boot <- NULL   # list length reps (oppure array)
   nodes_comm <- character(0)
   wc_comm_int <- integer(0)
@@ -666,7 +666,7 @@ mixMN <- function(
       )
     }
 
-    ## --- BRIDGE INDEX (nodi in comunità) ---
+    ## --- BRIDGE INDEX (nodes in community) ---
     if (isTRUE(do_bridge_boot)) {
       bridge_vals_abs <- tryCatch({
         b <- bridge_metrics(g_bridge_abs_boot, membership = groups)
@@ -781,6 +781,8 @@ mixMN <- function(
   }
 
   if (reps > 0) {
+    t0 <- Sys.time()
+
     if (use_progress) {
       boot_output <- progressr::with_progress({
         p <- progressr::progressor(steps = reps)
@@ -801,7 +803,14 @@ mixMN <- function(
       )
     }
 
-    ## matrice bootstrap centralità
+    elapsed <- difftime(Sys.time(), t0, units = "secs")
+    message(sprintf(
+      "Total computation time: %.1f seconds (~ %.2f minutes).",
+      as.numeric(elapsed),
+      as.numeric(elapsed) / 60
+    ))
+
+    ## bootstrap matrix centrality
     boot_mat <- do.call(rbind, lapply(boot_output, function(x) x$centralities))
 
     ## memberships solo se richieste

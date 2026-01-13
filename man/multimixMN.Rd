@@ -39,7 +39,7 @@ multimixMN(
 )
 }
 \arguments{
-\item{data}{A numeric matrix or data frame (n × p) with variables in columns.}
+\item{data}{A numeric matrix or data frame (n x p) with variables in columns.}
 
 \item{type}{Length-\code{p} vector of variable types as required by
 \code{mgm::mgm}.}
