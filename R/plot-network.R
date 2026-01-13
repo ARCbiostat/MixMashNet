@@ -116,7 +116,9 @@
     layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
     ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
     if (length(ulay) > 0) {
-      pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dark 3")
+      set.seed(2025)
+      pal0 <- randomcoloR::distinctColorPalette(30)
+      pal  <- pal0[seq_along(ulay)]
       names(pal) <- ulay
       idx <- !is.na(layers_vec)
       vcol[idx] <- pal[layers_vec[idx]]
@@ -133,7 +135,9 @@
       layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
       ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
       if (length(ulay) > 0) {
-        pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dark 3")
+        set.seed(2025)
+        pal0 <- randomcoloR::distinctColorPalette(30)
+        pal  <- pal0[seq_along(ulay)]
         names(pal) <- ulay
         idx <- !is.na(layers_vec)
         vcol[idx] <- pal[layers_vec[idx]]

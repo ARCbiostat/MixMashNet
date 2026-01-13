@@ -29,7 +29,8 @@ Imports:
     tibble,
     tidyr,
     patchwork,
-    progressr
+    progressr,
+    randomcoloR
 Suggests:
     testthat (>= 3.0.0),
     knitr,
