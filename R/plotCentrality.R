@@ -219,7 +219,7 @@ plotCentrality <- function(
     lower_vec <- ci_pair$lower
     upper_vec <- ci_pair$upper
 
-    ## --- osservati e community ---
+    ## --- observed and community ---
     ct_filtered <- fit$statistics$node$true %>%
       dplyr::filter(node %in% node_set)
     order_index <- match(node_set, ct_filtered$node)
@@ -231,14 +231,12 @@ plotCentrality <- function(
       rep(NA_integer_, length(node_set))
     }
 
-    ## assicuriamoci che NESSUN vettore abbia names
     names(node_set)        <- NULL
     names(observed_values) <- NULL
     names(lower_vec)       <- NULL
     names(upper_vec)       <- NULL
     names(community)       <- NULL
 
-    ## --- QUI forziamo row.names "sane" ---
     df <- data.frame(
       node      = node_set,
       observed  = observed_values,
@@ -246,7 +244,7 @@ plotCentrality <- function(
       upper     = upper_vec,
       statistic    = statistic,
       community = community,
-      row.names = seq_along(node_set),   # <- riga chiave
+      row.names = seq_along(node_set),
       check.names = FALSE
     )
     df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA, df$lower <= 0 & df$upper >= 0)

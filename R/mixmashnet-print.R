@@ -41,7 +41,7 @@ print.mixmashnet <- function(x, ...) {
   cat("MixMashNet fit\n")
   cat("  Type: ", type_label, "\n", sep = "")
 
-  ## ---- n soggetti + p variabili ----
+  ## ---- n subjects + p variables ----
   p <- length(x$model$nodes)
   n <- x$model$n %||% NA_integer_
 
@@ -51,7 +51,7 @@ print.mixmashnet <- function(x, ...) {
     cat("  Variables: ", p, "\n", sep = "")
   }
 
-  ## ---- multilayer: info sui layer ----
+  ## ---- multilayer: info on layers ----
   if ("multimixMN_fit" %in% cls && !is.null(x$layer_fits)) {
     cat("  Layers (", length(x$layer_fits), "):\n", sep = "")
     for (L in names(x$layer_fits)) {
@@ -99,7 +99,7 @@ print.mixmashnet <- function(x, ...) {
   }
 
 
-  ## ---- grafico globale ----
+  ## ---- global graph ----
   if (!is.null(x$graph$igraph)) {
     g <- x$graph$igraph
     v <- igraph::vcount(g)
@@ -127,15 +127,15 @@ print.mixmashnet <- function(x, ...) {
     }
   }
 
-  ## ---- variabili usate come covariate (se salvate nei settings) ----
-  covars <- x$settings$covariates %||% NULL  # usa `%||%` se hai definito helper, altrimenti if (!is.null(...))
+  ## ---- covariate variables ----
+  covars <- x$settings$covariates %||% NULL
   if (!is.null(covars) && length(covars)) {
     cat("  Covariates (adjusted for): ",
         paste(covars, collapse = ", "),
         "\n", sep = "")
   }
 
-  ## ---- nodi esclusi da grafo / clustering ----
+  ## ---- nodes excluded from graph / clustering ----
   excl_g <- x$settings$exclude_from_graph %||% NULL
   excl_c <- x$settings$exclude_from_cluster %||% NULL
 

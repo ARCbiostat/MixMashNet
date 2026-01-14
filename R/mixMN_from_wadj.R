@@ -110,7 +110,8 @@
 #' @importFrom grDevices hcl
 #' @importFrom stats setNames
 #' @importFrom utils combn
-#' @export
+#' @keywords internal
+#' @noRd
 mixMN_from_wadj <- function(
     wadj_signed,
     nodes,
@@ -386,8 +387,8 @@ mixMN_from_wadj <- function(
     ),
 
     communities = list(
-      original_membership = original_membership,  # su keep_nodes_cluster
-      groups              = groups,               # fattore (eventualmente senza singleton)
+      original_membership = original_membership,
+      groups              = groups,
       palette             = palette_clusters,
       boot_memberships    = list()
     ),

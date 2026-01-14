@@ -678,7 +678,7 @@ summary.mixmashnet <- function(object,
 #' @export
 print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 
-  # helper per arrotondare al volo (non tocca l'oggetto originale)
+  # rounding helper
   round_df <- function(df, digits) {
     if (is.null(df) || !nrow(df)) return(df)
     num_cols <- vapply(df, is.numeric, logical(1L))
@@ -692,7 +692,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
     df
   }
 
-  # helper per ordinare in modo robusto per una o più colonne
+  # helper for robust sorting by one or more columns
   order_by <- function(df, cols) {
     cols <- intersect(cols, colnames(df))
     if (!length(cols) || !nrow(df)) return(df)
@@ -700,7 +700,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
     df[o, , drop = FALSE]
   }
 
-  # helper per rendere i nomi delle colonne più leggibili in stampa
+  # helper function to make column names more readable for printing
   prettify_colnames <- function(df, conf_level = 0.95) {
     if (is.null(df) || !nrow(df)) return(df)
 
@@ -772,7 +772,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
     ed <- prettify_colnames(ed, conf_level = x$conf_level %||% 0.95)
 
     cat("\n")
-    # --- TOP_N FILTER per intra edges ---
+    # --- TOP_N FILTER for intra edges ---
     if (is.finite(top_n) && "estimated" %in% colnames(ed)) {
       o <- order(abs(ed$estimated), decreasing = TRUE)
       ed <- ed[o, , drop = FALSE]
@@ -795,14 +795,13 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
       sub_met <- idx2[idx2$metric == met, , drop = FALSE]
       cat("\n  Metric:", met, "\n")
 
-      # (per ora 'layer' potrebbe mancare, quindi uso solo 'node' se serve)
       sub_met <- order_by(sub_met, c("layer", "node"))
 
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
 
       sub_met <- prettify_colnames(sub_met, conf_level = x$conf_level %||% 0.95)
 
-      # --- TOP_N FILTER per interlayer node metrics ---
+      # --- TOP_N FILTER for interlayer node metrics ---
       if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
         o <- order(abs(sub_met$estimated), decreasing = TRUE)
         sub_met <- sub_met[o, , drop = FALSE]
@@ -829,7 +828,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
         sub_pp <- prettify_colnames(sub_pp, conf_level = x$conf_level %||% 0.95)
         cat("\n  Pair:", pp, "\n")
 
-        # --- TOP_N FILTER per interlayer edges (per pair) ---
+        # --- TOP_N FILTER for interlayer edges (for pair) ---
         if (is.finite(top_n) && "estimated" %in% colnames(sub_pp)) {
           o <- order(abs(sub_pp$estimated), decreasing = TRUE)
           sub_pp <- sub_pp[o, , drop = FALSE]
@@ -845,7 +844,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
       ed2 <- prettify_colnames(ed2, conf_level = x$conf_level %||% 0.95)
       cat("\n")
 
-      # --- TOP_N FILTER per interlayer edges (tutti insieme) ---
+      # --- TOP_N FILTER for interlayer edges (together) ---
       if (is.finite(top_n) && "estimated" %in% colnames(ed2)) {
         o <- order(abs(ed2$estimated), decreasing = TRUE)
         ed2 <- ed2[o, , drop = FALSE]

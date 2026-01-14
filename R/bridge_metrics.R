@@ -37,7 +37,7 @@ bridge_metrics <- function(g, membership) {
   }
   rownames(adj) <- colnames(adj) <- nodes
 
-  # --- EI1 & influence helpers (as in the original) ---
+  # --- EI1 & influence helpers ---
   expectedInfBridge <- function(node_of_interest, network, nodes, communities) {
     comm_int <- communities[node_of_interest]
     other_comm <- assigned_nodes[assigned_communities != comm_int]
@@ -77,7 +77,7 @@ bridge_metrics <- function(g, membership) {
     expectedInfBridge(node, adj, nodes, assigned_communities)
   })
 
-  # --- Bridge EI2 (networktools-like) ---
+  # --- Bridge EI2 ---
   bridge_ei2 <- sapply(assigned_nodes, function(node_of_interest) {
     comm_int <- assigned_communities[node_of_interest]
     non_comm_vec <- unique(assigned_communities)[unique(assigned_communities) != comm_int]
@@ -95,12 +95,12 @@ bridge_metrics <- function(g, membership) {
     sum(ei2_vec) + ei1_node
   })
 
-  # --- Graph for Betweenness/Closeness (original style) ---
+  # --- Graph for Betweenness/Closeness ---
   g_inv <- igraph::delete_edges(g, which(is.na(E(g)$weight) | abs(E(g)$weight) <= 1e-10))
   igraph::E(g_inv)$weight <- 1 / igraph::E(g_inv)$weight
   g_pos <- igraph::delete_edges(g_inv, which(igraph::E(g_inv)$weight < 0))
 
-  # --- Bridge Betweenness (original-style, get.all.shortest.paths) ---
+  # --- Bridge Betweenness ---
   delete.ends <- function(x) {
     nodes_path <- names(igraph::V(g_pos))
     nodes_path[as.vector(x)[-c(1, length(x))]]
@@ -128,7 +128,7 @@ bridge_metrics <- function(g, membership) {
   }
   names(bridge_betweenness) <- assigned_nodes
 
-  # --- Bridge Closeness (original style) ---
+  # --- Bridge Closeness ---
   bridge_closeness <- numeric(length(assigned_nodes))
   for (i in seq_along(assigned_nodes)) {
     node <- assigned_nodes[i]

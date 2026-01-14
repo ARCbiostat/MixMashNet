@@ -580,7 +580,6 @@ mixMN <- function(
 
     boot_model <- tryCatch(do.call(mgm::mgm, boot_args), error = function(e) NULL)
 
-    ## Se MGM fallisce: restituisci NA della lunghezza corretta
     if (is.null(boot_model)) {
       n_blocks <- 0L
       if (isTRUE(do_general_boot))  n_blocks <- n_blocks + 4L  # strength, EI1, closeness, betweenness
@@ -620,7 +619,7 @@ mixMN <- function(
       g_cluster_boot <- igraph::simplify(g_cluster_boot, remove.multiple = TRUE, remove.loops = TRUE)
     }
 
-    ## membership bootstrap solo se richiesto
+    ## membership bootstrap only if requested
     boot_membership <- NULL
     if (isTRUE(do_community_boot)) {
       boot_membership <- tryCatch({
@@ -629,7 +628,7 @@ mixMN <- function(
       }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
     }
 
-    ## vettore centrale per tutte le metriche scelte
+    ## centrality vector
     centralities_vec <- numeric(0)
 
     ## --- GENERAL INDEX ---
@@ -740,7 +739,7 @@ mixMN <- function(
       )
     }
 
-    ## edges sempre
+    ## edges
     boot_edges <- boot_wadj_signed[keep_nodes_graph, keep_nodes_graph]
     edge_values <- boot_edges[lower.tri(boot_edges)]
     names(edge_values) <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
@@ -813,14 +812,14 @@ mixMN <- function(
     ## bootstrap matrix centrality
     boot_mat <- do.call(rbind, lapply(boot_output, function(x) x$centralities))
 
-    ## memberships solo se richieste
+    ## memberships (only if requested)
     if (isTRUE(do_community_boot)) {
       boot_memberships <- lapply(boot_output, function(x) x$membership)
     } else {
       boot_memberships <- list()
     }
 
-    ## edges sempre
+    ## edges
     edge_names <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
     edge_boot_mat <- matrix(NA_real_, nrow = length(edge_names), ncol = reps)
     rownames(edge_boot_mat) <- edge_names
@@ -829,7 +828,7 @@ mixMN <- function(
       if (!is.null(edges_i)) edge_boot_mat[names(edges_i), i] <- edges_i
     }
 
-    ## slicing dinamico di boot_mat in base a boot_what
+    ## slicing boot_mat using boot_what
     n <- n_nodes_graph
     offset <- 0
 
@@ -910,7 +909,7 @@ mixMN <- function(
       ci_results$bridge_ei2_excluded         <- calc_ci(bridge_ei2_excl_boot, probs)
     }
 
-    ## edges sempre
+    ## edges
     ci_results$edge_weights <- calc_ci(t(edge_boot_mat), probs)
 
     # --- collect bootstrap loadings (one matrix per replication) ---
@@ -951,7 +950,7 @@ mixMN <- function(
     igraph::V(g_igraph)$membership <- NA_integer_
   }
 
-  # ---- CIs organizzati per nodo/edge (possono essere NULL se niente bootstrap) ----
+  # ---- CIs organized for node/edge (NULL if no bootstrap) ----
   node_ci <- if (!is.null(ci_results)) {
     list(
       strength                    = ci_results$strength,
@@ -1004,8 +1003,8 @@ mixMN <- function(
     ),
 
     communities = list(
-      original_membership = original_membership,   # su keep_nodes_cluster
-      groups              = groups,               # fattore (eventualmente senza singleton)
+      original_membership = original_membership,   # on keep_nodes_cluster
+      groups              = groups,               # factor (without singletons)
       palette             = palette_clusters,
       boot_memberships    = boot_memberships
     ),

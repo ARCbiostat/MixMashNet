@@ -83,7 +83,6 @@ find_bridge_communities <- function(fit, node) {
   if (!is.null(fit$communities) && !is.null(fit$communities$groups)) {
     grp <- fit$communities$groups  # factor, named
     if (is.null(names(grp))) stop("`communities$groups` must be a named factor.")
-    # inizialmente tutti NA
     comm_full <- setNames(rep(NA_integer_, length(nodes)), nodes)
     in_idx <- names(grp)[names(grp) %in% nodes]
     if (length(in_idx)) comm_full[in_idx] <- as.integer(grp[in_idx])

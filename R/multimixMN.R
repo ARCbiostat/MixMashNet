@@ -459,7 +459,7 @@ multimixMN <- function(
     nodes_c <- if (!is.null(membL)) names(membL) else character(0)
     nodes_ex <- layer_nodes_excluded[[L]]
     list(
-      # indici generali intra-layer
+      # general indices intra-layer
       strength_boot     = if (do_intra_general_boot)
         matrix(NA_real_, reps, length(nodes_g), dimnames = list(NULL, nodes_g)) else NULL,
       ei1_boot          = if (do_intra_general_boot)
@@ -469,14 +469,14 @@ multimixMN <- function(
       betweenness_boot  = if (do_intra_general_boot)
         matrix(NA_real_, reps, length(nodes_g), dimnames = list(NULL, nodes_g)) else NULL,
 
-      # edges intra-layer: li teniamo sempre
+      # edges intra-layer
       edge_boot_mat     = {
         en <- .edge_names_lt(nodes_g)
         if (length(en)) matrix(NA_real_, length(en), reps,
                                dimnames = list(en, NULL)) else NULL
       },
 
-      # membership bootstrap solo se richiesto
+      # membership bootstrap (only if requested)
       boot_memberships  = if (do_community_boot) vector("list", reps) else vector("list", 0),
 
       # loadings bootstrap (list of matrices, one per replication)
@@ -498,7 +498,7 @@ multimixMN <- function(
       bridge_betweenness_boot  = if (do_bridge_boot && length(nodes_c) > 0)
         matrix(NA_real_, reps, length(nodes_c), dimnames = list(NULL, nodes_c)) else NULL,
 
-      # bridge per nodi esclusi
+      # bridge for excluded nodes
       bridge_strength_excl_boot     = if (do_excluded_boot && length(nodes_ex) > 0)
         matrix(NA_real_, reps, length(nodes_ex), dimnames = list(NULL, nodes_ex)) else NULL,
       bridge_ei1_excl_boot          = if (do_excluded_boot && length(nodes_ex) > 0)
@@ -644,7 +644,7 @@ multimixMN <- function(
         }
       }
 
-      # --- indici generali intra-layer ---
+      # --- general indices intra-layer ---
       if (do_intra_general_boot) {
         cent <- tryCatch(
           qgraph::centrality(Wg),
@@ -831,7 +831,7 @@ multimixMN <- function(
       }
     }
 
-    # Cross-layer edges per allowed pairs (questi li puoi lasciare sempre)
+    # Cross-layer edges per allowed pairs
     per_pairs <- lapply(names(pairs), function(key) {
       A <- pairs[[key]]$A; B <- pairs[[key]]$B
       if (length(A)==0 || length(B)==0) return(NULL)
@@ -893,9 +893,9 @@ multimixMN <- function(
         }
 
         nodes_g <- layer_nodes_graph[[L]]
-        nodes_c <- names(layer_fits[[L]]$communities$groups)        # fixed
+        nodes_c <- names(layer_fits[[L]]$communities$groups)
         if (is.null(nodes_c)) nodes_c <- character(0)
-        nodes_ex <- layer_nodes_excluded[[L]]           # fixed
+        nodes_ex <- layer_nodes_excluded[[L]]
 
         if (do_intra_general_boot && !is.null(layer_boot[[L]]$strength_boot)) {
           layer_boot[[L]]$strength_boot   [bi, nodes_g] <- pl$strength[nodes_g]
@@ -1002,7 +1002,6 @@ multimixMN <- function(
         .calc_ci(LB$bridge_ei2_excl_boot, probs) else NULL
     )
 
-    # attach standard stuff
     layer_fits[[L]]$settings$reps <- reps
 
     # --- LOADINGS: boot ---
@@ -1068,8 +1067,8 @@ multimixMN <- function(
     interlayer_fits[[key]] <- list(
       edges   = list(
         true = edges_true_df,   # cross-layer edges
-        boot = eb,              # matrice bootstrap (edge x reps)
-        ci   = ci_edges         # CIs per edge
+        boot = eb,              # bootstrap matrix (edge x reps)
+        ci   = ci_edges         # CIs edge
       )
     )
   }

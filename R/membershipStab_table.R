@@ -16,7 +16,7 @@ membershipStab_table <- function(stab_obj, digits = 3) {
   prop_df <- as.data.frame(round(prop_matrix, digits))
   prop_df[prop_df == 0] <- NA
 
-  # Order columns by numeric community index (D1, D2, ...)
+  # Order columns by numeric community index
   num_idx <- suppressWarnings(as.integer(sub("\\D+", "", colnames(prop_df))))
   ord <- order(num_idx, na.last = TRUE)
   prop_df <- prop_df[, ord, drop = FALSE]

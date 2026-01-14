@@ -18,7 +18,7 @@ interlayerPairs <- function(object) {
   nms <- names(object)
   if (is.null(nms)) return(character(0))
 
-  # prendiamo solo gli elementi che hanno $edges (cioè le coppie di layer)
+  # only element with $edges
   has_edges <- vapply(
     nms,
     function(nm) {
@@ -326,7 +326,7 @@ plotInterlayer <- function(
     ci <- ed$ci
     if (is.null(et) || is.null(ci) || !nrow(et)) return(NULL)
 
-    # Escludi nodi se richiesto (by from/to)
+    # Exclude nodes if requested
     if (!is.null(exclude_nodes) && length(exclude_nodes)) {
       if (!("from" %in% names(et)) || !("to" %in% names(et))) {
         if ("edge" %in% names(et)) {
@@ -342,7 +342,7 @@ plotInterlayer <- function(
       if (!nrow(et)) return(NULL)
     }
 
-    # Solo pesi non nulli
+    # only non-zero weights
     et <- et[et$weight != 0, , drop = FALSE]
     if (!nrow(et)) return(NULL)
 

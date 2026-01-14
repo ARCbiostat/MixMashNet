@@ -2,7 +2,7 @@
 % Please edit documentation in R/bridge_metrics_excluded.R
 \name{bridge_metrics_excluded}
 \alias{bridge_metrics_excluded}
-\title{Bridge metrics for nodes excluded from communities (mmn)}
+\title{Bridge metrics for nodes excluded from communities}
 \usage{
 bridge_metrics_excluded(g, membership)
 }

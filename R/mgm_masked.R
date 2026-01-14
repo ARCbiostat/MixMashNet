@@ -49,7 +49,8 @@
 #' @seealso \code{\link[mgm]{mgm}} for the original implementation and argument semantics.
 #'
 #' @importFrom utils txtProgressBar setTxtProgressBar
-#' @export
+#' @keywords internal
+#' @noRd
 mgm_masked <- function(data, type, level,
                        regularize,
                        lambdaSeq, lambdaSel, lambdaFolds, lambdaGam,

@@ -95,7 +95,6 @@ plot.mixmashnet <- function(
       what <- "intra"
 
     } else if (is_multi && wants_centrality && is.null(layer)) {
-      # multilayer + statistics ma SENZA layer e SENZA what esplicito → AMBIGUO
       stop(
         "You are plotting statistics on a multilayer object.\n",
         "Please specify one of:\n",
@@ -105,19 +104,16 @@ plot.mixmashnet <- function(
       )
 
     } else if (is_multi && !is.null(layer) && wants_centrality) {
-      # multilayer + layer specificato + statistics/etc → intra
       what <- "intra"
 
     } else {
-      # default generale: network
       what <- "network"
     }
   } else {
-    # utente ha specificato what esplicitamente
     what <- match.arg(what)
   }
 
-  ## --- helper per gestire layer in oggetti multilayer ---
+  ## --- helper for layers in multilayer objects ---
   .get_layer_fit <- function(obj, layer_name) {
     if (is.null(obj$layer_fits) || !length(obj$layer_fits)) {
       stop("No 'layer_fits' found in this 'multimixMN_fit' object.")
@@ -137,19 +133,15 @@ plot.mixmashnet <- function(
     obj$layer_fits[[layer_name]]
   }
 
-  ## =================== SWITCH SULLA MODALITÀ ===================
+  ## =================== SWITCH ON MODALITY ===================
   if (what == "network") {
-    # qui userai i tuoi helper per plottare la rete
     if (is_single) {
-      # es: .plot_network_single(x, ...)
       .plot_network_single(x, ...)
     } else {
-      # se layer specificato, puoi decidere se plottare solo quel layer:
       if (!is.null(layer)) {
         subfit <- .get_layer_fit(x, layer)
         .plot_network_single(subfit, ...)
       } else {
-        # plot multilayer globale
         .plot_network_multi(x, ...)
       }
     }
@@ -157,7 +149,6 @@ plot.mixmashnet <- function(
   }
 
   if (what == "intra") {
-    # default per intra-layer se l'utente non specifica statistics
     default_stats   <- c("strength", "expected_influence", "closeness", "betweenness")
     has_statistics  <- "statistics" %in% names(dots)
 
@@ -182,7 +173,6 @@ plot.mixmashnet <- function(
     } else {
       # ---- multilayer ----
       if (!is.null(layer)) {
-        # caso 1: multilayer + layer specificato → intra-layer per quel layer
         subfit <- .get_layer_fit(x, layer)
         args <- dots
         if (!has_statistics) {
@@ -193,7 +183,6 @@ plot.mixmashnet <- function(
         return(p)
       }
 
-      # caso 2: multilayer + nessun layer specificato → tutti i layer uno sotto l'altro
       if (is.null(x$layer_fits) || !length(x$layer_fits)) {
         stop("No 'layer_fits' found in this 'multimixMN_fit' object.")
       }
@@ -207,7 +196,6 @@ plot.mixmashnet <- function(
           args_L$statistics <- default_stats
         }
         args_L$fit <- subfit_L
-        # titolo per ogni pannello, ma solo se l'utente non ha già messo un title
         if (!"title" %in% names(args_L)) {
           args_L$title <- paste0("Layer: ", L)
         }
@@ -265,7 +253,6 @@ plot.mixmashnet <- function(
         return(p)
       }
 
-      # multilayer senza layer → stability per OGNI layer
       if (is.null(x$layer_fits) || !length(x$layer_fits)) {
         stop("No 'layer_fits' found in this 'multimixMN_fit' object.")
       }
@@ -278,12 +265,10 @@ plot.mixmashnet <- function(
         membershipStab_plot(stab_L, title = paste0("Layer: ", L), ...)
       })
 
-      # Composizione unica con patchwork (ora sempre disponibile)
       p <- patchwork::wrap_plots(plots, ncol = length(plots))
       return(p)
     }
   }
 
-  # in teoria non ci arrivi mai:
   stop("Unsupported 'what' argument.")
 }

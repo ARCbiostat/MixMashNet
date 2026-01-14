@@ -1,4 +1,4 @@
-#' Bridge metrics for nodes excluded from communities (mmn)
+#' Bridge metrics for nodes excluded from communities
 #'
 #' Computes bridge centrality metrics for nodes that are **not** assigned to any
 #' community (treated as cluster "Z"). Uses \code{networktools::bridge} on the

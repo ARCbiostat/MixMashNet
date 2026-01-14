@@ -11,7 +11,8 @@
 #'   \code{mgmobj$call$threshold}.
 #' @return The input object with populated \code{$pairwise} matrices and interaction lists.
 #' @importFrom utils combn
-#' @export
+#' @keywords internal
+#' @noRd
 Reg2Graph_safe <- function(mgmobj, thresholding = TRUE) {
 
   # Prefer mgm's internal helpers if present; otherwise use safe fallbacks
@@ -249,7 +250,6 @@ Reg2Graph_safe <- function(mgmobj, thresholding = TRUE) {
   Pars_ind_flip_red    <- lapply(Pars_ind_flip,    .safe_rbind)
   Pars_values_flip_red <- lapply(Pars_values_flip, .safe_concat)
 
-  # Moderation?
   n_terms_d <- rep(NA, d)
   if (!is.null(moderators)) {
     n_terms_d[1] <- choose(p, 1+1)
