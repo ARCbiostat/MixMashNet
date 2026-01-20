@@ -6,8 +6,8 @@
 #'
 #' @keywords internal
 #' @noRd
-#' @importFrom ggplot2 ggplot aes geom_hline geom_errorbar geom_point
-#' @importFrom ggplot2 scale_color_manual scale_fill_manual scale_x_continuous coord_flip
+#' @importFrom ggplot2 ggplot aes geom_errorbar geom_point
+#' @importFrom ggplot2 scale_fill_manual scale_x_continuous coord_flip
 #' @importFrom ggplot2 labs facet_wrap theme_minimal theme element_text element_rect
 #' @importFrom dplyr mutate arrange desc slice n select filter pull bind_rows distinct row_number
 #' @importFrom magrittr %>%
@@ -149,8 +149,6 @@ plotCentrality <- function(
         community = NA
       )
 
-      df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA, df$lower <= 0 & df$upper >= 0)
-
       if (!is.null(edges_top_n) && is.finite(edges_top_n) && edges_top_n > 0) {
         df <- dplyr::mutate(df, abs_obs = abs(observed))
         df <- dplyr::arrange(df, dplyr::desc(abs_obs))
@@ -247,7 +245,6 @@ plotCentrality <- function(
       row.names = seq_along(node_set),
       check.names = FALSE
     )
-    df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA, df$lower <= 0 & df$upper >= 0)
 
     if (isTRUE(standardize)) {
       mean_val <- mean(df$observed, na.rm = TRUE)
@@ -350,11 +347,12 @@ plotCentrality <- function(
 
   # Build plot
   p <- ggplot2::ggplot(df_all_combined, ggplot2::aes(x = order_reversed, y = observed)) +
-    ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "gray50", linewidth = 0.4) +
-    ggplot2::geom_errorbar(ggplot2::aes(ymin = lower, ymax = upper, color = includes_zero),
-                           width = 0.2, na.rm = TRUE) +
-    ggplot2::scale_color_manual(values = c("FALSE" = "black", "TRUE" = "gray60"),
-                                na.value = "gray80", guide = "none")
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = lower, ymax = upper),
+      width = 0.2,
+      color = "black",
+      na.rm = TRUE
+    )
 
   plotting_edges <- all(df_all_combined$statistic == "edges")
 
@@ -383,9 +381,7 @@ plotCentrality <- function(
     ggplot2::coord_flip() +
     ggplot2::labs(
       title = title,
-      subtitle = if (standardize)
-        paste0("Gray error bars indicate confidence intervals that include zero in the non-standardized scale. (", ci_txt, ")")
-      else NULL,
+      subtitle = NULL,
       x = x_lab,
       y = if (standardize)
         paste0("Z-score of estimated value with ", ci_txt)

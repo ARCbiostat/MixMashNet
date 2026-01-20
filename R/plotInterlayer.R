@@ -49,7 +49,7 @@ interlayerPairs <- function(object) {
 #'
 #' @keywords internal
 #' @noRd
-#' @importFrom ggplot2 ggplot aes geom_hline geom_errorbar scale_color_manual
+#' @importFrom ggplot2 ggplot aes geom_errorbar
 #'   geom_point coord_flip labs facet_wrap theme_minimal theme element_text
 #'   element_rect
 #' @importFrom dplyr mutate arrange desc slice n select filter bind_rows
@@ -228,23 +228,15 @@ plotInterlayer <- function(
       node_order <- sort(unique(df$node))
     }
 
-    df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA,
-                               df$lower <= 0 & df$upper >= 0)
     df$node_f <- factor(df$node, levels = rev(node_order))
 
     # Plot nodes
     p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$node_f, y = .data$observed)) +
-      ggplot2::geom_hline(
-        yintercept = 0, linetype = "dashed",
-        color = "gray50", linewidth = 0.4
-      ) +
       ggplot2::geom_errorbar(
-        ggplot2::aes(ymin = .data$lower, ymax = .data$upper, color = .data$includes_zero),
-        width = 0.2, na.rm = TRUE
-      ) +
-      ggplot2::scale_color_manual(
-        values = c("FALSE" = "black", "TRUE" = "gray60"),
-        na.value = "gray80", guide = "none"
+        ggplot2::aes(ymin = .data$lower, ymax = .data$upper),
+        width = 0.2,
+        color = "black",
+        na.rm = TRUE
       ) +
       ggplot2::geom_point(
         shape = 21, fill = "gray60", color = "black",
@@ -407,22 +399,13 @@ plotInterlayer <- function(
     dplyr::mutate(edge_f = factor(.data$edge, levels = rev(.data$edge))) |>
     dplyr::ungroup()
 
-  df$includes_zero <- ifelse(is.na(df$lower) | is.na(df$upper), NA,
-                             df$lower <= 0 & df$upper >= 0)
-
   # Plot edges
   p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$edge_f, y = .data$observed)) +
-    ggplot2::geom_hline(
-      yintercept = 0, linetype = "dashed",
-      color = "gray50", linewidth = 0.4
-    ) +
     ggplot2::geom_errorbar(
-      ggplot2::aes(ymin = .data$lower, ymax = .data$upper, color = .data$includes_zero),
-      width = 0.2, na.rm = TRUE
-    ) +
-    ggplot2::scale_color_manual(
-      values = c("FALSE" = "black", "TRUE" = "gray60"),
-      na.value = "gray80", guide = "none"
+      ggplot2::aes(ymin = .data$lower, ymax = .data$upper),
+      width = 0.2,
+      color = "black",
+      na.rm = TRUE
     ) +
     ggplot2::geom_point(
       shape = 21, fill = "gray60", color = "black",
