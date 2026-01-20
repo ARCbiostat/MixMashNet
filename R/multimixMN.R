@@ -263,9 +263,21 @@ multimixMN <- function(
     g
   }
   .harmonic_closeness <- function(g) {
-    if (igraph::ecount(g) == 0) return(stats::setNames(rep(0, igraph::vcount(g)), igraph::V(g)$name))
-    D <- igraph::distances(g, weights = igraph::E(g)$dist); diag(D) <- NA
-    cl <- rowSums(1/D, na.rm=TRUE) / (nrow(D)-1); names(cl) <- igraph::V(g)$name; cl
+    vnames <- igraph::V(g)$name
+    if (is.null(vnames)) vnames <- as.character(seq_len(igraph::vcount(g)))
+    if (igraph::vcount(g) <= 1) {
+      out <- rep(NA_real_, igraph::vcount(g))
+      return(stats::setNames(out, vnames))
+    }
+    if (igraph::ecount(g) == 0) {
+      return(stats::setNames(rep(NA_real_, igraph::vcount(g)), vnames))
+    }
+    D <- igraph::distances(g, weights = igraph::E(g)$dist)
+    diag(D) <- NA_real_
+    cl <- rowSums(1 / D, na.rm = TRUE) / (nrow(D) - 1)
+    no_reach <- apply(D, 1, function(x) !any(is.finite(x), na.rm = TRUE))
+    cl[no_reach] <- NA_real_
+    stats::setNames(cl, vnames)
   }
   .calc_ci <- function(mat, probs) {
     if (is.null(mat)) return(NULL)

@@ -259,13 +259,21 @@ mixMN <- function(
 
   # Harmonic closeness (robust with disconnected graphs)
   .harmonic_closeness <- function(g) {
+    vnames <- igraph::V(g)$name
+    if (is.null(vnames)) vnames <- as.character(seq_len(igraph::vcount(g)))
+    if (igraph::vcount(g) <= 1) {
+      out <- rep(NA_real_, igraph::vcount(g))
+      return(stats::setNames(out, vnames))
+    }
     if (igraph::ecount(g) == 0) {
-      return(stats::setNames(rep(0, igraph::vcount(g)), igraph::V(g)$name))
+      return(stats::setNames(rep(NA_real_, igraph::vcount(g)), vnames))
     }
     D <- igraph::distances(g, weights = igraph::E(g)$dist)
-    diag(D) <- NA
+    diag(D) <- NA_real_
     cl <- rowSums(1 / D, na.rm = TRUE) / (nrow(D) - 1)
-    stats::setNames(cl, igraph::V(g)$name)
+    no_reach <- apply(D, 1, function(x) !any(is.finite(x), na.rm = TRUE))
+    cl[no_reach] <- NA_real_
+    stats::setNames(cl, vnames)
   }
 
   # ---- Fit MGM on original data ----
