@@ -144,6 +144,60 @@ plotInterlayer <- function(
          upper = rep(NA_real_, length(ids)))
   }
 
+  .warn_outside_ci <- function(df, statistic) {
+    if (is.null(df) || !nrow(df)) return(invisible(NULL))
+    if (!all(c("observed", "lower", "upper") %in% names(df))) return(invisible(NULL))
+
+    # decide id column based on statistic + columns present
+    id_col <- NULL
+
+    # if we're plotting edges, prefer "edge", otherwise "node"
+    if (identical(statistic, "edges")) {
+      if ("edge" %in% names(df)) {
+        id_col <- "edge"
+      } else if ("node" %in% names(df)) {
+        id_col <- "node"   # fallback (your current edges df uses node=edge labels)
+      } else {
+        return(invisible(NULL))
+      }
+    } else {
+      if ("node" %in% names(df)) {
+        id_col <- "node"
+      } else if ("edge" %in% names(df)) {
+        id_col <- "edge"   # fallback if someone passes an edge-like df
+      } else {
+        return(invisible(NULL))
+      }
+    }
+
+    ok_obs <- is.finite(df$observed)
+    ok_ci  <- is.finite(df$lower) & is.finite(df$upper)
+    outside_ci <- ok_obs & ok_ci & (df$observed < df$lower | df$observed > df$upper)
+
+    if (!any(outside_ci, na.rm = TRUE)) return(invisible(NULL))
+
+    bad_ids <- df[[id_col]][which(outside_ci)]
+    n_bad <- length(bad_ids)
+
+    show_max <- 15
+    shown <- if (n_bad > show_max) bad_ids[1:show_max] else bad_ids
+    tail_txt <- if (n_bad > show_max) paste0(" ... (+", n_bad - show_max, " more)") else ""
+
+    obj_txt <- if (identical(statistic, "edges")) "edges" else "nodes"
+    lab_txt <- if (identical(statistic, "edges")) "Edges" else "Nodes"
+
+    warning(
+      sprintf(
+        "plot(): '%s' : %d %s have observed value outside the bootstrap CI. %s: %s%s",
+        statistic, n_bad, obj_txt, lab_txt,
+        paste(shown, collapse = ", "), tail_txt
+      ),
+      call. = FALSE
+    )
+
+    invisible(NULL)
+  }
+
   # ---------- NODE METRICS BRANCH ----------
   if (types_selected["node"]) {
     # Title default for nodes
@@ -200,10 +254,37 @@ plotInterlayer <- function(
     })
 
     df <- dplyr::bind_rows(dfs)
+    for (m in stats_node) {
+      dfi <- df[df$metric == m, , drop = FALSE]
+      .warn_outside_ci(dfi, statistic = m)
+    }
     if (is.null(df) || !nrow(df)) {
       stop("No data for selected interlayer node statistics after filtering.")
     }
     df$metric <- factor(df$metric, levels = stats_node)
+
+    # ---- WARN (only for closeness): observed NA but CI exists ----
+    df_clo <- df[df$metric == "closeness", , drop = FALSE]
+    if (nrow(df_clo)) {
+      miss_obs_with_ci <- is.na(df_clo$observed) & (is.finite(df_clo$lower) | is.finite(df_clo$upper))
+
+      if (any(miss_obs_with_ci, na.rm = TRUE)) {
+        bad_nodes <- df_clo$node[miss_obs_with_ci]
+        n_bad <- length(bad_nodes)
+
+        show_max <- 15
+        shown <- if (n_bad > show_max) bad_nodes[1:show_max] else bad_nodes
+        tail_txt <- if (n_bad > show_max) paste0(" ... (+", n_bad - show_max, " more)") else ""
+
+        warning(
+          sprintf(
+            "plot(): 'closeness' : %d nodes have observed closeness = NA in the original network (no edges to other layers). Bootstrap CIs may still exist because the node is connected in some resamples. Nodes: %s%s",
+            n_bad, paste(shown, collapse = ", "), tail_txt
+          ),
+          call. = FALSE
+        )
+      }
+    }
 
     # Optional standardization per metric
     if (isTRUE(standardize)) {
@@ -350,6 +431,7 @@ plotInterlayer <- function(
     )
   })
   df <- dplyr::bind_rows(dl)
+  .warn_outside_ci(df, statistic = "edges")
   if (is.null(df) || !nrow(df)) {
     return(.empty_plot(sprintf(
       "No interlayer edges after filtering.\nPairs used: %s",

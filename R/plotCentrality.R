@@ -124,6 +124,59 @@ plotCentrality <- function(
          upper = rep(NA_real_, length(ids)))
   }
 
+  .warn_outside_ci <- function(df, statistic) {
+    if (is.null(df) || !nrow(df)) return(invisible(NULL))
+    if (!all(c("observed", "lower", "upper") %in% names(df))) return(invisible(NULL))
+
+    # decide id column based on statistic + columns present
+    id_col <- NULL
+
+    # if we're plotting edges, prefer "edge", otherwise "node"
+    if (identical(statistic, "edges")) {
+      if ("edge" %in% names(df)) {
+        id_col <- "edge"
+      } else if ("node" %in% names(df)) {
+        id_col <- "node"   # fallback (your current edges df uses node=edge labels)
+      } else {
+        return(invisible(NULL))
+      }
+    } else {
+      if ("node" %in% names(df)) {
+        id_col <- "node"
+      } else if ("edge" %in% names(df)) {
+        id_col <- "edge"   # fallback if someone passes an edge-like df
+      } else {
+        return(invisible(NULL))
+      }
+    }
+
+    ok_obs <- is.finite(df$observed)
+    ok_ci  <- is.finite(df$lower) & is.finite(df$upper)
+    outside_ci <- ok_obs & ok_ci & (df$observed < df$lower | df$observed > df$upper)
+
+    if (!any(outside_ci, na.rm = TRUE)) return(invisible(NULL))
+
+    bad_ids <- df[[id_col]][which(outside_ci)]
+    n_bad <- length(bad_ids)
+
+    show_max <- 15
+    shown <- if (n_bad > show_max) bad_ids[1:show_max] else bad_ids
+    tail_txt <- if (n_bad > show_max) paste0(" ... (+", n_bad - show_max, " more)") else ""
+
+    obj_txt <- if (identical(statistic, "edges")) "edges" else "nodes"
+    lab_txt <- if (identical(statistic, "edges")) "Edges" else "Nodes"
+
+    warning(
+      sprintf(
+        "plot(): '%s' : %d %s have observed value outside the bootstrap CI. %s: %s%s",
+        statistic, n_bad, obj_txt, lab_txt,
+        paste(shown, collapse = ", "), tail_txt
+      ),
+      call. = FALSE
+    )
+
+    invisible(NULL)
+  }
 
   df_all <- list()
 
@@ -133,12 +186,17 @@ plotCentrality <- function(
     if (statistic == "edges") {
       edges_true <- fit$statistics$edge$true
       ci <- fit$statistics$edge$ci
-      if (is.null(edges_true) || nrow(edges_true) == 0 || is.null(ci)) next
+      if (is.null(edges_true) || nrow(edges_true) == 0) next
 
       edges_true <- edges_true[edges_true$weight != 0, , drop = FALSE]
 
       edge_set <- edges_true$edge
-      ci_pair <- .pick_ci_cols(ci, edge_set, lab_lo, lab_hi)
+      ci_pair <- if (is.null(ci)) {
+        list(lower = rep(NA_real_, length(edge_set)),
+             upper = rep(NA_real_, length(edge_set)))
+      } else {
+        .pick_ci_cols(ci, edge_set, lab_lo, lab_hi)
+      }
 
       df <- data.frame(
         node = edge_set,
@@ -148,6 +206,8 @@ plotCentrality <- function(
         statistic = "edges",
         community = NA
       )
+
+      .warn_outside_ci(df, statistic = "edges")
 
       if (!is.null(edges_top_n) && is.finite(edges_top_n) && edges_top_n > 0) {
         df <- dplyr::mutate(df, abs_obs = abs(observed))
@@ -191,26 +251,11 @@ plotCentrality <- function(
     }
 
     # ------- Node metrics -------
-    mat_boot <- switch(statistic,
-                       strength                    = fit$statistics$node$boot$strength,
-                       expected_influence          = fit$statistics$node$boot$ei1,
-                       closeness                   = fit$statistics$node$boot$closeness,
-                       betweenness                 = fit$statistics$node$boot$betweenness,
-                       bridge_strength             = fit$statistics$node$boot$bridge_strength,
-                       bridge_closeness            = fit$statistics$node$boot$bridge_closeness,
-                       bridge_betweenness          = fit$statistics$node$boot$bridge_betweenness,
-                       bridge_ei1                  = fit$statistics$node$boot$bridge_ei1,
-                       bridge_ei2                  = fit$statistics$node$boot$bridge_ei2,
-                       bridge_strength_excluded    = fit$statistics$node$boot$bridge_strength_excluded,
-                       bridge_betweenness_excluded = fit$statistics$node$boot$bridge_betweenness_excluded,
-                       bridge_closeness_excluded   = fit$statistics$node$boot$bridge_closeness_excluded,
-                       bridge_ei1_excluded         = fit$statistics$node$boot$bridge_ei1_excluded,
-                       bridge_ei2_excluded         = fit$statistics$node$boot$bridge_ei2_excluded)
+    ct <- fit$statistics$node$true
+    internal <- statistic_map[[statistic]]
 
-    if (is.null(mat_boot) || ncol(mat_boot) == 0) {
-      stop(sprintf("Bootstrap matrix for statistic '%s' is empty or NULL.", statistic))
-    }
-    node_set <- colnames(mat_boot)
+    node_set <- ct$node
+    observed_values <- ct[[internal]]
 
     ci <- fit$statistics$node$ci[[statistic]]
     ci_pair <- .pick_ci_cols(ci, node_set, lab_lo, lab_hi)
@@ -245,6 +290,28 @@ plotCentrality <- function(
       row.names = seq_along(node_set),
       check.names = FALSE
     )
+
+    .warn_outside_ci(df, statistic = statistic)
+
+    # ---- WARN: CI available but observed missing ----
+    miss_obs_with_ci <- is.na(df$observed) & (is.finite(df$lower) | is.finite(df$upper))
+    if (any(miss_obs_with_ci, na.rm = TRUE)) {
+      bad_nodes <- df$node[which(miss_obs_with_ci)]
+      n_bad <- length(bad_nodes)
+
+      # abbreviate long lists
+      show_max <- 15
+      shown <- if (n_bad > show_max) bad_nodes[1:show_max] else bad_nodes
+      tail_txt <- if (n_bad > show_max) paste0(" ... (+", n_bad - show_max, " more)") else ""
+
+      warning(
+        sprintf(
+          "plot(): '%s' : %d nodes have observed closeness = NA in the original network (isolated nodes). Bootstrap CIs may still exist because the node is connected in some resamples. Nodes: %s%s",
+          statistic, n_bad, paste(shown, collapse = ", "), tail_txt
+        ),
+        call. = FALSE
+      )
+    }
 
     if (isTRUE(standardize)) {
       mean_val <- mean(df$observed, na.rm = TRUE)
