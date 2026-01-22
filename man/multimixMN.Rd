@@ -33,7 +33,7 @@ multimixMN(
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
   compute_loadings = TRUE,
   boot_what = c("general_index", "interlayer_index", "bridge_index", "excluded_index",
-    "community", "loadings", "none"),
+    "community", "loadings"),
   save_data = FALSE,
   progress = TRUE
 )

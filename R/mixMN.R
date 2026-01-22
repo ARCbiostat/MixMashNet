@@ -194,7 +194,7 @@ mixMN <- function(
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
     compute_loadings = TRUE,
     boot_what = c("general_index", "bridge_index", "excluded_index",
-                  "community", "loadings", "none"),
+                  "community", "loadings"),
     save_data = FALSE,
     progress = TRUE
 ) {
@@ -539,6 +539,10 @@ mixMN <- function(
                 "community", "loadings", "none"),
     several.ok = TRUE
   )
+
+  if (length(boot_what) > 1L && "none" %in% boot_what) {
+    boot_what <- setdiff(boot_what, "none")
+  }
 
   if ("none" %in% boot_what && length(boot_what) == 1L) {
     do_general_boot     <- FALSE

@@ -148,7 +148,7 @@ multimixMN <- function(
     cluster_method = c("louvain","fast_greedy","infomap","walktrap","edge_betweenness"),
     compute_loadings = TRUE,
     boot_what = c("general_index", "interlayer_index", "bridge_index",
-                  "excluded_index", "community", "loadings", "none"),
+                  "excluded_index", "community", "loadings"),
     save_data = FALSE,
     progress = TRUE
 ) {
@@ -172,6 +172,10 @@ multimixMN <- function(
                 "community", "loadings", "none"),
     several.ok = TRUE
   )
+
+  if (length(boot_what) > 1L && "none" %in% boot_what) {
+    boot_what <- setdiff(boot_what, "none")
+  }
 
   if ("none" %in% boot_what && length(boot_what) == 1L) {
     do_intra_general_boot <- FALSE

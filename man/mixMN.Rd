@@ -32,7 +32,7 @@ mixMN(
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
   compute_loadings = TRUE,
   boot_what = c("general_index", "bridge_index", "excluded_index", "community",
-    "loadings", "none"),
+    "loadings"),
   save_data = FALSE,
   progress = TRUE
 )
