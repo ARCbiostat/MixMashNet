@@ -90,7 +90,7 @@
 #'   \item \code{model}: list with the fitted masked \code{mgm} object and basic
 #'     information on the data (\code{nodes}, \code{n}, \code{p}).
 #'   \item \code{layers}: list describing the multilayer structure
-#'     (assignment of nodes to layers and the \code{layer_rules} matrix used).
+#'     (assignment of nodes to layers, \code{layer_rules} matrix used and color of each layer in \code{palette}).
 #'   \item \code{layer_fits}: named list (one element per layer) with
 #'     single-layer fits, including community structure, node-level statistics,
 #'     edge-level statistics, bridge metrics, and (optionally) community loadings
@@ -362,12 +362,18 @@ multimixMN <- function(
     intersect(names(layers)[layers==L], keep_nodes_cluster_all)), uniq_layers)
 
   # --- Per-layer fits from W (true graph, no bootstrap yet)
+  layer_colors <- character(length(uniq_layers))
+  names(layer_colors) <- uniq_layers
   layer_fits <- list()
-  for (L in uniq_layers) {
+  for (i in seq_along(uniq_layers)) {
+    L <- uniq_layers[i]
+    pal_L <- .get_layer_palette(i)
+    layer_colors[L] <- pal_L[1]
     nL <- layer_nodes_graph[[L]]
-    sub_w <- wadj_signed[nL, nL, drop=FALSE]
+    sub_w <- wadj_signed[nL, nL, drop = FALSE]
     fitL <- mixMN_from_wadj(
-      wadj_signed = sub_w, nodes = nL,
+      wadj_signed = sub_w,
+      nodes = nL,
       conf_level = conf_level,
       exclude_from_graph   = NULL,
       exclude_from_cluster = intersect(exclude_from_cluster, nL),
@@ -375,7 +381,8 @@ multimixMN <- function(
       reps          = 0,
       seed_boot     = NULL,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
-      boot_what     = boot_what
+      boot_what     = boot_what,
+      palette_layer = pal_L
     )
 
     membL <- fitL$communities$groups
@@ -1202,7 +1209,8 @@ multimixMN <- function(
 
     layers = list(
       assignment = layers,      # named vector node -> layer
-      rules      = layer_rules
+      rules      = layer_rules,
+      palette    = layer_colors
     ),
 
     layer_fits = layer_fits,

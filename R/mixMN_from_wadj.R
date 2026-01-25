@@ -123,7 +123,8 @@ mixMN_from_wadj <- function(
     seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
     boot_what = c("general_index", "interlayer_index", "bridge_index",
-                  "excluded_index", "community", "loadings", "none")
+                  "excluded_index", "community", "loadings", "none"),
+    palette_layer = NULL
 ) {
   cluster_method <- match.arg(cluster_method)
 
@@ -173,18 +174,23 @@ mixMN_from_wadj <- function(
     as.numeric(sum(utf8ToInt(s)) %% 360)
   }
 
-  .make_palette_layer <- function(unique_clusters, nodes_ref,
-                                  h_spread = 120,
-                                  c_range = c(50, 80),
-                                  l_range = c(60, 75)) {
+  .make_palette_layer <- function(unique_clusters, palette_layer) {
     k <- length(unique_clusters)
     if (k == 0) return(stats::setNames(character(0), unique_clusters))
-    base_hue <- .base_hue_for_nodes(nodes_ref)
-    hues <- if (k == 1) base_hue else (base_hue + seq(-h_spread/2, h_spread/2, length.out = k)) %% 360
-    c_vals <- if (k > 1) seq(c_range[1], c_range[2], length.out = k) else rep(mean(c_range), k)
-    l_vals <- if (k > 1) seq(l_range[1], l_range[2], length.out = k) else rep(mean(l_range), k)
-    pal <- grDevices::hcl(h = hues, c = c_vals, l = l_vals)
-    stats::setNames(pal, unique_clusters)
+    if (missing(palette_layer) || is.null(palette_layer)) {
+      stop("mixMN_from_wadj(): 'palette_layer' must be provided (no fallback).", call. = FALSE)
+    }
+    if (is.character(palette_layer) && length(palette_layer) == 1L) {
+      pal <- colorspace::qualitative_hcl(k, palette = palette_layer)
+      return(stats::setNames(pal, unique_clusters))
+    }
+    if (is.character(palette_layer) && length(palette_layer) > 1L) {
+      pal <- palette_layer
+      if (length(pal) >= 2L) pal <- pal[-1]
+      pal <- rep(pal, length.out = k)
+      return(stats::setNames(pal, unique_clusters))
+    }
+    stop("mixMN_from_wadj(): 'palette_layer' must be either a colorspace palette name (length 1) or a vector of color hex codes.", call. = FALSE)
   }
 
   # Membership on abs graph (as in the rest of the code base)
@@ -198,12 +204,12 @@ mixMN_from_wadj <- function(
     valid_labels <- as.integer(names(sizes[sizes >= 2L]))
     in_valid <- original_membership %in% valid_labels
     unique_clusters <- sort(valid_labels)
-    palette_clusters <- .make_palette_layer(unique_clusters, nodes_ref = keep_nodes_graph)
+    palette_clusters <- .make_palette_layer(unique_clusters, palette_layer = palette_layer)
     groups <- as.factor(original_membership[in_valid])
     names(groups) <- keep_nodes_cluster[in_valid]
   } else {
     unique_clusters <- sort(unique(stats::na.omit(original_membership)))
-    palette_clusters <- .make_palette_layer(unique_clusters, nodes_ref = keep_nodes_graph)
+    palette_clusters <- .make_palette_layer(unique_clusters, palette_layer)
     groups <- as.factor(original_membership)
     names(groups) <- keep_nodes_cluster
   }

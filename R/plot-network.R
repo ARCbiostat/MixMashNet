@@ -113,11 +113,22 @@
     vcol[] <- "skyblue"
 
   } else if (color_by == "layer") {
+
     layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
+    pal <- NULL
+    if (!is.null(x$layers) && !is.null(x$layers$colors)) {
+      pal <- x$layers$colors
+    }
     ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
     if (length(ulay) > 0) {
-      pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dynamic")
-      names(pal) <- ulay
+
+      if (is.null(pal)) {
+        pal <- colorspace::qualitative_hcl(length(ulay), palette = "Dynamic")
+        names(pal) <- ulay
+      } else {
+        # ensure named and aligned to existing layers
+        pal <- pal[ulay]
+      }
       idx <- !is.na(layers_vec)
       vcol[idx] <- pal[layers_vec[idx]]
     }
