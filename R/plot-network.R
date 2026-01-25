@@ -116,8 +116,8 @@
 
     layers_vec <- as.character(igraph::vertex_attr(g, layer_attr))
     pal <- NULL
-    if (!is.null(x$layers) && !is.null(x$layers$colors)) {
-      pal <- x$layers$colors
+    if (!is.null(x$layers) && !is.null(x$layers$palette)) {
+      pal <- x$layers$palette
     }
     ulay <- sort(unique(layers_vec[!is.na(layers_vec)]))
     if (length(ulay) > 0) {
