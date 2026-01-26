@@ -423,8 +423,9 @@ mixMN <- function(
     stats::setNames(b, igraph::V(g_dist)$name)[keep_nodes_graph]
   } else stats::setNames(rep(0, length(keep_nodes_graph)), keep_nodes_graph)
 
-  edge_names <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
-  edge_mat_true <- wadj_signed_graph[lower.tri(wadj_signed_graph)]
+  pairs <- combn(keep_nodes_graph, 2)
+  edge_names <- apply(pairs, 2, paste, collapse = "--")
+  edge_mat_true <- apply(pairs, 2, function(x) wadj_signed_graph[x[1], x[2]])
   names(edge_mat_true) <- edge_names
 
   # ---- Bridge metrics on original graph ----
@@ -752,9 +753,8 @@ mixMN <- function(
     }
 
     ## edges
-    boot_edges <- boot_wadj_signed[keep_nodes_graph, keep_nodes_graph]
-    edge_values <- boot_edges[lower.tri(boot_edges)]
-    names(edge_values) <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
+    edge_values <- apply(pairs, 2, function(x) boot_wadj_signed_graph[x[1], x[2]])
+    names(edge_values) <- edge_names
 
     # --- community loadings bootstrap (only if requested) ---
     loadings_boot <- NULL
@@ -832,7 +832,6 @@ mixMN <- function(
     }
 
     ## edges
-    edge_names <- combn(keep_nodes_graph, 2, FUN = function(x) paste(x[1], x[2], sep = "--"))
     edge_boot_mat <- matrix(NA_real_, nrow = length(edge_names), ncol = reps)
     rownames(edge_boot_mat) <- edge_names
     for (i in seq_len(reps)) {
