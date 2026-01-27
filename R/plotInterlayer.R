@@ -291,14 +291,15 @@ plotInterlayer <- function(
       df <- df |>
         dplyr::group_by(.data$metric) |>
         dplyr::mutate(
+          n_g = dplyr::n(),
           m = mean(.data$observed, na.rm = TRUE),
           s = stats::sd(.data$observed, na.rm = TRUE),
-          observed = (.data$observed - .data$m)/.data$s,
-          lower    = (.data$lower    - .data$m)/.data$s,
-          upper    = (.data$upper    - .data$m)/.data$s
+          observed = ifelse(n_g > 1L, (.data$observed - .data$m)/.data$s, .data$observed),
+          lower    = ifelse(n_g > 1L, (.data$lower    - .data$m)/.data$s, .data$lower),
+          upper    = ifelse(n_g > 1L, (.data$upper    - .data$m)/.data$s, .data$upper)
         ) |>
         dplyr::ungroup() |>
-        dplyr::select(-.data$m, -.data$s)
+        dplyr::select(-"n_g", -"m", -"s")
     }
 
     # Ordering
@@ -453,14 +454,15 @@ plotInterlayer <- function(
     df <- df |>
       dplyr::group_by(.data$pair) |>
       dplyr::mutate(
+        n_g = dplyr::n(),
         m = mean(.data$observed, na.rm = TRUE),
         s = stats::sd(.data$observed, na.rm = TRUE),
-        observed = (.data$observed - .data$m)/.data$s,
-        lower    = (.data$lower    - .data$m)/.data$s,
-        upper    = (.data$upper    - .data$m)/.data$s
+        observed = ifelse(n_g > 1L, (.data$observed - .data$m)/.data$s, .data$observed),
+        lower    = ifelse(n_g > 1L, (.data$lower    - .data$m)/.data$s, .data$lower),
+        upper    = ifelse(n_g > 1L, (.data$upper    - .data$m)/.data$s, .data$upper)
       ) |>
       dplyr::ungroup() |>
-      dplyr::select(-.data$m, -.data$s)
+      dplyr::select(-"n_g", -"m", -"s")
   }
 
   # Ordering within each pair panel

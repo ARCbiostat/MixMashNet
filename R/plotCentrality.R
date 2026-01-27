@@ -217,11 +217,14 @@ plotCentrality <- function(
       }
 
       if (isTRUE(standardize)) {
-        mean_val <- mean(df$observed, na.rm = TRUE)
-        sd_val   <- stats::sd(df$observed, na.rm = TRUE)
-        df$observed <- (df$observed - mean_val) / sd_val
-        df$lower    <- (df$lower    - mean_val) / sd_val
-        df$upper    <- (df$upper    - mean_val) / sd_val
+        n_g <- sum(is.finite(df$observed))
+        if (n_g > 1L) {
+          mean_val <- mean(df$observed, na.rm = TRUE)
+          sd_val   <- stats::sd(df$observed, na.rm = TRUE)
+          df$observed <- (df$observed - mean_val) / sd_val
+          df$lower    <- (df$lower    - mean_val) / sd_val
+          df$upper    <- (df$upper    - mean_val) / sd_val
+        }
       }
 
       # Complete display fields for edges (as in the original)
@@ -314,11 +317,14 @@ plotCentrality <- function(
     }
 
     if (isTRUE(standardize)) {
-      mean_val <- mean(df$observed, na.rm = TRUE)
-      sd_val   <- stats::sd(df$observed, na.rm = TRUE)
-      df$observed <- (df$observed - mean_val) / sd_val
-      df$lower    <- (df$lower    - mean_val) / sd_val
-      df$upper    <- (df$upper    - mean_val) / sd_val
+      n_g <- sum(is.finite(df$observed))
+      if (n_g > 1L) {
+        mean_val <- mean(df$observed, na.rm = TRUE)
+        sd_val   <- stats::sd(df$observed, na.rm = TRUE)
+        df$observed <- (df$observed - mean_val) / sd_val
+        df$lower    <- (df$lower    - mean_val) / sd_val
+        df$upper    <- (df$upper    - mean_val) / sd_val
+      }
     }
 
     # keep/exclude coherent with statistic type
