@@ -39,7 +39,12 @@
 #'   \item{Gender}{Gender with 0=male and 1=female.}
 #'   \item{Age}{Age (numeric).}
 #' }
-#' @examples
-#' data(nhanes)
-#' str(nhanes)
+#'
+#' @references
+#'
+#' Centers for Disease Control and Prevention (CDC) & National Center for Health
+#' Statistics (NCHS). (2020).
+#' National Health and Nutrition Examination Survey data.
+#' \url{https://www.cdc.gov/nchs/nhanes/}
 NULL
+

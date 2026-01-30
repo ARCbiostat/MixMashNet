@@ -1,5 +1,10 @@
 #' Summarize MixMashNet fits (single- and multilayer) in long format
 #'
+#' @description
+#' Summarizes fitted MixMashNet objects (single- and multilayer) in long format.
+#' The summary includes the original estimates and, when available, bootstrap
+#' means, standard errors, and confidence intervals.
+#'
 #' @param object An object of class \code{"mixmashnet"} returned by
 #'   \code{mixMN()} or \code{multimixMN()}.
 #' @param what Character string indicating which part of the model to summarize:
@@ -40,15 +45,11 @@
 #' @param digits Number of digits to round numeric summaries.
 #' @param ... Not used (for S3 compatibility).
 #'
-#' @return A list (class \code{"summary.mixmashnet"}) with up to four data
-#'   frames:
-#'   \itemize{
-#'     \item \code{$index}: intra-layer node-level indices (one row per
-#'       node-metric);
-#'     \item \code{$edges}: intra-layer edges (one row per edge);
-#'     \item \code{$interlayer_index}: interlayer-only node indices;
-#'     \item \code{$interlayer_edges}: cross-layer edges.
-#'   }
+#' @return
+#' A list (class \code{"summary.mixmashnet"}) with up to four data frames
+#' (\code{$index}, \code{$edges}, \code{$interlayer_index},
+#' \code{$interlayer_edges}) and the confidence level used to compute the
+#' bootstrap confidence intervals (\code{$conf_level}).
 #'
 #'   Depending on \code{what} and \code{statistics}, some of these elements may
 #'   be \code{NULL}.

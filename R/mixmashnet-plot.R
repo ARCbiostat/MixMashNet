@@ -9,8 +9,8 @@
 #'   \item \code{what = "intra"}: plot intra-layer node/edge statistics with
 #'         bootstrap CIs at the level stored in the object (centrality and bridge metrics);
 #'   \item \code{what = "inter"}: plot interlayer node metrics or interlayer
-#'         edge weights with bootstrap CIs at the level stored in the object (multilayer only), via
-#'         \code{plotInterlayer()} and the chosen \code{statistics};
+#'         edge weights with bootstrap CIs at the level stored in the object (multilayer only),
+#'         and the chosen \code{statistics};
 #'   \item \code{what = "stability"}: plot node stability within communities
 #'         based on bootstrap community assignments.
 #' }
@@ -19,19 +19,9 @@
 #'   \code{mixMN()} or \code{multimixMN()}.
 #' @param what Type of plot to produce. One of
 #'   \code{c("network","intra","inter","stability")}.
-#'   If missing, a default is chosen based on the presence of
-#'   centrality-related arguments and on whether \code{x} is single-layer
-#'   or multilayer (see Details).
 #' @param layer Optional layer name. For \code{what = "intra"} or
 #'   \code{what = "stability"} on a \code{multimixMN_fit} object, this selects
-#'   which layer-specific fit to use. If \code{NULL}, the behaviour depends
-#'   on \code{what}:
-#'   \itemize{
-#'     \item \code{what = "network"}: plots the global multilayer network;
-#'     \item \code{what = "intra"} or \code{"stability"} on multilayer:
-#'           either all layers are plotted in a combined layout or an error
-#'           is raised if the context is ambiguous.
-#'   }
+#'   which layer-specific fit to use.
 #' @param ... Additional arguments passed to the underlying helpers:
 #'   \itemize{
 #'     \item For \code{what = "intra"}: forwarded to \code{plotCentrality()},
@@ -48,21 +38,9 @@
 #'           \code{edge_color_by}, \code{vertex_size}.
 #'   }
 #'
-#' @details
-#' When \code{what} is missing, the function inspects \code{...} to decide
-#' whether the user is requesting centrality/edge statistics (e.g., by
-#' passing \code{statistics}, \code{ordering}, etc.). In that case:
-#' \itemize{
-#'   \item for single-layer fits, the default is \code{what = "intra"};
-#'   \item for multilayer fits, an informative error is raised if neither
-#'         \code{what} nor \code{layer} is specified and the request is
-#'         ambiguous (intra-layer vs interlayer statistics).
-#' }
-#'
 #' @return
-#' For \code{what != "network"}, a \code{ggplot} object is returned.
-#' For \code{what = "network"}, the corresponding network plotting helper
-#' is called for its side-effect and \code{x} is returned invisibly.
+#' If \code{what != "network"}, the function returns a \code{ggplot} object.
+#' If \code{what = "network"}, the network is plotted directly.
 #'
 #' @export
 plot.mixmashnet <- function(

@@ -4,7 +4,7 @@
 #' Internal helper used by \code{plot.mixmashnet()}
 #' to visualize per-node stability by community using a horizontal barplot.
 #'
-#' @param stab_obj Stability object as returned by \code{membershipStab2()},
+#' @param stab_obj Stability object as returned by \code{membershipStab()},
 #'   containing node-level stability and empirical community assignments.
 #' @param title Plot title (character). Default:
 #'   \code{"Node Stability by Community"}.

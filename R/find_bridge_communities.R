@@ -1,45 +1,44 @@
 #' Bridge profiles of a node across communities
 #'
-#' For a given node, compute how strongly it "bridges" to \emph{other}
-#' communities using five profiles:
-#' \itemize{
-#'   \item \strong{strength}: sum of \eqn{|w|} to nodes in other communities
-#'   \item \strong{ei1}: signed sum of \eqn{w} to nodes in other communities
-#'   \item \strong{ei2}: signed influence \eqn{A + A^2} to nodes in other communities
-#'   \item \strong{closeness}: \eqn{1 /} mean shortest-path distance to nodes in other communities;
-#'     paths computed on \eqn{|W|} with edge length \eqn{1/|w|}
-#'   \item \strong{betweenness}: number of inter-community \emph{shortest paths}
-#'     (same graph as for closeness, but \emph{unweighted} in the path search)
-#'     that pass through the node as an \emph{intermediate} (path multiplicity is counted)
-#' }
+#' Identifies which communities contribute most to the bridge role of a
+#' given node, by decomposing its bridge connectivity into community-specific
+#' contributions. The function is designed as an interpretative companion to
+#' \code{bridge_metrics()} and \code{bridge_metrics_excluded()}, providing the
+#' components underlying the corresponding overall bridge indices.
+#'
+#' Bridge connectivity is summarized using five complementary profiles: bridge
+#' strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.
 #'
 #' Notes:
 #' \itemize{
-#'   \item The signed adjacency \eqn{W} is rebuilt \emph{exactly} from \code{fit$statistics$edge$true}
-#'         (symmetric, diagonal set to 0).
-#'   \item "Other communities" means targets whose community differs from the
-#'         node's community; if the node is unassigned (NA), targets are all assigned nodes.
-#'   \item Betweenness counts \emph{per path} (multiplicity). Endpoints are always
-#'         \emph{assigned} nodes in \emph{different} communities. The focal node may be
-#'         assigned or unassigned; it is counted only as intermediate (never as endpoint).
+#'   \item Bridge profiles are computed using only connections from the focal node to
+#'         nodes in communities different from its own. If the focal node is not
+#'         assigned to any community, i.e. excluded, connections to all assigned nodes in
+#'         communities are considered.
+#'   \item Bridge betweenness is computed by counting all shortest paths between
+#'         pairs of nodes in different communities that pass through the focal
+#'         node as an intermediate vertex. When multiple shortest paths exist,
+#'         each path is counted separately.
 #' }
 #'
-#' @param fit An object of class \code{mixMN_fit} containing at least:
-#'   \itemize{
-#'     \item \code{$graph$keep_nodes_graph}: character vector of node names (graph vertex set);
-#'     \item \code{$statistics$edge$true}: data.frame with columns \code{edge} ("a--b") and \code{weight} (signed).
-#'     \item (optional) \code{$communities$groups}: named factor with communities for a subset of nodes.
-#'   }
+#' @param fit An object of class \code{mixMN_fit}.
 #' @param node Character scalar: node of interest; must belong to
 #'   \code{fit$graph$keep_nodes_graph}.
 #'
-#' @return A list with components:
+#' @return A list with the following components:
 #' \describe{
-#'   \item{\code{strength}}{list with \code{overall} (numeric) and \code{by_comm} (tibble: \code{community}, \code{sum_abs_w}).}
-#'   \item{\code{ei1}}{list with \code{overall} and \code{by_comm} (tibble: \code{community}, \code{sum_signed_w}).}
-#'   \item{\code{ei2}}{list with \code{overall} and \code{by_comm} (tibble: \code{community}, \code{sum_signed_w2}).}
-#'   \item{\code{closeness}}{list with \code{overall} and \code{by_comm} (tibble: \code{community}, \code{inv_mean_dist}).}
-#'   \item{\code{betweenness}}{list with \code{overall} and \code{by_pair} (tibble: \code{Ci}, \code{Cj}, \code{hits}).}
+#'   \item{\code{strength}}{Bridge strength. List with \code{overall}, the total
+#'     value across all other communities, and \code{by_comm}, a tibble with
+#'     community-specific contributions (\code{community}, \code{sum_abs_w}).}
+#'   \item{\code{ei1}}{Bridge expected influence (order 1). List with
+#'     \code{overall} and \code{by_comm} (\code{community}, \code{sum_signed_w}).}
+#'   \item{\code{ei2}}{Bridge expected influence (order 2). List with
+#'     \code{overall} and \code{by_comm} (\code{community}, \code{sum_signed_w2}).}
+#'   \item{\code{closeness}}{Bridge closeness. List with \code{overall} and
+#'     \code{by_comm} (\code{community}, \code{inv_mean_dist}).}
+#'   \item{\code{betweenness}}{Bridge betweenness. List with \code{overall} and
+#'     \code{by_pair}, a tibble with contributions by community pair
+#'     (\code{Ci}, \code{Cj}, \code{hits}).}
 #' }
 #'
 #' @importFrom igraph graph_from_adjacency_matrix delete_edges distances is_directed degree get.all.shortest.paths

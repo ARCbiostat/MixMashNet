@@ -4,7 +4,8 @@
 #' Computes per-node stability given the empirical community structure and the
 #' homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
 #' Stability is expressed as the proportion of bootstrap replications that
-#' assign each node to its empirical (original) community.
+#' assign each node to its empirical (original) community, following the
+#' bootstrap stability approach introduced by Christensen and Golino (2021).
 #'
 #' @param fit An object returned by \code{mixMN()} (class \code{mixMN_fit}),
 #'   containing \code{$communities$original_membership} and
@@ -39,6 +40,13 @@
 #' \code{EGAnet::community.homogenize()}. Stability is then computed node-wise as
 #' the proportion of bootstrap runs in which the node's community matches its
 #' empirical assignment.
+#'
+#' @references
+#'
+#' Christensen, A. P., & Golino, H. (2021).
+#' Estimating the Stability of Psychological Dimensions via Bootstrap Exploratory Graph Analysis:
+#' A Monte Carlo Simulation and Tutorial. \emph{Psych}, 3(3), 479–500.
+#' \doi{10.3390/psych3030032}
 #'
 #' @seealso \code{\link{plot.mixmashnet}}
 #'

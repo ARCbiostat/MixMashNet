@@ -63,7 +63,7 @@ treated as allowed.}
 \item{reps}{Integer (>= 0). Number of bootstrap replications (row resampling
 with replacement). If \code{reps = 0}, no bootstrap is performed.}
 
-\item{lambdaSel}{Method for lambda selection in \pkg{mgm}:
+\item{lambdaSel}{Method for lambda selection in \code{mgm}:
 \code{"CV"} or \code{"EBIC"}.}
 
 \item{lambdaFolds}{Number of folds for CV (if \code{lambdaSel = "CV"}).}
@@ -141,38 +141,40 @@ bar when the \pkg{progressr} package is available.}
 An object of class \code{c("mixmashnet", "multimixMN_fit")}. The returned
 list contains at least the following components:
 \itemize{
-\item \code{call}: the matched function call.
-\item \code{settings}: list of main settings (e.g., \code{reps},
-\code{cluster_method}, \code{exclude_from_graph},
-\code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
-\code{boot_what}).
-\item \code{model}: list with the fitted masked \code{mgm} object and basic
-information on the data (\code{nodes}, \code{n}, \code{p}).
-\item \code{layers}: list describing the multilayer structure
-(assignment of nodes to layers, \code{layer_rules} matrix used and color of each layer in \code{palette}).
-\item \code{layer_fits}: named list (one element per layer) with
-single-layer fits, including community structure, node-level statistics,
-edge-level statistics, bridge metrics, and (optionally) community loadings
-with bootstrap information.
-\item \code{interlayer}: list collecting interlayer-only node metrics
-(strength, expected influence, closeness, betweenness, with or without
-bootstrap) and cross-layer edge summaries for each allowed pair of
-layers.
-\item \code{graph}: list containing a global \pkg{igraph} object built on
-the retained nodes (\code{keep_nodes_graph}), with vertex attributes
-such as \code{name}, \code{layer}, \code{membership}, and edge attributes
-such as \code{weight}, \code{abs_weight}, \code{sign},
-\code{type} (intra vs inter) and \code{layer_pair}.
+  \item \code{call}: the matched function call.
+  \item \code{settings}: list of main settings (e.g., \code{reps},
+    \code{cluster_method}, \code{exclude_from_graph},
+    \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
+    \code{boot_what}).
+  \item \code{model}: list with the fitted masked \code{mgm} object and basic
+    information on the data (\code{nodes}, \code{n}, \code{p}).
+  \item \code{layers}: list describing the multilayer structure
+    (assignment of nodes to layers, \code{layer_rules} matrix used and color of each layer in \code{palette}).
+  \item \code{layer_fits}: named list (one element per layer) with
+    single-layer fits, including community structure, node-level statistics,
+    edge-level statistics, bridge metrics, and (optionally) community loadings
+    with bootstrap information.
+  \item \code{interlayer}: list collecting interlayer-only node metrics
+    (strength, expected influence, closeness, betweenness, with or without
+    bootstrap) and cross-layer edge summaries for each allowed pair of
+    layers.
+  \item \code{graph}: list containing a global \pkg{igraph} object built on
+    the retained nodes (\code{keep_nodes_graph}), with vertex attributes
+    such as \code{name}, \code{layer}, \code{membership}, and edge attributes
+    such as \code{weight}, \code{abs_weight}, \code{sign},
+    \code{type} (intra vs inter) and \code{layer_pair}.
 }
 }
 \description{
-Estimates a \strong{multilayer} Mixed Graphical Model (MGM) using a mask that
+Estimates a multilayer Mixed Graphical Model (MGM) using the estimation
+framework implemented in the \pkg{mgm} package, with a masking scheme that
 enforces which cross-layer edges are allowed according to \code{layer_rules}.
-Within each layer, the function computes community structure, non-parametric
-row-bootstrap for node centralities and edges, bridge metrics
-(including metrics for nodes treated as "excluded"), and (optionally)
-within-layer community loadings. It also returns interlayer-only node metrics and
-cross-layer edge summaries.
+Within each layer, the function computes community structure and performs
+non-parametric row-bootstrap to obtain node centrality indices, edge weights,
+and bridge metrics, including metrics for nodes treated as excluded. Optionally,
+within-layer community loadings can also be estimated and bootstrapped.
+The function additionally returns interlayer-only node metrics and summaries
+of cross-layer edge weights.
 }
 \details{
 This function does \strong{not} call \code{future::plan()}. To enable
@@ -182,10 +184,9 @@ calling \code{multimixMN()}. If \code{"none"} is the only element of
 bootstrapped, but intra- and inter-layer edge-weight bootstrap and the
 corresponding confidence intervals are still computed.
 }
-\section{Dependencies}{
-
-Relies on internal helpers \code{mgm_masked()}, \code{mixMN_from_wadj()},
-\code{bridge_metrics()}, and \code{bridge_metrics_excluded()}, which must be
-available in the same package namespace.
+\references{
+Haslbeck, J. M. B., & Waldorp, L. J. (2020).
+mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.
+\emph{Journal of Statistical Software}, 93(8).
+\doi{10.18637/jss.v093.i08}
 }
-

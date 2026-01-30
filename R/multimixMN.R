@@ -1,13 +1,15 @@
 #' Multilayer MGM with bootstrap, intra-/inter-layer metrics, and CIs
 #'
 #' @description
-#' Estimates a \strong{multilayer} Mixed Graphical Model (MGM) using a mask that
+#' Estimates a multilayer Mixed Graphical Model (MGM) using the estimation
+#' framework implemented in the \pkg{mgm} package, with a masking scheme that
 #' enforces which cross-layer edges are allowed according to \code{layer_rules}.
-#' Within each layer, the function computes community structure, non-parametric
-#' row-bootstrap for node centralities and edges, bridge metrics
-#' (including metrics for nodes treated as "excluded"), and (optionally)
-#' within-layer community loadings. It also returns interlayer-only node metrics and
-#' cross-layer edge summaries.
+#' Within each layer, the function computes community structure and performs
+#' non-parametric row-bootstrap to obtain node centrality indices, edge weights,
+#' and bridge metrics, including metrics for nodes treated as excluded. Optionally,
+#' within-layer community loadings can also be estimated and bootstrapped.
+#' The function additionally returns interlayer-only node metrics and summaries
+#' of cross-layer edge weights.
 #'
 #' @param data A numeric matrix or data frame (n x p) with variables in columns.
 #' @param type Length-\code{p} vector of variable types as required by
@@ -26,7 +28,7 @@
 #'   \code{scale = FALSE} if your data are already standardized.
 #' @param reps Integer (>= 0). Number of bootstrap replications (row resampling
 #'   with replacement). If \code{reps = 0}, no bootstrap is performed.
-#' @param lambdaSel Method for lambda selection in \pkg{mgm}:
+#' @param lambdaSel Method for lambda selection in \code{mgm}:
 #'   \code{"CV"} or \code{"EBIC"}.
 #' @param lambdaFolds Number of folds for CV (if \code{lambdaSel = "CV"}).
 #' @param lambdaGam EBIC gamma parameter (if \code{lambdaSel = "EBIC"}).
@@ -114,10 +116,12 @@
 #' bootstrapped, but intra- and inter-layer edge-weight bootstrap and the
 #' corresponding confidence intervals are still computed.
 #'
-#' @section Dependencies:
-#' Relies on internal helpers \code{mgm_masked()}, \code{mixMN_from_wadj()},
-#' \code{bridge_metrics()}, and \code{bridge_metrics_excluded()}, which must be
-#' available in the same package namespace.
+#' @references
+#'
+#' Haslbeck, J. M. B., & Waldorp, L. J. (2020).
+#' mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.
+#' \emph{Journal of Statistical Software}, 93(8).
+#' \doi{10.18637/jss.v093.i08}
 #'
 #' @importFrom stats setNames quantile
 #' @importFrom utils combn capture.output

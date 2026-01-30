@@ -18,36 +18,43 @@ internal helper \code{membershipStab_plot()}.}
 \value{
 An object of class \code{c("membershipStab")}, with components:
 \describe{
-\item{\code{membership}}{List with:
-\describe{
-\item{\code{empirical}}{Named integer vector of empirical community labels}
-\item{\code{bootstrap}}{Matrix of homogenized bootstrap labels
-(\code{reps × p})}
-}
-}
-\item{\code{membership.stability}}{List with:
-\describe{
-\item{\code{empirical.dimensions}}{Named numeric vector of node-level stability
-(proportion assigned to empirical community)}
-\item{\code{all.dimensions}}{Matrix (\code{p × K}) with proportions of
-assignment to each community}
-}
-}
-\item{\code{community_palette}}{Named vector of colors for communities,
-if available}
+  \item{\code{membership}}{List with:
+    \describe{
+      \item{\code{empirical}}{Named integer vector of empirical community labels}
+      \item{\code{bootstrap}}{Matrix of homogenized bootstrap labels
+        (\code{reps × p})}
+    }
+  }
+  \item{\code{membership.stability}}{List with:
+    \describe{
+      \item{\code{empirical.dimensions}}{Named numeric vector of node-level stability
+        (proportion assigned to empirical community)}
+      \item{\code{all.dimensions}}{Matrix (\code{p × K}) with proportions of
+        assignment to each community}
+    }
+  }
+  \item{\code{community_palette}}{Named vector of colors for communities,
+    if available}
 }
 }
 \description{
 Computes per-node stability given the empirical community structure and the
 homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
 Stability is expressed as the proportion of bootstrap replications that
-assign each node to its empirical (original) community.
+assign each node to its empirical (original) community, following the
+bootstrap stability approach introduced by Christensen and Golino (2021).
 }
 \details{
 Bootstrap community labels are first aligned to the empirical solution using
 \code{EGAnet::community.homogenize()}. Stability is then computed node-wise as
 the proportion of bootstrap runs in which the node's community matches its
 empirical assignment.
+}
+\references{
+Christensen, A. P., & Golino, H. (2021).
+Estimating the Stability of Psychological Dimensions via Bootstrap Exploratory Graph Analysis:
+A Monte Carlo Simulation and Tutorial. \emph{Psych}, 3(3), 479–500.
+\doi{10.3390/psych3030032}
 }
 \seealso{
 \code{\link{plot.mixmashnet}}

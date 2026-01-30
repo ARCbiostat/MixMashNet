@@ -11,8 +11,8 @@
 
 \item{digits}{Number of digits to print}
 
-\item{top_n}{Show only the top \code{top_n} rows per block (ranked by |estimated|).
-Use \code{Inf} to show all rows (default).}
+\item{top_n}{Show only the top `top_n` rows per block (ranked by |estimated|).
+Use `Inf` to show all rows (default).}
 
 \item{...}{Unused}
 }

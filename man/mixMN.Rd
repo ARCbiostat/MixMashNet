@@ -2,7 +2,7 @@
 % Please edit documentation in R/mixMN.R
 \name{mixMN}
 \alias{mixMN}
-\title{Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
+\title{Estimate single-layer MGM network with bootstrap centrality, bridge metrics, clustering,
 and (optionally) community scores with CIs}
 \usage{
 mixMN(
@@ -76,7 +76,7 @@ version of \code{mgm}.}
 variables are set to zero.}
 
 \item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
-Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).}
+Must be a single number between 0 and 1.}
 
 \item{exclude_from_graph}{Character vector. Nodes excluded from the graph and
 from all node-level metrics.}
@@ -91,8 +91,7 @@ bridge metrics.}
 \item{seed_model, seed_boot}{Optional numeric seeds for reproducibility of the
 original MGM fit and bootstrap replications, respectively.}
 
-\item{cluster_method}{Community detection algorithm used on the thresholded
-absolute adjacency matrix:
+\item{cluster_method}{Community detection algorithm used on the network:
 \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
@@ -102,18 +101,18 @@ compute network loadings (EGAnet net.loads) for communities.}
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
 Can include:
 \itemize{
-\item \code{"general_index"}: strength, expected influence 1-step,
-harmonic closeness, betweenness.
-\item \code{"bridge_index"}: bridge strength, bridge expected influence
-1- and 2-step, bridge closeness, bridge betweenness (nodes in
-communities).
-\item \code{"excluded_index"}: bridge metrics for nodes excluded from
-communities (or treated as such).
-\item \code{"community"}: bootstrap community memberships.
-\item \code{"loadings"}: bootstrap loadings
-(only if \code{compute_loadings = TRUE}).
-\item \code{"none"}: skip node-level bootstrap (edge-weight bootstrap is
-still performed if \code{reps > 0}).
+  \item \code{"general_index"}: strength, expected influence 1-step,
+    harmonic closeness, betweenness.
+  \item \code{"bridge_index"}: bridge strength, bridge expected influence
+    1- and 2-step, bridge closeness, bridge betweenness (nodes in
+    communities).
+  \item \code{"excluded_index"}: bridge metrics for nodes excluded from
+    communities (or treated as such).
+  \item \code{"community"}: bootstrap community memberships.
+  \item \code{"loadings"}: bootstrap loadings
+    (only if \code{compute_loadings = TRUE}).
+  \item \code{"none"}: skip node-level bootstrap (edge-weight bootstrap is
+    still performed if \code{reps > 0}).
 }}
 
 \item{save_data}{Logical; if TRUE, store the original data in the output object.}
@@ -125,93 +124,93 @@ bar when the \pkg{progressr} package is available.}
 An object of class \code{c("mixmashnet", "mixMN_fit")}, that is a list with
 the following top-level components:
 \describe{
-\item{\code{call}}{
-The matched function call.
-}
-\item{\code{settings}}{
-List of main settings used in the call, including
-\code{reps}, \code{cluster_method},
-\code{exclude_from_graph}, \code{exclude_from_cluster},
-\code{treat_singletons_as_excluded}, and \code{boot_what}.
-}
-\item{\code{model}}{
-List with:
-\code{mgm} (the fitted \code{mgm} object),
-\code{nodes} (character vector of all node names),
-\code{n} (number of observations),
-\code{p} (number of variables), and
-\code{data}.
-}
-\item{\code{graph}}{
-List describing the graph:
-\code{igraph} (an \pkg{igraph} object built on
-\code{keep_nodes_graph}, with edge attributes
-\code{weight}, \code{abs_weight}, \code{sign} and vertex attribute
-\code{membership} for communities),
-\code{keep_nodes_graph} (nodes retained in the graph and all node-level
-metrics), and \code{keep_nodes_cluster} (nodes used for community
-detection).
-}
-\item{\code{communities}}{
-List describing community structure with:
-\code{original_membership} (integer vector of community labels on
-\code{keep_nodes_cluster}),
-\code{groups} (factor of community labels actually used for bridge
-metrics, optionally with singletons treated as excluded),
-\code{palette} (named vector of colors per community), and
-\code{boot_memberships} (list of bootstrap memberships if
-\code{"community"} is requested in \code{boot_what}, otherwise an empty
-list).
-}
-\item{\code{statistics}}{
-List with node- and edge-level summaries:
-\code{node} is a list with:
-\code{true} (data frame with one row per node in
-\code{keep_nodes_graph}, containing the node name and metrics
-\code{strength}, \code{ei1}, \code{closeness}, \code{betweenness},
-\code{bridge_strength}, \code{bridge_betweenness}, \code{bridge_closeness},
-\code{bridge_ei1}, \code{bridge_ei2}, and for nodes treated as excluded
-from communities also
-\code{bridge_strength_excluded},
-\code{bridge_betweenness_excluded},
-\code{bridge_closeness_excluded},
-\code{bridge_ei1_excluded}, \code{bridge_ei2_excluded});
-\code{boot} (list of bootstrap matrices for each metric, each of
-dimension \code{reps x length(keep_nodes_graph)}, possibly \code{NULL}
-if the metric was not requested or if \code{reps = 0}); and
-\code{ci} (list of CIs for each node metric, one
-\code{p x 2} matrix per metric, with columns \code{2.5\%} and
-\code{97.5\%}, or \code{NULL} if no bootstrap was performed).
+  \item{\code{call}}{
+    The matched function call.
+  }
+  \item{\code{settings}}{
+    List of main settings used in the call, including
+    \code{reps}, \code{cluster_method},
+    \code{exclude_from_graph}, \code{exclude_from_cluster},
+    \code{treat_singletons_as_excluded}, and \code{boot_what}.
+  }
+  \item{\code{model}}{
+    List with:
+    \code{mgm} (the fitted \code{mgm} object),
+    \code{nodes} (character vector of all node names),
+    \code{n} (number of observations),
+    \code{p} (number of variables), and
+    \code{data}.
+  }
+  \item{\code{graph}}{
+    List describing the graph:
+    \code{igraph} (an \pkg{igraph} object built on
+    \code{keep_nodes_graph}, with edge attributes
+    \code{weight}, \code{abs_weight}, \code{sign} and vertex attribute
+    \code{membership} for communities),
+    \code{keep_nodes_graph} (nodes retained in the graph and all node-level
+    metrics), and \code{keep_nodes_cluster} (nodes used for community
+    detection).
+  }
+  \item{\code{communities}}{
+    List describing community structure with:
+    \code{original_membership} (integer vector of community labels on
+    \code{keep_nodes_cluster}),
+    \code{groups} (factor of community labels actually used for bridge
+    metrics, optionally with singletons treated as excluded),
+    \code{palette} (named vector of colors per community), and
+    \code{boot_memberships} (list of bootstrap memberships if
+    \code{"community"} is requested in \code{boot_what}, otherwise an empty
+    list).
+  }
+  \item{\code{statistics}}{
+    List with node- and edge-level summaries:
+    \code{node} is a list with:
+    \code{true} (data frame with one row per node in
+    \code{keep_nodes_graph}, containing the node name and metrics
+    \code{strength}, \code{ei1}, \code{closeness}, \code{betweenness},
+    \code{bridge_strength}, \code{bridge_betweenness}, \code{bridge_closeness},
+    \code{bridge_ei1}, \code{bridge_ei2}, and for nodes treated as excluded
+    from communities also
+    \code{bridge_strength_excluded},
+    \code{bridge_betweenness_excluded},
+    \code{bridge_closeness_excluded},
+    \code{bridge_ei1_excluded}, \code{bridge_ei2_excluded});
+    \code{boot} (list of bootstrap matrices for each metric, each of
+    dimension \code{reps x length(keep_nodes_graph)}, possibly \code{NULL}
+    if the metric was not requested or if \code{reps = 0}); and
+    \code{ci} (list of CIs for each node metric, one
+    \code{p x 2} matrix per metric, with columns \code{2.5\%} and
+    \code{97.5\%}, or \code{NULL} if no bootstrap was performed).
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{\code{edge} is a list with:
-\code{true} (data frame with columns \code{edge} and \code{weight} for
-all unique undirected edges among \code{keep_nodes_graph});
-\code{boot} (matrix of bootstrap edge weights of dimension
-\code{n_edges x reps}); and
-\code{ci} (matrix of CIs for edge weights,
-\code{n_edges x 2}, with columns \code{2.5\%} and \code{97.5\%}, or
-\code{NULL} if \code{reps = 0}).
-}\if{html}{\out{</div>}}
-
-}
-\item{\code{community_loadings}}{
-List containing community-loading information (based on
-\code{EGAnet::net.loads}) for later community-score computation on new
-data:
-\code{nodes} (nodes used for loadings),
-\code{wc} (integer community labels aligned with \code{nodes}),
-\code{true} (matrix of standardized loadings, nodes x communities),
-and \code{boot} (list of bootstrap loading matrices, one per replication,
-or \code{NULL} if not bootstrapped).
-}
-}
+    \code{edge} is a list with:
+    \code{true} (data frame with columns \code{edge} and \code{weight} for
+    all unique undirected edges among \code{keep_nodes_graph});
+    \code{boot} (matrix of bootstrap edge weights of dimension
+    \code{n_edges x reps}); and
+    \code{ci} (matrix of CIs for edge weights,
+    \code{n_edges x 2}, with columns \code{2.5\%} and \code{97.5\%}, or
+    \code{NULL} if \code{reps = 0}).
+  }
+  \item{\code{community_loadings}}{
+    List containing community-loading information (based on
+    \code{EGAnet::net.loads}) for later community-score computation on new
+    data:
+    \code{nodes} (nodes used for loadings),
+    \code{wc} (integer community labels aligned with \code{nodes}),
+    \code{true} (matrix of standardized loadings, nodes x communities),
+    and \code{boot} (list of bootstrap loading matrices, one per replication,
+    or \code{NULL} if not bootstrapped).
+  }
+  }
 }
 \description{
-Estimates a Mixed Graphical Model (MGM) network on the original data and
-performs non-parametric bootstrap (row resampling) to compute centrality
-indices, bridge metrics, clustering stability, and confidence intervals (CIs)
-for node metrics and edge weights. Optionally compute community score loadings
-(for later prediction on new data); optionally bootstrap loadings.
+Estimates a single-layer Mixed Graphical Model (MGM) network on the original data,
+using the estimation framework implemented in the \pkg{mgm} package, and performs
+non-parametric bootstrap (row resampling) to compute centrality indices, bridge
+metrics, clustering stability, and confidence intervals (CIs) for node metrics
+and edge weights.
+Optionally, the function computes community score loadings (for later prediction
+on new data) and can bootstrap the corresponding loadings.
 }
 \details{
 This function does \strong{not} call \code{future::plan()}. To enable
@@ -219,4 +218,10 @@ parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)})
 before calling \code{mixMN()}. If \code{boot_what} is \code{"none"} and
 \code{reps > 0}, node-level metrics are not bootstrapped but edge-weight
 bootstrap and corresponding CIs are still computed.
+}
+\references{
+Haslbeck, J. M. B., & Waldorp, L. J. (2020).
+mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.
+\emph{Journal of Statistical Software}, 93(8).
+\doi{10.18637/jss.v093.i08}
 }

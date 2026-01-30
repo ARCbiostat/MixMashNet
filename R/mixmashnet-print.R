@@ -19,8 +19,7 @@
 #'
 #' @param x An object of class \code{mixmashnet}, typically returned by
 #'   \code{mixMN()} or \code{multimixMN()}.
-#' @param ... Additional arguments (currently ignored, included for
-#'   compatibility with the generic \code{print()}).
+#' @param ... Additional arguments.
 #'
 #' @return The input object \code{x}, returned invisibly.
 #'

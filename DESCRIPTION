@@ -1,42 +1,23 @@
 Package: MixMashNet
-Title: Tools for multilayer and single-layer Network Modeling
+Title: Tools for Multilayer and Single-Layer Network Modeling
 Version: 0.1.0
-Authors@R: 
-    person(given = "Maria", family = "De Martino", role = c("aut","cre"),
-           email = "maria.demartino@uniud.it")
+Authors@R: c(person("Maria", "De Martino", email = "maria.demartino@uniud.it", role = c("aut","cre")),
+         person("Caterina", "Gregorio", email = "caterina.gregorio@ki.se", role = "aut"),
+         person("Adrien", "Perigord", email = "adrien.perigord@ki.se", role = "ctb"))
+Maintainer: Maria De Martino <maria.demartino@uniud.it>         
 Description: Estimation and bootstrap utilities for single-layer and multilayer 
     Mixed Graphical Models, with functions for centrality, bridge metrics, 
     membership stability, and plotting. 
-License: MIT + file LICENSE
+License: AGPL (>= 3)
 Encoding: UTF-8
 LazyData: true
-Roxygen: list(markdown = TRUE)
 Depends: R (>= 4.1)
-Imports:
-    mgm,
-    igraph,
-    qgraph,
-    colorspace,
-    future.apply,
-    stats,
-    utils,
-    ggplot2,
-    EGAnet,
-    networktools,
-    dplyr,
-    magrittr, 
-    rlang,
-    tibble,
-    tidyr,
-    patchwork,
-    progressr
-Suggests:
-    testthat (>= 3.0.0),
-    knitr,
-    rmarkdown
+Imports: mgm, igraph, qgraph, colorspace, future.apply, stats, utils,
+         ggplot2, EGAnet, networktools, dplyr, magrittr, rlang,
+         tibble, tidyr, patchwork, progressr
+Suggests: knitr, rmarkdown
 VignetteBuilder: knitr
-Config/testthat/edition: 3
 RoxygenNote: 7.3.3
-URL: https://github.com/ARCbiostat/MixMashNet
+URL: https://arcbiostat.github.io/MixMashNet/
 BugReports: https://github.com/ARCbiostat/MixMashNet/issues
 

@@ -1,12 +1,14 @@
-#' Estimate MGM network with bootstrap centrality, bridge metrics, clustering,
+#' Estimate single-layer MGM network with bootstrap centrality, bridge metrics, clustering,
 #' and (optionally) community scores with CIs
 #'
 #' @description
-#' Estimates a Mixed Graphical Model (MGM) network on the original data and
-#' performs non-parametric bootstrap (row resampling) to compute centrality
-#' indices, bridge metrics, clustering stability, and confidence intervals (CIs)
-#' for node metrics and edge weights. Optionally compute community score loadings
-#' (for later prediction on new data); optionally bootstrap loadings.
+#' Estimates a single-layer Mixed Graphical Model (MGM) network on the original data,
+#' using the estimation framework implemented in the \pkg{mgm} package, and performs
+#' non-parametric bootstrap (row resampling) to compute centrality indices, bridge
+#' metrics, clustering stability, and confidence intervals (CIs) for node metrics
+#' and edge weights.
+#' Optionally, the function computes community score loadings (for later prediction
+#' on new data) and can bootstrap the corresponding loadings.
 #'
 #' @param data Matrix or data.frame (n x p) with variables in columns.
 #' @param type,level Vectors as required by \code{mgm::mgm}.
@@ -30,7 +32,7 @@
 #' @param thresholdCat Logical; if \code{FALSE} thresholds of categorical
 #'   variables are set to zero.
 #' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
-#'   Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
+#'   Must be a single number between 0 and 1.
 #' @param exclude_from_graph Character vector. Nodes excluded from the graph and
 #'   from all node-level metrics.
 #' @param exclude_from_cluster Character vector. Nodes excluded from community
@@ -40,8 +42,7 @@
 #'   bridge metrics.
 #' @param seed_model,seed_boot Optional numeric seeds for reproducibility of the
 #'   original MGM fit and bootstrap replications, respectively.
-#' @param cluster_method Community detection algorithm used on the thresholded
-#'   absolute adjacency matrix:
+#' @param cluster_method Community detection algorithm used on the network:
 #'   \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
 #' @param compute_loadings Logical; if TRUE (default),
@@ -155,6 +156,13 @@
 #' before calling \code{mixMN()}. If \code{boot_what} is \code{"none"} and
 #' \code{reps > 0}, node-level metrics are not bootstrapped but edge-weight
 #' bootstrap and corresponding CIs are still computed.
+#'
+#' @references
+#'
+#' Haslbeck, J. M. B., & Waldorp, L. J. (2020).
+#' mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.
+#' \emph{Journal of Statistical Software}, 93(8).
+#' \doi{10.18637/jss.v093.i08}
 #'
 #' @importFrom mgm mgm
 #' @importFrom EGAnet net.loads

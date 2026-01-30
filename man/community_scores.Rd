@@ -42,15 +42,15 @@ weights within community for that row).}
 \value{
 A list with class \code{c("mixmashnet","community_scores")} containing:
 \describe{
-\item{\code{call}}{The matched call.}
-\item{\code{settings}}{List with \code{scale}, \code{conf_level}, and \code{na_action}.}
-\item{\code{ids}}{Character vector of subject IDs (rownames of \code{data}).}
-\item{\code{communities}}{Character vector of community score names.}
-\item{\code{scores}}{Numeric matrix of scores (n × K).}
-\item{\code{ci}}{If requested and available, a list with \code{lower} and \code{upper}
-matrices (n × K) for percentile bootstrap CIs; otherwise \code{NULL}.}
-\item{\code{details}}{List containing \code{nodes_used}, \code{loadings_true},
-\code{loadings_boot_available}, and scaling parameters (\code{center}, \code{scale}).}
+  \item{\code{call}}{The matched call.}
+  \item{\code{settings}}{List with \code{scale}, \code{conf_level}, and \code{na_action}.}
+  \item{\code{ids}}{Character vector of subject IDs (rownames of \code{data}).}
+  \item{\code{communities}}{Character vector of community score names.}
+  \item{\code{scores}}{Numeric matrix of scores (n × K).}
+  \item{\code{ci}}{If requested and available, a list with \code{lower} and \code{upper}
+    matrices (n × K) for percentile bootstrap CIs; otherwise \code{NULL}.}
+  \item{\code{details}}{List containing \code{nodes_used}, \code{loadings_true},
+    \code{loadings_boot_available}, and scaling parameters (\code{center}, \code{scale}).}
 }
 If \code{fit} is a \code{mixMN_fit} (or a \code{multimixMN_fit} with \code{layer} specified),
 returns a \code{c("mixmashnet","community_scores")} object.
@@ -58,33 +58,29 @@ If \code{fit} is a \code{multimixMN_fit} and \code{layer = NULL}, returns a name
 of \code{community_scores} objects (one per layer).
 }
 \description{
-Computes subject-level community scores using the community loadings stored
-in a fitted \code{mixMN_fit} object (output of \code{mixMN()}).
+Computes subject-level community scores following the scoring approach
+proposed in the \pkg{EGAnet} framework. Community scores are obtained as
+weighted sums of the variables belonging to each detected community, where
+weights correspond to the standardized community loadings estimated via
+\code{EGAnet::net.loads} and stored in the fitted \code{mixMN_fit} object.
 
-Scores are computed as weighted sums of variables within each community
-(based on \code{EGAnet::net.loads} standardized loadings saved in
-\code{fit$community_loadings$true}).
+By default, the function returns z-standardized community scores.
 
-By default, variables are z-standardized (\code{scale = TRUE}) using the
-dataset actually used for scoring (i.e., the provided \code{data}; if
-\code{data = NULL}, the function uses \code{fit$model$data}). This matches
-your preference: scaling is done on the data you have in hand.
+Scores are computed using the dataset provided via the \code{data} argument.
+If \code{data = NULL}, the original dataset used to fit the model
+(\code{fit$model$data}) is used by default.
 
-Optionally, confidence intervals (percentile bootstrap) for the community
-scores can be computed if bootstrap loadings are available in
+Optionally, percentile bootstrap confidence intervals for the community
+scores can be computed if bootstrap community loadings are available in
 \code{fit$community_loadings$boot}.
 }
 \details{
 The function requires that \code{fit$community_loadings$true} exists and that
 the input \code{data} contains all required variables in
 \code{fit$community_loadings$nodes}. It errors otherwise.
-
-Confidence intervals:
-\itemize{
-\item If \code{conf_level} is provided and \code{fit$community_loadings$boot}
-is available, the function computes community scores for each bootstrap
-loading matrix and returns percentile CIs across replications for each
-subject and community.
-\item If bootstrap loadings are missing, the function errors when CI is requested.
 }
+\references{
+Christensen, A. P., Golino, H., Abad, F. J., & Garrido, L. E. (2025).
+Revised network loadings. \emph{Behavior Research Methods}, 57(4), 114.
+\doi{10.3758/s13428-025-02640-3}
 }

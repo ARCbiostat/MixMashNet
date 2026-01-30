@@ -10,8 +10,7 @@
 \item{x}{An object of class \code{mixmashnet}, typically returned by
 \code{mixMN()} or \code{multimixMN()}.}
 
-\item{...}{Additional arguments (currently ignored, included for
-compatibility with the generic \code{print()}).}
+\item{...}{Additional arguments.}
 }
 \value{
 The input object \code{x}, returned invisibly.
@@ -20,17 +19,17 @@ The input object \code{x}, returned invisibly.
 Compact textual summary for objects returned by \code{mixMN()} and
 \code{multimixMN()}. The method reports:
 \itemize{
-\item whether the fit is single-layer (\code{mixMN}) or multilayer
-(\code{multimixMN});
-\item number of subjects (if available) and variables;
-\item for multilayer fits, the number of nodes and non-zero edges per layer
-and, if present, per interlayer pair;
-\item size of the global graph (nodes and edges);
-\item number of communities (single-layer) or communities per layer
-(multilayer);
-\item covariates used for adjustment and nodes excluded from the graph
-and/or clustering;
-\item main settings for community detection and bootstrap.
+  \item whether the fit is single-layer (\code{mixMN}) or multilayer
+        (\code{multimixMN});
+  \item number of subjects (if available) and variables;
+  \item for multilayer fits, the number of nodes and non-zero edges per layer
+        and, if present, per interlayer pair;
+  \item size of the global graph (nodes and edges);
+  \item number of communities (single-layer) or communities per layer
+        (multilayer);
+  \item covariates used for adjustment and nodes excluded from the graph
+        and/or clustering;
+  \item main settings for community detection and bootstrap.
 }
 }
 \seealso{

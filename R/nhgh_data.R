@@ -25,7 +25,11 @@
 #'   \item{sex}{Sex with 0=woman and 1=man.}
 #'   \item{re}{Race with 1=Mexican American, 2=Other Hispanic, 3=Non-Hispanic White, 4=Non-Hispanic Black, 5=Other Race Including Multi-Racial.}
 #' }
-#' @examples
-#' data(nhgh_data)
-#' str(nhgh_data)
+#'
+#' @references
+#'
+#' Centers for Disease Control and Prevention (CDC) & National Center for Health
+#' Statistics (NCHS). (2020).
+#' National Health and Nutrition Examination Survey data.
+#' \url{https://www.cdc.gov/nchs/nhanes/}
 NULL

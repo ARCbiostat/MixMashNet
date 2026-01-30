@@ -20,15 +20,15 @@
 
 \item{what}{Character string indicating which part of the model to summarize:
 \itemize{
-\item \code{"intra"}: intra-layer quantities (node-level indices and/or
-intra-layer edges);
-\item \code{"inter"}: interlayer quantities (node-level indices on the
-interlayer-only graph and/or cross-layer edges; multilayer fits only).
+  \item \code{"intra"}: intra-layer quantities (node-level indices and/or
+    intra-layer edges);
+  \item \code{"inter"}: interlayer quantities (node-level indices on the
+    interlayer-only graph and/or cross-layer edges; multilayer fits only).
 }}
 
 \item{statistics}{Character vector specifying which statistics to include.
-For \code{what = "intra"}, valid values are:
-\code{c("edges",
+  For \code{what = "intra"}, valid values are:
+  \code{c("edges",
          "strength", "expected_influence", "closeness", "betweenness",
          "bridge_strength", "bridge_closeness", "bridge_betweenness",
          "bridge_ei1", "bridge_ei2",
@@ -36,17 +36,17 @@ For \code{what = "intra"}, valid values are:
          "bridge_closeness_excluded", "bridge_ei1_excluded",
          "bridge_ei2_excluded")}.
 
-For \code{what = "inter"}, valid values are:
-\code{c("edges", "strength", "expected_influence", "closeness",
+  For \code{what = "inter"}, valid values are:
+  \code{c("edges", "strength", "expected_influence", "closeness",
          "betweenness")}.
 
-If \code{statistics = NULL}, then:
-\itemize{
-\item for \code{what = "intra"}, all available intra-layer statistics
-(including \code{"edges"}) are returned;
-\item for \code{what = "inter"}, all available interlayer statistics
-(including \code{"edges"}) are returned.
-}}
+  If \code{statistics = NULL}, then:
+  \itemize{
+    \item for \code{what = "intra"}, all available intra-layer statistics
+      (including \code{"edges"}) are returned;
+    \item for \code{what = "inter"}, all available interlayer statistics
+      (including \code{"edges"}) are returned.
+  }}
 
 \item{layer}{Optional character vector of layer names to subset. Used for
 \code{what = "intra"} in multilayer fits. Ignored for single-layer fits.}
@@ -62,19 +62,16 @@ summary to nodes belonging to one of the layers in the given pair.}
 \item{...}{Not used (for S3 compatibility).}
 }
 \value{
-A list (class \code{"summary.mixmashnet"}) with up to four data
-frames:
-\itemize{
-\item \code{$index}: intra-layer node-level indices (one row per
-node-metric);
-\item \code{$edges}: intra-layer edges (one row per edge);
-\item \code{$interlayer_index}: interlayer-only node indices;
-\item \code{$interlayer_edges}: cross-layer edges.
-}
+A list (class \code{"summary.mixmashnet"}) with up to four data frames
+(\code{$index}, \code{$edges}, \code{$interlayer_index},
+\code{$interlayer_edges}) and the confidence level used to compute the
+bootstrap confidence intervals (\code{$conf_level}).
 
-Depending on \code{what} and \code{statistics}, some of these elements may
-be \code{NULL}.
+  Depending on \code{what} and \code{statistics}, some of these elements may
+  be \code{NULL}.
 }
 \description{
-Summarize MixMashNet fits (single- and multilayer) in long format
+Summarizes fitted MixMashNet objects (single- and multilayer) in long format.
+The summary includes the original estimates and, when available, bootstrap
+means, standard errors, and confidence intervals.
 }

@@ -27,7 +27,13 @@
 #'   \item{SEX}{Sex with 0=male and 1=female.}
 #'   \item{BloodCulture}{Positive blood culture results with 0=no and 1=yes.}
 #' }
-#' @examples
-#' data(bacteremia)
-#' str(bacteremia)
+#'
+#' @references
+#'
+#' Ratzinger, F., Dedeyan, M., Rammerstorfer, M., Perkmann, T., Burgmann, H.,
+#' Makristathis, A., Dorffner, G., Loetsch, F., Blacky, A., & Ramharter, M. (2014).
+#' A risk prediction model for screening bacteremic patients: A cross sectional study.
+#' \emph{PLoS ONE}, 9(9), e106765.
+#' \doi{10.1371/journal.pone.0106765}
 NULL
+

@@ -11,27 +11,28 @@ bridge_metrics_excluded(g, membership)
 unweighted adjacency (1 for edges, 0 otherwise) is used.}
 
 \item{membership}{A named vector/factor of community labels for a subset of nodes;
-names must match \code{V(g)$name}. Nodes not present here are treated as excluded ("Z").}
+names must match \code{V(g)$name}. Nodes not present here are treated as excluded.}
 }
 \value{
-A data.frame with rows = excluded nodes and columns:
-\code{node}, \code{bridge_strength}, \code{bridge_closeness},
-\code{bridge_betweenness}, \code{bridge_expected_influence1},
-\code{bridge_expected_influence2}, \code{cluster}.
+A data.frame with columns: node, bridge_strength, bridge_closeness, bridge_betweenness,
+        bridge_expected_influence1, bridge_expected_influence2, cluster.
 }
 \description{
-Computes bridge centrality metrics for nodes that are \strong{not} assigned to any
-community (treated as cluster "Z"). Uses \code{networktools::bridge} on the
-full weighted adjacency matrix with a community vector where unassigned
-nodes are labeled "Z".
+Computes bridge centrality measures for nodes that are not assigned to any
+community. For these excluded nodes, the function computes bridge strength, bridge
+closeness, bridge betweenness, and bridge expected influence of order one and
+two (EI1 and EI2), quantifying their role in connecting nodes across different
+communities.
 }
 \details{
-Returns, for excluded nodes only:
-\itemize{
-\item \code{bridge_strength}
-\item \code{bridge_closeness}
-\item \code{bridge_betweenness}
-\item \code{bridge_expected_influence1} (1-step)
-\item \code{bridge_expected_influence2} (2-step)
+Bridge betweenness excluded and closeness excluded are computed on the positive-weight subgraph
+only, with weights converted to distances as \eqn{d = 1/w}.
+Bridge centrality measures implemented in this function follow the bridge
+centrality framework proposed by Jones implemented in the
+\pkg{networktools} package.
 }
+\references{
+Jones, P. J. (2025). \pkg{networktools}: Tools for identifying important nodes
+in networks. R package version 1.6.1.
+\url{https://github.com/paytonjjones/networktools}
 }
