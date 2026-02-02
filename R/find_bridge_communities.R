@@ -27,16 +27,16 @@
 #'
 #' @return A list with the following components:
 #' \describe{
-#'   \item{\code{strength}}{Bridge strength. List with \code{overall}, the total
+#'   \item{\code{bridge_strength}}{Bridge strength. List with \code{overall}, the total
 #'     value across all other communities, and \code{by_comm}, a tibble with
 #'     community-specific contributions (\code{community}, \code{sum_abs_w}).}
-#'   \item{\code{ei1}}{Bridge expected influence (order 1). List with
+#'   \item{\code{bridge_ei1}}{Bridge expected influence (order 1). List with
 #'     \code{overall} and \code{by_comm} (\code{community}, \code{sum_signed_w}).}
-#'   \item{\code{ei2}}{Bridge expected influence (order 2). List with
+#'   \item{\code{bridge_ei2}}{Bridge expected influence (order 2). List with
 #'     \code{overall} and \code{by_comm} (\code{community}, \code{sum_signed_w2}).}
-#'   \item{\code{closeness}}{Bridge closeness. List with \code{overall} and
+#'   \item{\code{bridge_closeness}}{Bridge closeness. List with \code{overall} and
 #'     \code{by_comm} (\code{community}, \code{inv_mean_dist}).}
-#'   \item{\code{betweenness}}{Bridge betweenness. List with \code{overall} and
+#'   \item{\code{bridge_betweenness}}{Bridge betweenness. List with \code{overall} and
 #'     \code{by_pair}, a tibble with contributions by community pair
 #'     (\code{Ci}, \code{Cj}, \code{hits}).}
 #' }
@@ -92,13 +92,15 @@ find_bridge_communities <- function(fit, node) {
   assigned_idx <- which(!is.na(comm_full))
   if (!length(assigned_idx)) {
     empty <- tibble::tibble()
-    return(list(
-      strength    = list(overall = NA_real_, by_comm = empty),
-      ei1         = list(overall = NA_real_, by_comm = empty),
-      ei2         = list(overall = NA_real_, by_comm = empty),
-      closeness   = list(overall = NA_real_, by_comm = empty),
-      betweenness = list(overall = 0,       by_comm = empty, by_pair = empty)
-    ))
+    out <- list(
+      bridge_strength    = list(overall = 0,       by_comm = empty),
+      bridge_ei1         = list(overall = 0,       by_comm = empty),
+      bridge_ei2         = list(overall = 0,       by_comm = empty),
+      bridge_closeness   = list(overall = NA_real_, by_comm = empty),
+      bridge_betweenness = list(overall = 0,       by_pair = empty)
+    )
+    class(out) <- c("bridge_profiles", class(out))
+    return(out)
   }
 
   v_comm <- comm_full[[node]]
@@ -219,7 +221,6 @@ find_bridge_communities <- function(fit, node) {
   if (is.na(v_id) || igraph::degree(g_pos, v = v_id) == 0) {
     betweenness_list <- list(
       overall = 0,
-      by_comm = tibble::tibble(),
       by_pair = tibble::tibble(Ci = integer(), Cj = integer(), hits = integer())
     )
   } else {
@@ -278,11 +279,96 @@ find_bridge_communities <- function(fit, node) {
   }
 
   # ---- output ----
-  list(
-    strength    = strength_list,   # |W|
-    ei1         = ei1_list,        # W (signed)
-    ei2         = ei2_list,        # A + A^2 (signed)
-    closeness   = closeness_list,  # weighted distances on 1/|w|
-    betweenness = betweenness_list # unweighted shortest paths on same edge set
+  out <- list(
+    bridge_strength    = strength_list,
+    bridge_ei1         = ei1_list,
+    bridge_ei2         = ei2_list,
+    bridge_closeness   = closeness_list,
+    bridge_betweenness = betweenness_list
   )
+
+  class(out) <- c("bridge_profiles", class(out))
+  out
+}
+
+#' Print method for objects of class \code{"bridge_profiles"}
+#'
+#' @param x An object of class \code{"bridge_profiles"}.
+#' @param statistic Character string indicating which bridge profile to print.
+#'   If missing, all available profiles are printed.
+#' @param digits Number of decimal digits used when printing numeric results.
+#' @param ... Further arguments passed to or from other methods (currently unused).
+#'
+#' @return The input object \code{x}, invisibly.
+#' @export
+print.bridge_profiles <- function(x,
+                                  statistic = c("bridge_strength", "bridge_ei1", "bridge_ei2",
+                                                "bridge_closeness", "bridge_betweenness"),
+                                  digits = 3,
+                                  ...) {
+  if (missing(statistic)) {
+    for (s in c("bridge_strength", "bridge_ei1", "bridge_ei2",
+                "bridge_closeness", "bridge_betweenness")) {
+      print.bridge_profiles(x, statistic = s, digits = digits)
+    }
+    return(invisible(x))
+  }
+
+  statistic <- match.arg(statistic)
+
+  cat("\nBridge profile:", statistic, "\n")
+  cat(strrep("=", 60), "\n")
+
+  obj <- x[[statistic]]
+
+  if (is.null(obj) || length(obj) == 0) {
+    cat("No results available.\n")
+    return(invisible(x))
+  }
+
+  # ---- OVERALL ----
+  cat("\nOverall:\n")
+  if (is.na(obj$overall)) {
+    cat("  NA\n")
+  } else {
+    cat("  ", round(obj$overall, digits), "\n")
+  }
+
+  # labels used ONLY for printing
+  pretty_labels <- c(
+    community      = "Community",
+    sum_abs_w      = "Contribution (|w|)",
+    sum_signed_w   = "Contribution (signed)",
+    sum_signed_w2  = "Contribution (EI2)",
+    inv_mean_dist  = "Inverse mean distance",
+    Ci             = "Community i",
+    Cj             = "Community j",
+    hits           = "Shortest-path hits"
+  )
+
+  prettify <- function(df) {
+    df |>
+      dplyr::mutate(
+        dplyr::across(dplyr::where(is.numeric), \(v) round(v, digits))
+      ) |>
+      dplyr::rename_with(
+        .fn   = \(nm) unname(pretty_labels[nm]),
+        .cols = dplyr::any_of(names(pretty_labels))
+      )
+  }
+
+  # ---- BY COMMUNITY ----
+  if (!is.null(obj$by_comm) && nrow(obj$by_comm) > 0) {
+    cat("\nBy community:\n")
+    print(prettify(obj$by_comm), row.names = FALSE)
+  }
+
+  # ---- BY COMMUNITY PAIR ----
+  if (!is.null(obj$by_pair) && nrow(obj$by_pair) > 0) {
+    cat("\nBy community pair:\n")
+    print(prettify(obj$by_pair), row.names = FALSE)
+  }
+
+  cat("\n")
+  invisible(x)
 }

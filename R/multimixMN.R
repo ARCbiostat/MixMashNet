@@ -17,7 +17,8 @@
 #' @param level Length-\code{p} vector of variable levels as required by
 #'   \code{mgm::mgm}.
 #' @param layers A named vector (names = variable names) assigning each node to a
-#'   layer (character or factor). Must cover all columns of \code{data}.
+#'   layer (character or factor). Must cover all columns of \code{data}
+#'   except variables listed in \code{exclude_from_graph} (treated as adjustment covariates).
 #' @param layer_rules A logical or numeric square matrix with row/column names
 #'   equal to layer names. Values \code{TRUE} or \code{1} indicate that
 #'   cross-layer edges are allowed between the corresponding layer pair.
@@ -49,8 +50,9 @@
 #'   variables are set to zero.
 #' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
 #'   Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
-#' @param exclude_from_graph Character vector of node names. Nodes in this set
-#'   are excluded from the global graph and from all node-level metrics.
+#' @param exclude_from_graph Character vector of variable names treated as
+#'   adjustment covariates. They are included in all nodewise regressions in
+#'   \code{mgm()}, but excluded from the estimated network.
 #' @param exclude_from_cluster Character vector of node names. Nodes in this set
 #'   are excluded from community detection in addition to \code{exclude_from_graph}.
 #' @param seed_model Optional integer seed for reproducibility of the initial
@@ -199,6 +201,15 @@ multimixMN <- function(
 
   all_nodes <- colnames(data); p <- ncol(data)
 
+  if (is.null(exclude_from_graph)) exclude_from_graph <- character(0)
+  exclude_from_graph <- unique(exclude_from_graph)
+  covariates <- intersect(exclude_from_graph, all_nodes)
+  network_nodes <- setdiff(all_nodes, covariates)
+
+  if (is.null(exclude_from_cluster)) exclude_from_cluster <- character(0)
+  exclude_from_cluster <- unique(as.character(exclude_from_cluster))
+  exclude_from_cluster <- setdiff(exclude_from_cluster, covariates)
+
   subject_ids <- rownames(data)
   if (is.null(subject_ids)) {
     subject_ids <- sprintf("id_%d", seq_len(nrow(data)))
@@ -206,7 +217,7 @@ multimixMN <- function(
   }
 
   # --- Basic multilayer check
-  if (length(unique(layers)) < 2) {
+  if (length(unique(stats::na.omit(layers[network_nodes]))) < 2) {
     stop(
       paste0(
         "multimixMN is designed for MULTILAYER networks (>= 2 layers). ",
@@ -217,9 +228,25 @@ multimixMN <- function(
     )
   }
 
+  # layers must cover all network nodes, but NOT covariates
+  if (is.null(names(layers))) {
+    stop("`layers` must be a named vector with names = variable names.")
+  }
+
+  if (!all(network_nodes %in% names(layers))) {
+    miss <- setdiff(network_nodes, names(layers))
+    stop("`layers` must cover all variables except `exclude_from_graph` (covariates). Missing: ",
+         paste(miss, collapse = ", "))
+  }
+
+  if (any(covariates %in% names(layers))) {
+    layers <- layers[setdiff(names(layers), covariates)]
+  }
+
   # --- layer_rules validation and normalization
   stopifnot(is.matrix(layer_rules))
-  layer_order <- unique(layers)
+  layer_order <- unique(layers[intersect(network_nodes, names(layers))])
+  layer_order <- layer_order[!is.na(layer_order)]
 
   if (is.null(rownames(layer_rules)) || is.null(colnames(layer_rules)) ||
       !all(layer_order %in% rownames(layer_rules)) ||
@@ -325,12 +352,20 @@ multimixMN <- function(
   }
 
   # --- Build per-node masks from layer_rules
-  mask_list <- vector("list", p); names(mask_list) <- all_nodes
+  mask_list <- vector("list", length(all_nodes))
+  names(mask_list) <- all_nodes
+
   for (i in seq_along(all_nodes)) {
-    v <- all_nodes[i]; my_layer <- layers[v]
-    allowed_layers <- names(which(layer_rules[my_layer, ]))
-    allowed_layers <- unique(c(my_layer, allowed_layers)) # intra always allowed
-    allowed_nodes <- names(layers)[layers %in% allowed_layers]
+    v <- all_nodes[i]
+    if (v %in% covariates) {
+      allowed_nodes <- all_nodes
+    } else {
+      my_layer <- layers[v]
+      allowed_layers <- names(which(layer_rules[my_layer, ]))
+      allowed_layers <- unique(c(my_layer, allowed_layers))
+      allowed_network <- names(layers)[layers %in% allowed_layers]
+      allowed_nodes <- unique(c(allowed_network, covariates))
+    }
     mask_list[[i]] <- match(allowed_nodes, all_nodes)
   }
 
@@ -355,15 +390,17 @@ multimixMN <- function(
   wadj_signed[is.na(wadj_signed)] <- 0
 
   # --- Inclusion sets
-  keep_nodes_graph_all   <- setdiff(all_nodes, exclude_from_graph)
-  keep_nodes_cluster_all <- setdiff(all_nodes, unique(c(exclude_from_graph, exclude_from_cluster)))
-  uniq_layers <- unique(layers)
+  keep_nodes_graph_all   <- setdiff(all_nodes, covariates)
+  keep_nodes_cluster_all <- setdiff(all_nodes, unique(c(covariates, exclude_from_cluster)))
+  uniq_layers <- unique(layers[network_nodes])
 
-  layer_nodes_graph   <- stats::setNames(lapply(uniq_layers, function(L)
-    intersect(names(layers)[layers==L], keep_nodes_graph_all)), uniq_layers)
+  layer_nodes_graph <- stats::setNames(lapply(uniq_layers, function(L) {
+    intersect(names(layers)[layers == L], network_nodes)
+  }), uniq_layers)
 
-  layer_nodes_cluster <- stats::setNames(lapply(uniq_layers, function(L)
-    intersect(names(layers)[layers==L], keep_nodes_cluster_all)), uniq_layers)
+  layer_nodes_cluster <- stats::setNames(lapply(uniq_layers, function(L) {
+    intersect(names(layers)[layers == L], setdiff(network_nodes, exclude_from_cluster))
+  }), uniq_layers)
 
   # --- Per-layer fits from W (true graph, no bootstrap yet)
   layer_colors <- character(length(uniq_layers))

@@ -20,4 +20,3 @@ VignetteBuilder: knitr
 RoxygenNote: 7.3.3
 URL: https://arcbiostat.github.io/MixMashNet/
 BugReports: https://github.com/ARCbiostat/MixMashNet/issues
-

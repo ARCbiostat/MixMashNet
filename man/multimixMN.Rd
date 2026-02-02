@@ -48,7 +48,8 @@ multimixMN(
 \code{mgm::mgm}.}
 
 \item{layers}{A named vector (names = variable names) assigning each node to a
-layer (character or factor). Must cover all columns of \code{data}.}
+layer (character or factor). Must cover all columns of \code{data}
+except variables listed in \code{exclude_from_graph} (treated as adjustment covariates).}
 
 \item{layer_rules}{A logical or numeric square matrix with row/column names
 equal to layer names. Values \code{TRUE} or \code{1} indicate that
@@ -97,8 +98,9 @@ variables are set to zero.}
 \item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
 Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).}
 
-\item{exclude_from_graph}{Character vector of node names. Nodes in this set
-are excluded from the global graph and from all node-level metrics.}
+\item{exclude_from_graph}{Character vector of variable names treated as
+adjustment covariates. They are included in all nodewise regressions in
+\code{mgm()}, but excluded from the estimated network.}
 
 \item{exclude_from_cluster}{Character vector of node names. Nodes in this set
 are excluded from community detection in addition to \code{exclude_from_graph}.}

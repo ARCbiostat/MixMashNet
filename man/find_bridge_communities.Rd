@@ -15,16 +15,16 @@ find_bridge_communities(fit, node)
 \value{
 A list with the following components:
 \describe{
-  \item{\code{strength}}{Bridge strength. List with \code{overall}, the total
+  \item{\code{bridge_strength}}{Bridge strength. List with \code{overall}, the total
     value across all other communities, and \code{by_comm}, a tibble with
     community-specific contributions (\code{community}, \code{sum_abs_w}).}
-  \item{\code{ei1}}{Bridge expected influence (order 1). List with
+  \item{\code{bridge_ei1}}{Bridge expected influence (order 1). List with
     \code{overall} and \code{by_comm} (\code{community}, \code{sum_signed_w}).}
-  \item{\code{ei2}}{Bridge expected influence (order 2). List with
+  \item{\code{bridge_ei2}}{Bridge expected influence (order 2). List with
     \code{overall} and \code{by_comm} (\code{community}, \code{sum_signed_w2}).}
-  \item{\code{closeness}}{Bridge closeness. List with \code{overall} and
+  \item{\code{bridge_closeness}}{Bridge closeness. List with \code{overall} and
     \code{by_comm} (\code{community}, \code{inv_mean_dist}).}
-  \item{\code{betweenness}}{Bridge betweenness. List with \code{overall} and
+  \item{\code{bridge_betweenness}}{Bridge betweenness. List with \code{overall} and
     \code{by_pair}, a tibble with contributions by community pair
     (\code{Ci}, \code{Cj}, \code{hits}).}
 }
