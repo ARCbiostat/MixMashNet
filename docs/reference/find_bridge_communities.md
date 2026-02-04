@@ -1,20 +1,11 @@
 # Bridge profiles of a node across communities
 
-For a given node, compute how strongly it "bridges" to *other*
-communities using five profiles:
-
-- **strength**: sum of \\\|w\|\\ to nodes in other communities
-
-- **ei1**: signed sum of \\w\\ to nodes in other communities
-
-- **ei2**: signed influence \\A + A^2\\ to nodes in other communities
-
-- **closeness**: \\1 /\\ mean shortest-path distance to nodes in other
-  communities; paths computed on \\\|W\|\\ with edge length \\1/\|w\|\\
-
-- **betweenness**: number of inter-community *shortest paths* (same
-  graph as for closeness, but *unweighted* in the path search) that pass
-  through the node as an *intermediate* (path multiplicity is counted)
+Identifies which communities contribute most to the bridge role of a
+given node, by decomposing its bridge connectivity into
+community-specific contributions. The function is designed as an
+interpretative companion to [`bridge_metrics()`](bridge_metrics.md) and
+[`bridge_metrics_excluded()`](bridge_metrics_excluded.md), providing the
+components underlying the corresponding overall bridge indices.
 
 ## Usage
 
@@ -26,16 +17,7 @@ find_bridge_communities(fit, node)
 
 - fit:
 
-  An object of class `mixMN_fit` containing at least:
-
-  - `$graph$keep_nodes_graph`: character vector of node names (graph
-    vertex set);
-
-  - `$statistics$edge$true`: data.frame with columns `edge` ("a–b") and
-    `weight` (signed).
-
-  - (optional) `$communities$groups`: named factor with communities for
-    a subset of nodes.
+  An object of class `mixMN_fit`.
 
 - node:
 
@@ -44,44 +26,48 @@ find_bridge_communities(fit, node)
 
 ## Value
 
-A list with components:
+A list with the following components:
 
-- `strength`:
+- `bridge_strength`:
 
-  list with `overall` (numeric) and `by_comm` (tibble: `community`,
-  `sum_abs_w`).
+  Bridge strength. List with `overall`, the total value across all other
+  communities, and `by_comm`, a tibble with community-specific
+  contributions (`community`, `sum_abs_w`).
 
-- `ei1`:
+- `bridge_ei1`:
 
-  list with `overall` and `by_comm` (tibble: `community`,
-  `sum_signed_w`).
+  Bridge expected influence (order 1). List with `overall` and `by_comm`
+  (`community`, `sum_signed_w`).
 
-- `ei2`:
+- `bridge_ei2`:
 
-  list with `overall` and `by_comm` (tibble: `community`,
-  `sum_signed_w2`).
+  Bridge expected influence (order 2). List with `overall` and `by_comm`
+  (`community`, `sum_signed_w2`).
 
-- `closeness`:
+- `bridge_closeness`:
 
-  list with `overall` and `by_comm` (tibble: `community`,
+  Bridge closeness. List with `overall` and `by_comm` (`community`,
   `inv_mean_dist`).
 
-- `betweenness`:
+- `bridge_betweenness`:
 
-  list with `overall` and `by_pair` (tibble: `Ci`, `Cj`, `hits`).
+  Bridge betweenness. List with `overall` and `by_pair`, a tibble with
+  contributions by community pair (`Ci`, `Cj`, `hits`).
 
 ## Details
 
+Bridge connectivity is summarized using five complementary profiles:
+bridge strength, bridge EI1, bridge EI2, bridge closeness, and bridge
+betweenness.
+
 Notes:
 
-- The signed adjacency \\W\\ is rebuilt *exactly* from
-  `fit$statistics$edge$true` (symmetric, diagonal set to 0).
+- Bridge profiles are computed using only connections from the focal
+  node to nodes in communities different from its own. If the focal node
+  is not assigned to any community, i.e. excluded, connections to all
+  assigned nodes in communities are considered.
 
-- "Other communities" means targets whose community differs from the
-  node's community; if the node is unassigned (NA), targets are all
-  assigned nodes.
-
-- Betweenness counts *per path* (multiplicity). Endpoints are always
-  *assigned* nodes in *different* communities. The focal node may be
-  assigned or unassigned; it is counted only as intermediate (never as
-  endpoint).
+- Bridge betweenness is computed by counting all shortest paths between
+  pairs of nodes in different communities that pass through the focal
+  node as an intermediate vertex. When multiple shortest paths exist,
+  each path is counted separately.

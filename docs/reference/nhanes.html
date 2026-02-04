@@ -54,135 +54,106 @@ derived from the National Health and Nutrition Examination Survey (NHANES)</p>
     <p>A data frame with 2759 rows and 29 variables:</p><dl><dt>TotChol</dt>
 <dd><p>Total Cholesterol (numeric).</p></dd>
 
-<dt>HDL</dt>
+  <dt>HDL</dt>
 <dd><p>High-density lipoprotein cholesterol (numeric).</p></dd>
 
-<dt>Creatinine</dt>
+  <dt>Creatinine</dt>
 <dd><p>Creatinine (numeric).</p></dd>
 
-<dt>UricAcid</dt>
+  <dt>UricAcid</dt>
 <dd><p>Uric acid (numeric).</p></dd>
 
-<dt>ALT</dt>
+  <dt>ALT</dt>
 <dd><p>Alanine aminotransferase (numeric).</p></dd>
 
-<dt>AST</dt>
+  <dt>AST</dt>
 <dd><p>Aspartate aminotransferase (numeric).</p></dd>
 
-<dt>GGT</dt>
+  <dt>GGT</dt>
 <dd><p>Gamma-glutamyl transferase (numeric).</p></dd>
 
-<dt>Bilirubin</dt>
+  <dt>Bilirubin</dt>
 <dd><p>Bilirubin (numeric).</p></dd>
 
-<dt>Albumin</dt>
+  <dt>Albumin</dt>
 <dd><p>Albumin (numeric).</p></dd>
 
-<dt>TotProtein</dt>
+  <dt>TotProtein</dt>
 <dd><p>Total protein (numeric).</p></dd>
 
-<dt>HbA1c</dt>
+  <dt>HbA1c</dt>
 <dd><p>Glycated hemoglobin (numeric).</p></dd>
 
-<dt>hsCRP</dt>
+  <dt>hsCRP</dt>
 <dd><p>High-sensitivity C-reactive protein (numeric).</p></dd>
 
-<dt>BMI</dt>
+  <dt>BMI</dt>
 <dd><p>Body mass index (numeric).</p></dd>
 
-<dt>Waist</dt>
+  <dt>Waist</dt>
 <dd><p>waist circumference (numeric).</p></dd>
 
-<dt>Height</dt>
+  <dt>Height</dt>
 <dd><p>Height (numeric).</p></dd>
 
-<dt>ArmCirc</dt>
+  <dt>ArmCirc</dt>
 <dd><p>Arm circumference (numeric).</p></dd>
 
-<dt>HipCirc</dt>
+  <dt>HipCirc</dt>
 <dd><p>Hip circumference (numeric).</p></dd>
 
-<dt>LegLength</dt>
+  <dt>LegLength</dt>
 <dd><p>Leg length (numeric).</p></dd>
 
-<dt>ArmLength</dt>
+  <dt>ArmLength</dt>
 <dd><p>Arm Length (numeric).</p></dd>
 
-<dt>TroubleSleep</dt>
+  <dt>TroubleSleep</dt>
 <dd><p>Trouble Sleep with 0=no and 1=yes.</p></dd>
 
-<dt>PhysicalActivity</dt>
+  <dt>PhysicalActivity</dt>
 <dd><p>Physical Activity with 0=no and 1=yes.</p></dd>
 
-<dt>Smoke</dt>
+  <dt>Smoke</dt>
 <dd><p>Smoking with 0=no and 1=yes.</p></dd>
 
-<dt>Drug</dt>
+  <dt>Drug</dt>
 <dd><p>Drug use with 0=no and 1=yes.</p></dd>
 
-<dt>Diet</dt>
+  <dt>Diet</dt>
 <dd><p>Dietary quality with 1=Poor, 2=Fair, 3=Good, 4=Very good, 5=Excellent.</p></dd>
 
-<dt>Alcohol</dt>
+  <dt>Alcohol</dt>
 <dd><p>Alcohol consumption with 0=no and 1=yes.</p></dd>
 
-<dt>Work</dt>
+  <dt>Work</dt>
 <dd><p>Employment status (1–4: working; employed but absent; seeking work; not working).</p></dd>
 
-<dt>MonInc</dt>
+  <dt>MonInc</dt>
 <dd><p>Monthly income category (1–12), where higher values indicate higher income.</p></dd>
 
-<dt>Gender</dt>
+  <dt>Gender</dt>
 <dd><p>Gender with 0=male and 1=female.</p></dd>
 
-<dt>Age</dt>
+  <dt>Age</dt>
 <dd><p>Age (numeric).</p></dd>
 
 
 </dl></div>
-
     <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nhanes</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">nhanes</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 'data.frame':	2759 obs. of  29 variables:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ TotChol         : num  157 238 182 184 230 225 213 122 184 202 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ HDL             : num  60 72 48 48 42 39 53 45 78 54 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Creatinine      : num  0.92 1.13 0.77 1.13 0.45 1.13 0.81 0.67 0.84 1.03 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ UricAcid        : num  5.8 4.2 5.8 5.7 6.5 5.5 6.6 4.9 4.9 4.6 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ ALT             : num  16 20 46 18 22 27 13 53 19 17 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ AST             : num  20 23 35 18 16 20 17 36 28 20 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ GGT             : num  21 19 11 26 85 27 16 38 16 12 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Bilirubin       : num  0.6 0.3 0.8 0.3 0.3 0.3 0.4 0.3 0.2 0.4 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Albumin         : num  4.4 4 4.8 4.3 3.4 4.1 4.3 4.1 4.1 4.2 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ TotProtein      : num  7.3 7.1 8.1 6.4 7 7.5 7.6 7.6 6.6 6.7 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ HbA1c           : num  6.2 5.7 5.4 5.6 12.7 5.6 5.1 5.2 5.8 5.3 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ hsCRP           : num  2.72 0.82 0.37 1.66 5.71 1.75 0.8 3.04 0.41 1.02 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ BMI             : num  31.7 21.3 19.7 23.5 39.9 30.7 24.5 35.9 23.8 22.4 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Waist           : num  101.8 86.6 72 99.7 118.4 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Height          : num  158 171 173 179 148 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ ArmCirc         : num  32 30.8 28.7 30.6 34.7 34.2 29.9 37.1 26.5 30 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ HipCirc         : num  110 90.7 88.2 91 133.1 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ LegLength       : num  37 40.1 44.5 39.1 26 37.4 44 34.4 34 42.7 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ ArmLength       : num  36 37.2 37.2 41.4 32 32.6 41.4 35.7 33.4 37.9 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ TroubleSleep    : num  0 1 0 1 1 1 1 0 1 0 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ PhysicalActivity: num  0 1 1 0 0 1 0 0 0 1 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Smoke           : num  1 0 1 1 1 1 1 0 0 0 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Drug            : num  0 0 0 0 0 0 1 0 0 0 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Diet            : num  3 4 2 2 2 5 4 3 5 3 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Alcohol         : num  0 0 0 0 0 0 1 0 0 0 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Work            : num  1 1 1 4 2 1 4 1 1 1 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ MonInc          : num  2 12 4 7 6 11 1 7 5 8 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Gender          : num  1 0 0 0 1 0 0 1 1 0 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ Age             : num  66 56 18 67 54 61 22 60 60 64 ...</span>
-</code></pre></div>
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Centers for Disease Control and Prevention (CDC) &amp; National Center for Health
+Statistics (NCHS). (2020).
+National Health and Nutrition Examination Survey data.
+<a href="https://www.cdc.gov/nchs/nhanes/" class="external-link">https://www.cdc.gov/nchs/nhanes/</a></p>
     </div>
+
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Maria De Martino.</p>
+  <p>Developed by Maria De Martino, Caterina Gregorio.</p>
 </div>
 
 <div class="pkgdown-footer-right">

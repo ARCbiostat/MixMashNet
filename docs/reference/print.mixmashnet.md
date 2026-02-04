@@ -3,7 +3,7 @@
 Compact textual summary for objects returned by [`mixMN()`](mixMN.md)
 and [`multimixMN()`](multimixMN.md). The method reports:
 
-- whether the fit is single-layer (`mixMN`) or multilayer
+- whether the fit is single layer (`mixMN`) or multilayer
   (`multimixMN`);
 
 - number of subjects (if available) and variables;
@@ -13,7 +13,7 @@ and [`multimixMN()`](multimixMN.md). The method reports:
 
 - size of the global graph (nodes and edges);
 
-- number of communities (single-layer) or communities per layer
+- number of communities (single layer) or communities per layer
   (multilayer);
 
 - covariates used for adjustment and nodes excluded from the graph
@@ -37,8 +37,7 @@ print(x, ...)
 
 - ...:
 
-  Additional arguments (currently ignored, included for compatibility
-  with the generic [`print()`](https://rdrr.io/r/base/print.html)).
+  Additional arguments.
 
 ## Value
 

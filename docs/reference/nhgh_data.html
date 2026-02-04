@@ -54,79 +54,64 @@ derived from the National Health and Nutrition Examination Survey (NHANES)</p>
     <p>A data frame with 5621 rows and 15 variables:</p><dl><dt>wt</dt>
 <dd><p>Weight (numeric).</p></dd>
 
-<dt>ht</dt>
+  <dt>ht</dt>
 <dd><p>Height (numeric).</p></dd>
 
-<dt>bmi</dt>
+  <dt>bmi</dt>
 <dd><p>Body mass index (numeric).</p></dd>
 
-<dt>leg</dt>
+  <dt>leg</dt>
 <dd><p>Leg length (numeric).</p></dd>
 
-<dt>arml</dt>
+  <dt>arml</dt>
 <dd><p>Arm length (numeric).</p></dd>
 
-<dt>armc</dt>
+  <dt>armc</dt>
 <dd><p>Arm circumference (numeric).</p></dd>
 
-<dt>tri</dt>
+  <dt>tri</dt>
 <dd><p>Triceps skinfold (numeric).</p></dd>
 
-<dt>sub</dt>
+  <dt>sub</dt>
 <dd><p>Subscapular skinfold (numeric).</p></dd>
 
-<dt>gh</dt>
+  <dt>gh</dt>
 <dd><p>Glychohemoglobin (numeric).</p></dd>
 
-<dt>albumin</dt>
+  <dt>albumin</dt>
 <dd><p>Albumin (numeric).</p></dd>
 
-<dt>bun</dt>
+  <dt>bun</dt>
 <dd><p>Blood urea nitrogen (numeric).</p></dd>
 
-<dt>SCr</dt>
+  <dt>SCr</dt>
 <dd><p>Serum creatinine (numeric).</p></dd>
 
-<dt>age</dt>
+  <dt>age</dt>
 <dd><p>Age (numeric).</p></dd>
 
-<dt>sex</dt>
+  <dt>sex</dt>
 <dd><p>Sex with 0=woman and 1=man.</p></dd>
 
-<dt>re</dt>
+  <dt>re</dt>
 <dd><p>Race with 1=Mexican American, 2=Other Hispanic, 3=Non-Hispanic White, 4=Non-Hispanic Black, 5=Other Race Including Multi-Racial.</p></dd>
 
 
 </dl></div>
-
     <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">nhgh_data</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">nhgh_data</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 'data.frame':	5621 obs. of  15 variables:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ wt     : num  87.4 72.3 116.8 97.6 86.7 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ ht     : num  165 181 166 173 168 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ bmi    : num  32.2 22 42.4 32.6 30.6 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ leg    : num  41.5 42 35.3 41.7 37.5 42.8 43 39.8 39.2 38 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ arml   : num  40 39.5 39 38.7 36.1 40 41.7 38.1 33.4 34.7 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ armc   : num  36.4 26.6 42.2 37 33.3 30.2 33.3 33.4 23 31.5 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ tri    : num  16.4 10.2 29.6 19 30.3 8.6 19.4 12.4 13.8 18.6 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ sub    : num  24.9 10.5 35.6 23.2 28 15.2 26.2 15 7.6 7.7 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ gh     : num  5.2 5.7 6 5.1 5.3 5.4 6.8 5.1 5.6 5.1 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ albumin: num  4.8 4.6 3.9 4.2 4.3 4.3 4.3 4.7 4.3 4.4 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ bun    : num  6 9 10 8 13 16 16 11 10 6 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ SCr    : num  0.94 0.89 1.11 0.8 0.79 0.83 0.9 1 0.46 0.86 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ age    : num  34.2 16.8 60.2 26.1 49.7 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ sex    : int  0 0 1 0 1 0 0 0 0 1 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ re     : int  3 4 4 1 3 3 3 2 4 3 ...</span>
-</code></pre></div>
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Centers for Disease Control and Prevention (CDC) &amp; National Center for Health
+Statistics (NCHS). (2020).
+National Health and Nutrition Examination Survey data.
+<a href="https://www.cdc.gov/nchs/nhanes/" class="external-link">https://www.cdc.gov/nchs/nhanes/</a></p>
     </div>
+
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Maria De Martino.</p>
+  <p>Developed by Maria De Martino, Caterina Gregorio.</p>
 </div>
 
 <div class="pkgdown-footer-right">

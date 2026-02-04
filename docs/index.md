@@ -32,6 +32,7 @@ MixMashNet provides tools for:
 The development version of **MixMashNet** can be installed from GitHub:
 
 ``` r
+
 # install.packages("devtools")
 devtools::install_github("ARCbiostat/MixMashNet")
 ```

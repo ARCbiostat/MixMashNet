@@ -1,6 +1,8 @@
-# Summarize MixMashNet fits (single- and multilayer) in long format
+# Summarize MixMashNet fits (single and multilayer) in long format
 
-Summarize MixMashNet fits (single- and multilayer) in long format
+Summarizes fitted MixMashNet objects (single and multilayer) in long
+format. The summary includes the original estimates and, when available,
+bootstrap means, standard errors, and confidence intervals.
 
 ## Usage
 
@@ -28,8 +30,8 @@ summary(
 
   Character string indicating which part of the model to summarize:
 
-  - `"intra"`: intra-layer quantities (node-level indices and/or
-    intra-layer edges);
+  - `"intra"`: intralayer quantities (node-level indices and/or
+    intralayer edges);
 
   - `"inter"`: interlayer quantities (node-level indices on the
     interlayer-only graph and/or cross-layer edges; multilayer fits
@@ -46,8 +48,8 @@ summary(
 
   If `statistics = NULL`, then:
 
-  - for `what = "intra"`, all available intra-layer statistics
-    (including `"edges"`) are returned;
+  - for `what = "intra"`, all available intralayer statistics (including
+    `"edges"`) are returned;
 
   - for `what = "inter"`, all available interlayer statistics (including
     `"edges"`) are returned.
@@ -55,7 +57,7 @@ summary(
 - layer:
 
   Optional character vector of layer names to subset. Used for
-  `what = "intra"` in multilayer fits. Ignored for single-layer fits.
+  `what = "intra"` in multilayer fits. Ignored for single layer fits.
 
 - pairs:
 
@@ -75,15 +77,10 @@ summary(
 
 ## Value
 
-A list (class `"summary.mixmashnet"`) with up to four data frames:
-
-- `$index`: intra-layer node-level indices (one row per node-metric);
-
-- `$edges`: intra-layer edges (one row per edge);
-
-- `$interlayer_index`: interlayer-only node indices;
-
-- `$interlayer_edges`: cross-layer edges.
+A list (class `"summary.mixmashnet"`) with up to four data frames
+(`$index`, `$edges`, `$interlayer_index`, `$interlayer_edges`) and the
+confidence level used to compute the bootstrap confidence intervals
+(`$conf_level`).
 
 Depending on `what` and `statistics`, some of these elements may be
 `NULL`.

@@ -57,83 +57,68 @@ at the Vienna General Hospital</p>
     <p>A data frame with 7420 rows and 16 variables:</p><dl><dt>AGE</dt>
 <dd><p>Age (numeric).</p></dd>
 
-<dt>WBC</dt>
+  <dt>WBC</dt>
 <dd><p>White blood cell (numeric).</p></dd>
 
-<dt>NEU</dt>
+  <dt>NEU</dt>
 <dd><p>Neutrophil counts (numeric).</p></dd>
 
-<dt>HGB</dt>
+  <dt>HGB</dt>
 <dd><p>Hemoglobin (numeric).</p></dd>
 
-<dt>PLT</dt>
+  <dt>PLT</dt>
 <dd><p>Platelet count (numeric).</p></dd>
 
-<dt>CRP</dt>
+  <dt>CRP</dt>
 <dd><p>C-reactive protein (numeric).</p></dd>
 
-<dt>APTT</dt>
+  <dt>APTT</dt>
 <dd><p>Activated partial thromboplastin time (numeric).</p></dd>
 
-<dt>FIB</dt>
+  <dt>FIB</dt>
 <dd><p>Fibrinogen (numeric).</p></dd>
 
-<dt>CREA</dt>
+  <dt>CREA</dt>
 <dd><p>Creatinine (numeric).</p></dd>
 
-<dt>BUN</dt>
+  <dt>BUN</dt>
 <dd><p>Blood urea nitrogen (numeric).</p></dd>
 
-<dt>GLU</dt>
+  <dt>GLU</dt>
 <dd><p>Glucose (numeric).</p></dd>
 
-<dt>ALAT</dt>
+  <dt>ALAT</dt>
 <dd><p>High-sensitivity C-reactive protein (numeric).</p></dd>
 
-<dt>GBIL</dt>
+  <dt>GBIL</dt>
 <dd><p>Total bilirubin (numeric).</p></dd>
 
-<dt>ALB</dt>
+  <dt>ALB</dt>
 <dd><p>Albumin (numeric).</p></dd>
 
-<dt>SEX</dt>
+  <dt>SEX</dt>
 <dd><p>Sex with 0=male and 1=female.</p></dd>
 
-<dt>BloodCulture</dt>
+  <dt>BloodCulture</dt>
 <dd><p>Positive blood culture results with 0=no and 1=yes.</p></dd>
 
 
 </dl></div>
-
     <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">bacteremia</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">bacteremia</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 'data.frame':	7420 obs. of  16 variables:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ AGE         : num  62 46 84 38 68 55 52 47 29 59 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ WBC         : num  24.1 17.45 11.58 9.86 9.94 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ NEU         : num  22 14.7 9.7 8.4 6.8 1.2 3.8 8.2 3.8 0.5 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ HGB         : num  11.5 7.4 10.3 13.7 15.7 10.8 10.3 9.1 7.3 10 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ PLT         : num  307 64 309 183 144 38 105 216 188 92 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ CRP         : num  3.94 12.09 3.78 11.17 5.89 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ APTT        : num  28.8 36.3 38.2 33.1 41.8 36.3 28.1 28.5 38.3 43.6 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ FIB         : num  578 313 487 490 400 413 407 604 476 369 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ CREA        : num  0.65 1.25 2.78 0.65 0.82 1.77 0.58 1.02 6.75 1.15 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ BUN         : num  5.7 50.6 47.5 8.5 15.3 29.8 14 18.6 46.3 77.1 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ GLU         : num  107 107 105 93 89 96 104 104 102 161 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ ALAT        : num  14 135 72 22 11 32 156 63 23 27 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ GBIL        : num  0.59 8.42 0.35 0.42 2.4 0.45 2.46 3.21 0.63 0.98 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ ALB         : num  36.7 22.1 33.2 43.8 30.1 43.6 24.8 26.2 36.1 29.6 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ SEX         : int  1 0 0 1 0 0 1 0 0 1 ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  $ BloodCulture: int  0 0 0 0 0 0 0 0 0 0 ...</span>
-</code></pre></div>
+    <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+    <p>Ratzinger, F., Dedeyan, M., Rammerstorfer, M., Perkmann, T., Burgmann, H.,
+Makristathis, A., Dorffner, G., Loetsch, F., Blacky, A., &amp; Ramharter, M. (2014).
+A risk prediction model for screening bacteremic patients: A cross sectional study.
+<em>PLoS ONE</em>, 9(9), e106765.
+<a href="https://doi.org/10.1371/journal.pone.0106765" class="external-link">doi:10.1371/journal.pone.0106765</a></p>
     </div>
+
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Maria De Martino.</p>
+  <p>Developed by Maria De Martino, Caterina Gregorio.</p>
 </div>
 
 <div class="pkgdown-footer-right">

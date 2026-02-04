@@ -47,17 +47,10 @@
 
       <dl><dt>
 
-          <code><a href="MixMashNet.html">MixMashNet</a></code> <code><a href="MixMashNet.html">MixMashNet-package</a></code>
+          <code><a href="MixMashNet-package.html">MixMashNet</a></code> <code><a href="MixMashNet-package.html">MixMashNet-package</a></code>
 
         </dt>
-        <dd>MixMashNet: Multilayer and Single-Layer Network Modeling</dd>
-
-        <dt>
-
-          <code><a href="Reg2Graph_safe.html">Reg2Graph_safe()</a></code>
-
-        </dt>
-        <dd>Safe graph assembly for mgm outputs (modified from <span class="pkg">mgm</span>)</dd>
+        <dd>MixMashNet: Multilayer and Single Layer Network Modeling</dd>
 
         <dt>
 
@@ -71,14 +64,21 @@
           <code><a href="bridge_metrics.html">bridge_metrics()</a></code>
 
         </dt>
-        <dd>Bridge metrics for nodes across communities (original-style)</dd>
+        <dd>Bridge metrics for nodes across communities</dd>
 
         <dt>
 
           <code><a href="bridge_metrics_excluded.html">bridge_metrics_excluded()</a></code>
 
         </dt>
-        <dd>Bridge metrics for nodes excluded from communities (mmn)</dd>
+        <dd>Bridge metrics for nodes excluded from communities</dd>
+
+        <dt>
+
+          <code><a href="community_scores.html">community_scores()</a></code>
+
+        </dt>
+        <dd>Compute community scores from a fitted MixMashNet model</dd>
 
         <dt>
 
@@ -96,38 +96,17 @@
 
         <dt>
 
-          <code><a href="membershipStab_table.html">membershipStab_table()</a></code>
-
-        </dt>
-        <dd>Node-by-community stability table</dd>
-
-        <dt>
-
-          <code><a href="mgm_masked.html">mgm_masked()</a></code>
-
-        </dt>
-        <dd>Masked MGM (modified from <span class="pkg">mgm</span>)</dd>
-
-        <dt>
-
           <code><a href="mixMN.html">mixMN()</a></code>
 
         </dt>
-        <dd>Estimate MGM network with bootstrap centrality, bridge metrics, clustering, and (optionally) community scores with CIs</dd>
-
-        <dt>
-
-          <code><a href="mixMN_from_wadj.html">mixMN_from_wadj()</a></code>
-
-        </dt>
-        <dd>Build MixMashNet metrics from a signed weighted adjacency matrix</dd>
+        <dd>Estimate single layer MGM network with bootstrap centrality, bridge metrics, clustering, and (optionally) community scores with CIs</dd>
 
         <dt>
 
           <code><a href="multimixMN.html">multimixMN()</a></code>
 
         </dt>
-        <dd>Multilayer MGM with bootstrap, intra-/inter-layer metrics, and CIs</dd>
+        <dd>Multilayer MGM with bootstrap, intra/interlayer metrics, and CIs</dd>
 
         <dt>
 
@@ -152,6 +131,13 @@
 
         <dt>
 
+          <code><a href="print.bridge_profiles.html">print(<i>&lt;bridge_profiles&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Print method for objects of class <code>"bridge_profiles"</code></dd>
+
+        <dt>
+
           <code><a href="print.mixmashnet.html">print(<i>&lt;mixmashnet&gt;</i>)</a></code>
 
         </dt>
@@ -169,13 +155,20 @@
           <code><a href="summary.mixmashnet.html">summary(<i>&lt;mixmashnet&gt;</i>)</a></code>
 
         </dt>
-        <dd>Summarize MixMashNet fits (single- and multilayer) in long format</dd>
+        <dd>Summarize MixMashNet fits (single and multilayer) in long format</dd>
+
+        <dt>
+
+          <code><a href="update_palette.html">update_palette()</a></code>
+
+        </dt>
+        <dd>Update community and layer color palettes in MixMashNet objects</dd>
       </dl></div>
   </main></div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Maria De Martino.</p>
+  <p>Developed by Maria De Martino, Caterina Gregorio.</p>
 </div>
 
 <div class="pkgdown-footer-right">

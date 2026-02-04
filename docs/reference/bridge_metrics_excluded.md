@@ -1,10 +1,10 @@
-# Bridge metrics for nodes excluded from communities (mmn)
+# Bridge metrics for nodes excluded from communities
 
-Computes bridge centrality metrics for nodes that are **not** assigned
-to any community (treated as cluster "Z"). Uses
-[`networktools::bridge`](https://rdrr.io/pkg/networktools/man/bridge.html)
-on the full weighted adjacency matrix with a community vector where
-unassigned nodes are labeled "Z".
+Computes bridge centrality measures for nodes that are not assigned to
+any community. For these excluded nodes, the function computes bridge
+strength, bridge closeness, bridge betweenness, and bridge expected
+influence of order one and two (EI1 and EI2), quantifying their role in
+connecting nodes across different communities.
 
 ## Usage
 
@@ -22,25 +22,23 @@ bridge_metrics_excluded(g, membership)
 - membership:
 
   A named vector/factor of community labels for a subset of nodes; names
-  must match `V(g)$name`. Nodes not present here are treated as excluded
-  ("Z").
+  must match `V(g)$name`. Nodes not present here are treated as
+  excluded.
 
 ## Value
 
-A data.frame with rows = excluded nodes and columns: `node`,
-`bridge_strength`, `bridge_closeness`, `bridge_betweenness`,
-`bridge_expected_influence1`, `bridge_expected_influence2`, `cluster`.
+A data.frame with columns: node, bridge_strength, bridge_closeness,
+bridge_betweenness, bridge_expected_influence1,
+bridge_expected_influence2, cluster.
 
 ## Details
 
-Returns, for excluded nodes only:
+Bridge betweenness excluded and closeness excluded are computed on the
+positive-weight subgraph only, with weights converted to distances as
+\\d = 1/w\\.
 
-- `bridge_strength`
+## References
 
-- `bridge_closeness`
-
-- `bridge_betweenness`
-
-- `bridge_expected_influence1` (1-step)
-
-- `bridge_expected_influence2` (2-step)
+Jones, P. J. (2025). networktools: Tools for identifying important nodes
+in networks. R package version 1.6.1.
+<https://github.com/paytonjjones/networktools>

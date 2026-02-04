@@ -21,8 +21,8 @@ print(x, digits = 3, top_n = Inf, ...)
 
 - top_n:
 
-  Show only the top `top_n` rows per block (ranked by \|estimated\|).
-  Use `Inf` to show all rows (default).
+  Show only the top \`top_n\` rows per block (ranked by \|estimated\|).
+  Use \`Inf\` to show all rows (default).
 
 - ...:
 

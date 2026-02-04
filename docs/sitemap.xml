@@ -7,11 +7,12 @@
 <url><loc>/articles/shiny-single.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
-<url><loc>/reference/MixMashNet.html</loc></url>
+<url><loc>/reference/MixMashNet-package.html</loc></url>
 <url><loc>/reference/Reg2Graph_safe.html</loc></url>
 <url><loc>/reference/bacteremia.html</loc></url>
 <url><loc>/reference/bridge_metrics.html</loc></url>
 <url><loc>/reference/bridge_metrics_excluded.html</loc></url>
+<url><loc>/reference/community_scores.html</loc></url>
 <url><loc>/reference/dot-mgm_fun.html</loc></url>
 <url><loc>/reference/find_bridge_communities.html</loc></url>
 <url><loc>/reference/index.html</loc></url>
@@ -24,8 +25,10 @@
 <url><loc>/reference/nhanes.html</loc></url>
 <url><loc>/reference/nhgh_data.html</loc></url>
 <url><loc>/reference/plot.mixmashnet.html</loc></url>
+<url><loc>/reference/print.bridge_profiles.html</loc></url>
 <url><loc>/reference/print.mixmashnet.html</loc></url>
 <url><loc>/reference/print.summary.mixmashnet.html</loc></url>
 <url><loc>/reference/summary.mixmashnet.html</loc></url>
+<url><loc>/reference/update_palette.html</loc></url>
 </urlset>
 

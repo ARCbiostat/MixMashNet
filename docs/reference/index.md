@@ -2,20 +2,20 @@
 
 ## All functions
 
-- [`MixMashNet`](MixMashNet.md) [`MixMashNet-package`](MixMashNet.md) :
-  MixMashNet: Multilayer and Single-Layer Network Modeling
-
-- [`Reg2Graph_safe()`](Reg2Graph_safe.md) :
-
-  Safe graph assembly for mgm outputs (modified from mgm)
+- [`MixMashNet`](MixMashNet-package.md)
+  [`MixMashNet-package`](MixMashNet-package.md) : MixMashNet: Multilayer
+  and Single Layer Network Modeling
 
 - [`bacteremia`](bacteremia.md) : Bacteremia dataset
 
 - [`bridge_metrics()`](bridge_metrics.md) : Bridge metrics for nodes
-  across communities (original-style)
+  across communities
 
 - [`bridge_metrics_excluded()`](bridge_metrics_excluded.md) : Bridge
-  metrics for nodes excluded from communities (mmn)
+  metrics for nodes excluded from communities
+
+- [`community_scores()`](community_scores.md) : Compute community scores
+  from a fitted MixMashNet model
 
 - [`find_bridge_communities()`](find_bridge_communities.md) : Bridge
   profiles of a node across communities
@@ -23,22 +23,12 @@
 - [`membershipStab()`](membershipStab.md) : Node stability from
   bootstrap community assignments
 
-- [`membershipStab_table()`](membershipStab_table.md) :
-  Node-by-community stability table
-
-- [`mgm_masked()`](mgm_masked.md) :
-
-  Masked MGM (modified from mgm)
-
-- [`mixMN()`](mixMN.md) : Estimate MGM network with bootstrap
-  centrality, bridge metrics, clustering, and (optionally) community
-  scores with CIs
-
-- [`mixMN_from_wadj()`](mixMN_from_wadj.md) : Build MixMashNet metrics
-  from a signed weighted adjacency matrix
+- [`mixMN()`](mixMN.md) : Estimate single layer MGM network with
+  bootstrap centrality, bridge metrics, clustering, and (optionally)
+  community scores with CIs
 
 - [`multimixMN()`](multimixMN.md) : Multilayer MGM with bootstrap,
-  intra-/inter-layer metrics, and CIs
+  intra/interlayer metrics, and CIs
 
 - [`nhanes`](nhanes.md) : NHANES dataset
 
@@ -47,6 +37,10 @@
 - [`plot(`*`<mixmashnet>`*`)`](plot.mixmashnet.md) : Plot method for
   MixMashNet objects
 
+- [`print(`*`<bridge_profiles>`*`)`](print.bridge_profiles.md) :
+
+  Print method for objects of class `"bridge_profiles"`
+
 - [`print(`*`<mixmashnet>`*`)`](print.mixmashnet.md) : Print method for
   MixMashNet objects
 
@@ -54,4 +48,7 @@
   Print method for "summary.mixmashnet" objects
 
 - [`summary(`*`<mixmashnet>`*`)`](summary.mixmashnet.md) : Summarize
-  MixMashNet fits (single- and multilayer) in long format
+  MixMashNet fits (single and multilayer) in long format
+
+- [`update_palette()`](update_palette.md) : Update community and layer
+  color palettes in MixMashNet objects

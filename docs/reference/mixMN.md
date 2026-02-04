@@ -1,10 +1,12 @@
-# Estimate MGM network with bootstrap centrality, bridge metrics, clustering, and (optionally) community scores with CIs
+# Estimate single layer MGM network with bootstrap centrality, bridge metrics, clustering, and (optionally) community scores with CIs
 
-Estimates a Mixed Graphical Model (MGM) network on the original data and
-performs non-parametric bootstrap (row resampling) to compute centrality
-indices, bridge metrics, clustering stability, and confidence intervals
-(CIs) for node metrics and edge weights. Optionally computes community
-network scores with CIs and bootstrap arrays.
+Estimates a single layer Mixed Graphical Model (MGM) network on the
+original data, using the estimation framework implemented in the mgm
+package, and performs non-parametric bootstrap (row resampling) to
+compute centrality indices, bridge metrics, clustering stability, and
+confidence intervals (CIs) for node metrics and edge weights.
+Optionally, the function computes community score loadings (for later
+prediction on new data) and can bootstrap the corresponding loadings.
 
 ## Usage
 
@@ -28,15 +30,16 @@ mixMN(
   overparameterize = FALSE,
   thresholdCat = TRUE,
   conf_level = 0.95,
-  exclude_from_graph = NULL,
+  covariates = NULL,
   exclude_from_cluster = NULL,
   treat_singletons_as_excluded = FALSE,
   seed_model = NULL,
   seed_boot = NULL,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-  compute_community_scores = FALSE,
+  compute_loadings = TRUE,
   boot_what = c("general_index", "bridge_index", "excluded_index", "community",
-    "community_scores", "none"),
+    "loadings"),
+  save_data = FALSE,
   progress = TRUE
 )
 ```
@@ -45,7 +48,7 @@ mixMN(
 
 - data:
 
-  Matrix or data.frame (n × p) with variables in columns.
+  Matrix or data.frame (n x p) with variables in columns.
 
 - type, level:
 
@@ -115,9 +118,9 @@ mixMN(
 - conf_level:
 
   Confidence level for percentile bootstrap CIs (default 0.95). Must be
-  a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
+  a single number between 0 and 1.
 
-- exclude_from_graph:
+- covariates:
 
   Character vector. Nodes excluded from the graph and from all
   node-level metrics.
@@ -125,7 +128,7 @@ mixMN(
 - exclude_from_cluster:
 
   Character vector. Nodes excluded from community detection (in addition
-  to `exclude_from_graph`).
+  to `covariates`).
 
 - treat_singletons_as_excluded:
 
@@ -139,14 +142,13 @@ mixMN(
 
 - cluster_method:
 
-  Community detection algorithm used on the thresholded absolute
-  adjacency matrix: `"louvain"`, `"fast_greedy"`, `"infomap"`,
-  `"walktrap"`, or `"edge_betweenness"`.
+  Community detection algorithm used on the network: `"louvain"`,
+  `"fast_greedy"`, `"infomap"`, `"walktrap"`, or `"edge_betweenness"`.
 
-- compute_community_scores:
+- compute_loadings:
 
-  Logical; if `TRUE`, compute community network scores (EGAnet
-  `std.scores`) with CIs and bootstrap arrays.
+  Logical; if TRUE (default), compute network loadings (EGAnet
+  net.loads) for communities.
 
 - boot_what:
 
@@ -164,11 +166,15 @@ mixMN(
 
   - `"community"`: bootstrap community memberships.
 
-  - `"community_scores"`: bootstrap community network scores (only if
-    `compute_community_scores = TRUE`).
+  - `"loadings"`: bootstrap loadings (only if
+    `compute_loadings = TRUE`).
 
   - `"none"`: skip node-level bootstrap (edge-weight bootstrap is still
     performed if `reps > 0`).
+
+- save_data:
+
+  Logical; if TRUE, store the original data in the output object.
 
 - progress:
 
@@ -187,14 +193,14 @@ the following top-level components:
 - `settings`:
 
   List of main settings used in the call, including `reps`,
-  `cluster_method`, `exclude_from_graph`, `exclude_from_cluster`,
+  `cluster_method`, `covariates`, `exclude_from_cluster`,
   `treat_singletons_as_excluded`, and `boot_what`.
 
 - `model`:
 
   List with: `mgm` (the fitted `mgm` object), `nodes` (character vector
-  of all node names), `n` (number of observations), and `p` (number of
-  variables).
+  of all node names), `n` (number of observations), `p` (number of
+  variables), and `data`.
 
 - `graph`:
 
@@ -226,33 +232,27 @@ the following top-level components:
   `bridge_betweenness_excluded`, `bridge_closeness_excluded`,
   `bridge_ei1_excluded`, `bridge_ei2_excluded`); `boot` (list of
   bootstrap matrices for each metric, each of dimension
-  `reps × length(keep_nodes_graph)`, possibly `NULL` if the metric was
+  `reps x length(keep_nodes_graph)`, possibly `NULL` if the metric was
   not requested or if `reps = 0`); and `ci` (list of CIs for each node
-  metric, one `p × 2` matrix per metric, with columns `2.5%` and
+  metric, one `p x 2` matrix per metric, with columns `2.5%` and
   `97.5%`, or `NULL` if no bootstrap was performed).
 
-      \code{edge} is a list with:
-      \code{true} (data frame with columns \code{edge} and \code{weight} for
-      all unique undirected edges among \code{keep_nodes_graph});
-      \code{boot} (matrix of bootstrap edge weights of dimension
-      \code{n_edges × reps}); and
-      \code{ci} (matrix of CIs for edge weights,
-      \code{n_edges × 2}, with columns \code{2.5%} and \code{97.5%}, or
-      \code{NULL} if \code{reps = 0}).
-
-- `community_scores`:
-
-  List containing community network scores (only if
-  `compute_community_scores = TRUE`): `obj` (the
-  [`EGAnet::net.scores`](https://r-ega.net/reference/net.scores.html)
-  object, or `NULL` if score computation failed), `df` (data frame with
-  subject IDs in column `id` and standardized community scores in the
-  remaining columns), `ci` (list with `lower` and `upper` matrices,
-  subjects × communities, with CIs for community scores, or `NULL` if no
-  bootstrap was performed), and `boot` (list of data frames, one per
-  bootstrap replication, with community scores, or `NULL` if
-  `"community_scores"` was not requested in `boot_what` or if
+  `edge` is a list with: `true` (data frame with columns `edge` and
+  `weight` for all unique undirected edges among `keep_nodes_graph`);
+  `boot` (matrix of bootstrap edge weights of dimension
+  `n_edges x reps`); and `ci` (matrix of CIs for edge weights,
+  `n_edges x 2`, with columns `2.5%` and `97.5%`, or `NULL` if
   `reps = 0`).
+
+- `community_loadings`:
+
+  List containing community-loading information (based on
+  [`EGAnet::net.loads`](https://r-ega.net/reference/net.loads.html)) for
+  later community-score computation on new data: `nodes` (nodes used for
+  loadings), `wc` (integer community labels aligned with `nodes`),
+  `true` (matrix of standardized loadings, nodes x communities), and
+  `boot` (list of bootstrap loading matrices, one per replication, or
+  `NULL` if not bootstrapped).
 
 ## Details
 
@@ -262,3 +262,10 @@ To enable parallel bootstrap, set a plan (e.g.
 `future::plan(multisession)`) before calling `mixMN()`. If `boot_what`
 is `"none"` and `reps > 0`, node-level metrics are not bootstrapped but
 edge-weight bootstrap and corresponding CIs are still computed.
+
+## References
+
+Haslbeck, J. M. B., & Waldorp, L. J. (2020). mgm: Estimating
+Time-Varying Mixed Graphical Models in High-Dimensional Data. *Journal
+of Statistical Software*, 93(8).
+[doi:10.18637/jss.v093.i08](https://doi.org/10.18637/jss.v093.i08)

@@ -1,12 +1,14 @@
-# Multilayer MGM with bootstrap, intra-/inter-layer metrics, and CIs
+# Multilayer MGM with bootstrap, intra/interlayer metrics, and CIs
 
-Estimates a **multilayer** Mixed Graphical Model (MGM) using a mask that
+Estimates a multilayer Mixed Graphical Model (MGM) using the estimation
+framework implemented in the mgm package, with a masking scheme that
 enforces which cross-layer edges are allowed according to `layer_rules`.
-Within each layer, the function computes community structure,
-non-parametric row-bootstrap for node centralities and edges, bridge
-metrics (including metrics for nodes treated as "excluded"), and
-(optionally) community network scores. It also returns interlayer-only
-node metrics and cross-layer edge summaries.
+Within each layer, the function computes community structure and
+performs non-parametric row-bootstrap to obtain node centrality indices,
+edge weights, and bridge metrics, including metrics for nodes treated as
+excluded. Optionally, within-layer community loadings can also be
+estimated and bootstrapped. The function additionally returns
+interlayer-only node metrics and summaries of cross-layer edge weights.
 
 ## Usage
 
@@ -32,15 +34,16 @@ multimixMN(
   overparameterize = FALSE,
   thresholdCat = TRUE,
   conf_level = 0.95,
-  exclude_from_graph = NULL,
+  covariates = NULL,
   exclude_from_cluster = NULL,
   seed_model = NULL,
   seed_boot = NULL,
   treat_singletons_as_excluded = FALSE,
   cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
-  compute_community_scores = FALSE,
+  compute_loadings = TRUE,
   boot_what = c("general_index", "interlayer_index", "bridge_index", "excluded_index",
-    "community", "community_scores", "none"),
+    "community", "loadings"),
+  save_data = FALSE,
   progress = TRUE
 )
 ```
@@ -49,7 +52,7 @@ multimixMN(
 
 - data:
 
-  A numeric matrix or data frame (n × p) with variables in columns.
+  A numeric matrix or data frame (n x p) with variables in columns.
 
 - type:
 
@@ -64,13 +67,14 @@ multimixMN(
 - layers:
 
   A named vector (names = variable names) assigning each node to a layer
-  (character or factor). Must cover all columns of `data`.
+  (character or factor). Must cover all columns of `data` except
+  variables listed in `covariates` (treated as adjustment covariates).
 
 - layer_rules:
 
   A logical or numeric square matrix with row/column names equal to
   layer names. Values `TRUE` or `1` indicate that cross-layer edges are
-  allowed between the corresponding layer pair. Intra-layer edges are
+  allowed between the corresponding layer pair. Intralayer edges are
   always allowed; if the diagonal is `NA`, it is treated as allowed.
 
 - scale:
@@ -86,7 +90,7 @@ multimixMN(
 
 - lambdaSel:
 
-  Method for lambda selection in mgm: `"CV"` or `"EBIC"`.
+  Method for lambda selection in `mgm`: `"CV"` or `"EBIC"`.
 
 - lambdaFolds:
 
@@ -139,15 +143,16 @@ multimixMN(
   Confidence level for percentile bootstrap CIs (default 0.95). Must be
   a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
 
-- exclude_from_graph:
+- covariates:
 
-  Character vector of node names. Nodes in this set are excluded from
-  the global graph and from all node-level metrics.
+  Character vector of variable names treated as adjustment covariates.
+  They are included in all nodewise regressions in `mgm()`, but excluded
+  from the estimated network.
 
 - exclude_from_cluster:
 
   Character vector of node names. Nodes in this set are excluded from
-  community detection in addition to `exclude_from_graph`.
+  community detection in addition to `covariates`.
 
 - seed_model:
 
@@ -169,23 +174,26 @@ multimixMN(
   `"louvain"`, `"fast_greedy"`, `"infomap"`, `"walktrap"`, or
   `"edge_betweenness"`.
 
-- compute_community_scores:
+- compute_loadings:
 
-  Logical; if `TRUE`, compute community network scores (EGAnet
-  standardized `std.scores`) with bootstrap arrays and confidence
-  intervals.
+  Logical; if TRUE (default), compute network loadings (EGAnet
+  net.loads) for communities.
 
 - boot_what:
 
   Character vector specifying which quantities to bootstrap. Valid
-  options are: `"general_index"` (intra-layer centrality indices),
+  options are: `"general_index"` (intralayer centrality indices),
   `"interlayer_index"` (interlayer-only node metrics), `"bridge_index"`
   (bridge metrics for nodes in communities), `"excluded_index"` (bridge
   metrics for nodes treated as excluded), `"community"` (bootstrap
-  community memberships), `"community_scores"` (bootstrap community
-  scores, only if `compute_community_scores = TRUE`), and `"none"` (skip
-  all node-level bootstrap: only edge-weight bootstrap is performed if
+  community memberships), `"loadings"` (bootstrap within-layer community
+  loadings, only if `compute_loadings = TRUE`), and `"none"` (skip all
+  node-level bootstrap: only edge-weight bootstrap is performed if
   `reps > 0`).
+
+- save_data:
+
+  Logical; if TRUE, store the original data in the output object.
 
 - progress:
 
@@ -200,18 +208,19 @@ list contains at least the following components:
 - `call`: the matched function call.
 
 - `settings`: list of main settings (e.g., `reps`, `cluster_method`,
-  `exclude_from_graph`, `exclude_from_cluster`,
-  `treat_singletons_as_excluded`, `boot_what`).
+  `covariates`, `exclude_from_cluster`, `treat_singletons_as_excluded`,
+  `boot_what`).
 
 - `model`: list with the fitted masked `mgm` object and basic
   information on the data (`nodes`, `n`, `p`).
 
 - `layers`: list describing the multilayer structure (assignment of
-  nodes to layers and the `layer_rules` matrix used).
+  nodes to layers, `layer_rules` matrix used and color of each layer in
+  `palette`).
 
-- `layer_fits`: named list (one element per layer) with single-layer
+- `layer_fits`: named list (one element per layer) with single layer
   fits, including community structure, node-level statistics, edge-level
-  statistics, bridge metrics, and (optionally) community scores with
+  statistics, bridge metrics, and (optionally) community loadings with
   bootstrap information.
 
 - `interlayer`: list collecting interlayer-only node metrics (strength,
@@ -230,13 +239,12 @@ This function does **not** call
 To enable parallel bootstrap, set a plan (e.g.
 `future::plan(multisession)`) before calling `multimixMN()`. If `"none"`
 is the only element of `boot_what` and `reps > 0`, node-level metrics
-are not bootstrapped, but intra- and inter-layer edge-weight bootstrap
-and the corresponding confidence intervals are still computed.
+are not bootstrapped, but intra and interlayer edge-weight bootstrap and
+the corresponding confidence intervals are still computed.
 
-## Dependencies
+## References
 
-Relies on internal helpers [`mgm_masked()`](mgm_masked.md),
-[`mixMN_from_wadj()`](mixMN_from_wadj.md),
-[`bridge_metrics()`](bridge_metrics.md), and
-[`bridge_metrics_excluded()`](bridge_metrics_excluded.md), which must be
-available in the same package namespace.
+Haslbeck, J. M. B., & Waldorp, L. J. (2020). mgm: Estimating
+Time-Varying Mixed Graphical Models in High-Dimensional Data. *Journal
+of Statistical Software*, 93(8).
+[doi:10.18637/jss.v093.i08](https://doi.org/10.18637/jss.v093.i08)

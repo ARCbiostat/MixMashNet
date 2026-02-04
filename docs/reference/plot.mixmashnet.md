@@ -3,13 +3,15 @@
 Unified plotting interface for objects returned by [`mixMN()`](mixMN.md)
 and [`multimixMN()`](multimixMN.md). Depending on `what`, it can:
 
-- `what = "network"`: plot the estimated network (single-layer or
+- `what = "network"`: plot the estimated network (single layer or
   multilayer);
 
-- `what = "intra"`: plot intra-layer node/edge statistics with 95\\
+- `what = "intra"`: plot intralayer node/edge statistics with bootstrap
+  CIs at the level stored in the object (centrality and bridge metrics);
 
 - `what = "inter"`: plot interlayer node metrics or interlayer edge
-  weights with 95\\ `plotInterlayer()` and the chosen `statistics`;
+  weights with bootstrap CIs at the level stored in the object
+  (multilayer only), and the chosen `statistics`;
 
 - `what = "stability"`: plot node stability within communities based on
   bootstrap community assignments.
@@ -31,21 +33,12 @@ plot(x, what = c("network", "intra", "inter", "stability"), layer = NULL, ...)
 - what:
 
   Type of plot to produce. One of
-  `c("network","intra","inter","stability")`. If missing, a default is
-  chosen based on the presence of centrality-related arguments and on
-  whether `x` is single-layer or multilayer (see Details).
+  `c("network","intra","inter","stability")`.
 
 - layer:
 
   Optional layer name. For `what = "intra"` or `what = "stability"` on a
   `multimixMN_fit` object, this selects which layer-specific fit to use.
-  If `NULL`, the behaviour depends on `what`:
-
-  - `what = "network"`: plots the global multilayer network;
-
-  - `what = "intra"` or `"stability"` on multilayer: either all layers
-    are plotted in a combined layout or an error is raised if the
-    context is ambiguous.
 
 - ...:
 
@@ -68,18 +61,5 @@ plot(x, what = c("network", "intra", "inter", "stability"), layer = NULL, ...)
 
 ## Value
 
-For `what != "network"`, a `ggplot` object is returned. For
-`what = "network"`, the corresponding network plotting helper is called
-for its side-effect and `x` is returned invisibly.
-
-## Details
-
-When `what` is missing, the function inspects `...` to decide whether
-the user is requesting centrality/edge statistics (e.g., by passing
-`statistics`, `ordering`, etc.). In that case:
-
-- for single-layer fits, the default is `what = "intra"`;
-
-- for multilayer fits, an informative error is raised if neither `what`
-  nor `layer` is specified and the request is ambiguous (intra-layer vs
-  interlayer statistics).
+If `what != "network"`, the function returns a `ggplot` object. If
+`what = "network"`, the network is plotted directly.
