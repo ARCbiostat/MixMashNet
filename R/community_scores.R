@@ -1,8 +1,7 @@
 #' Compute community scores from a fitted MixMashNet model
 #'
 #' @description
-#' Computes subject-level community scores following the scoring approach
-#' proposed in the \pkg{EGAnet} framework. Community scores are obtained as
+#' Computes subject-level community scores. Community scores are obtained as
 #' weighted sums of the variables belonging to each detected community, where
 #' weights correspond to the standardized community loadings estimated via
 #' \code{EGAnet::net.loads} and stored in the fitted \code{mixMN_fit} object.

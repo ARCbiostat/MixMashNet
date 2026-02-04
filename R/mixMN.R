@@ -1,8 +1,8 @@
-#' Estimate single-layer MGM network with bootstrap centrality, bridge metrics, clustering,
+#' Estimate single layer MGM network with bootstrap centrality, bridge metrics, clustering,
 #' and (optionally) community scores with CIs
 #'
 #' @description
-#' Estimates a single-layer Mixed Graphical Model (MGM) network on the original data,
+#' Estimates a single layer Mixed Graphical Model (MGM) network on the original data,
 #' using the estimation framework implemented in the \pkg{mgm} package, and performs
 #' non-parametric bootstrap (row resampling) to compute centrality indices, bridge
 #' metrics, clustering stability, and confidence intervals (CIs) for node metrics
@@ -33,10 +33,10 @@
 #'   variables are set to zero.
 #' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
 #'   Must be a single number between 0 and 1.
-#' @param exclude_from_graph Character vector. Nodes excluded from the graph and
+#' @param covariates Character vector. Nodes excluded from the graph and
 #'   from all node-level metrics.
 #' @param exclude_from_cluster Character vector. Nodes excluded from community
-#'   detection (in addition to \code{exclude_from_graph}).
+#'   detection (in addition to \code{covariates}).
 #' @param treat_singletons_as_excluded Logical; if \code{TRUE}, singleton
 #'   communities (size 1) are treated as excluded nodes when computing
 #'   bridge metrics.
@@ -77,7 +77,7 @@
 #'   \item{\code{settings}}{
 #'     List of main settings used in the call, including
 #'     \code{reps}, \code{cluster_method},
-#'     \code{exclude_from_graph}, \code{exclude_from_cluster},
+#'     \code{covariates}, \code{exclude_from_cluster},
 #'     \code{treat_singletons_as_excluded}, and \code{boot_what}.
 #'   }
 #'   \item{\code{model}}{
@@ -194,7 +194,7 @@ mixMN <- function(
     overparameterize = FALSE,
     thresholdCat = TRUE,
     conf_level = 0.95,
-    exclude_from_graph = NULL,
+    covariates = NULL,
     exclude_from_cluster = NULL,
     treat_singletons_as_excluded = FALSE,
     seed_model = NULL,
@@ -324,8 +324,8 @@ mixMN <- function(
   wadj_signed[is.na(wadj_signed)] <- 0
 
   # ---- Keep nodes for graph and clustering ----
-  keep_nodes_graph   <- setdiff(all_nodes, exclude_from_graph)
-  keep_nodes_cluster <- setdiff(all_nodes, unique(c(exclude_from_graph, exclude_from_cluster)))
+  keep_nodes_graph   <- setdiff(all_nodes, covariates)
+  keep_nodes_cluster <- setdiff(all_nodes, unique(c(covariates, exclude_from_cluster)))
 
   wadj_signed_graph   <- wadj_signed[keep_nodes_graph,   keep_nodes_graph]
   wadj_signed_cluster <- wadj_signed[keep_nodes_cluster, keep_nodes_cluster]
@@ -1000,7 +1000,7 @@ mixMN <- function(
     settings = list(
       reps                         = reps,
       cluster_method               = cluster_method,
-      exclude_from_graph           = exclude_from_graph,
+      covariates                   = covariates,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,

@@ -41,8 +41,7 @@ An object of class \code{c("membershipStab")}, with components:
 Computes per-node stability given the empirical community structure and the
 homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
 Stability is expressed as the proportion of bootstrap replications that
-assign each node to its empirical (original) community, following the
-bootstrap stability approach introduced by Christensen and Golino (2021).
+assign each node to its empirical (original) community.
 }
 \details{
 Bootstrap community labels are first aligned to the empirical solution using

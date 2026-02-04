@@ -2,7 +2,7 @@
 % Please edit documentation in R/multimixMN.R
 \name{multimixMN}
 \alias{multimixMN}
-\title{Multilayer MGM with bootstrap, intra-/inter-layer metrics, and CIs}
+\title{Multilayer MGM with bootstrap, intra/interlayer metrics, and CIs}
 \usage{
 multimixMN(
   data,
@@ -25,7 +25,7 @@ multimixMN(
   overparameterize = FALSE,
   thresholdCat = TRUE,
   conf_level = 0.95,
-  exclude_from_graph = NULL,
+  covariates = NULL,
   exclude_from_cluster = NULL,
   seed_model = NULL,
   seed_boot = NULL,
@@ -49,12 +49,12 @@ multimixMN(
 
 \item{layers}{A named vector (names = variable names) assigning each node to a
 layer (character or factor). Must cover all columns of \code{data}
-except variables listed in \code{exclude_from_graph} (treated as adjustment covariates).}
+except variables listed in \code{covariates} (treated as adjustment covariates).}
 
 \item{layer_rules}{A logical or numeric square matrix with row/column names
 equal to layer names. Values \code{TRUE} or \code{1} indicate that
 cross-layer edges are allowed between the corresponding layer pair.
-Intra-layer edges are always allowed; if the diagonal is \code{NA}, it is
+Intralayer edges are always allowed; if the diagonal is \code{NA}, it is
 treated as allowed.}
 
 \item{scale}{Logical; if \code{TRUE} (default) Gaussian variables
@@ -98,12 +98,12 @@ variables are set to zero.}
 \item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
 Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).}
 
-\item{exclude_from_graph}{Character vector of variable names treated as
+\item{covariates}{Character vector of variable names treated as
 adjustment covariates. They are included in all nodewise regressions in
 \code{mgm()}, but excluded from the estimated network.}
 
 \item{exclude_from_cluster}{Character vector of node names. Nodes in this set
-are excluded from community detection in addition to \code{exclude_from_graph}.}
+are excluded from community detection in addition to \code{covariates}.}
 
 \item{seed_model}{Optional integer seed for reproducibility of the initial
 MGM fit.}
@@ -124,7 +124,7 @@ compute network loadings (EGAnet net.loads) for communities.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
 Valid options are:
-\code{"general_index"} (intra-layer centrality indices),
+\code{"general_index"} (intralayer centrality indices),
 \code{"interlayer_index"} (interlayer-only node metrics),
 \code{"bridge_index"} (bridge metrics for nodes in communities),
 \code{"excluded_index"} (bridge metrics for nodes treated as excluded),
@@ -145,7 +145,7 @@ list contains at least the following components:
 \itemize{
   \item \code{call}: the matched function call.
   \item \code{settings}: list of main settings (e.g., \code{reps},
-    \code{cluster_method}, \code{exclude_from_graph},
+    \code{cluster_method}, \code{covariates},
     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
     \code{boot_what}).
   \item \code{model}: list with the fitted masked \code{mgm} object and basic
@@ -153,7 +153,7 @@ list contains at least the following components:
   \item \code{layers}: list describing the multilayer structure
     (assignment of nodes to layers, \code{layer_rules} matrix used and color of each layer in \code{palette}).
   \item \code{layer_fits}: named list (one element per layer) with
-    single-layer fits, including community structure, node-level statistics,
+    single layer fits, including community structure, node-level statistics,
     edge-level statistics, bridge metrics, and (optionally) community loadings
     with bootstrap information.
   \item \code{interlayer}: list collecting interlayer-only node metrics
@@ -183,7 +183,7 @@ This function does \strong{not} call \code{future::plan()}. To enable
 parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)}) before
 calling \code{multimixMN()}. If \code{"none"} is the only element of
 \code{boot_what} and \code{reps > 0}, node-level metrics are not
-bootstrapped, but intra- and inter-layer edge-weight bootstrap and the
+bootstrapped, but intra and interlayer edge-weight bootstrap and the
 corresponding confidence intervals are still computed.
 }
 \references{

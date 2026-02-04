@@ -58,8 +58,7 @@ If \code{fit} is a \code{multimixMN_fit} and \code{layer = NULL}, returns a name
 of \code{community_scores} objects (one per layer).
 }
 \description{
-Computes subject-level community scores following the scoring approach
-proposed in the \pkg{EGAnet} framework. Community scores are obtained as
+Computes subject-level community scores. Community scores are obtained as
 weighted sums of the variables belonging to each detected community, where
 weights correspond to the standardized community loadings estimated via
 \code{EGAnet::net.loads} and stored in the fitted \code{mixMN_fit} object.

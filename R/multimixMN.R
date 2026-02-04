@@ -1,4 +1,4 @@
-#' Multilayer MGM with bootstrap, intra-/inter-layer metrics, and CIs
+#' Multilayer MGM with bootstrap, intra/interlayer metrics, and CIs
 #'
 #' @description
 #' Estimates a multilayer Mixed Graphical Model (MGM) using the estimation
@@ -18,11 +18,11 @@
 #'   \code{mgm::mgm}.
 #' @param layers A named vector (names = variable names) assigning each node to a
 #'   layer (character or factor). Must cover all columns of \code{data}
-#'   except variables listed in \code{exclude_from_graph} (treated as adjustment covariates).
+#'   except variables listed in \code{covariates} (treated as adjustment covariates).
 #' @param layer_rules A logical or numeric square matrix with row/column names
 #'   equal to layer names. Values \code{TRUE} or \code{1} indicate that
 #'   cross-layer edges are allowed between the corresponding layer pair.
-#'   Intra-layer edges are always allowed; if the diagonal is \code{NA}, it is
+#'   Intralayer edges are always allowed; if the diagonal is \code{NA}, it is
 #'   treated as allowed.
 #' @param scale Logical; if \code{TRUE} (default) Gaussian variables
 #'   (\code{type == "g"}) are z-standardized internally by \code{mgm()}. Use
@@ -50,11 +50,11 @@
 #'   variables are set to zero.
 #' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
 #'   Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
-#' @param exclude_from_graph Character vector of variable names treated as
+#' @param covariates Character vector of variable names treated as
 #'   adjustment covariates. They are included in all nodewise regressions in
 #'   \code{mgm()}, but excluded from the estimated network.
 #' @param exclude_from_cluster Character vector of node names. Nodes in this set
-#'   are excluded from community detection in addition to \code{exclude_from_graph}.
+#'   are excluded from community detection in addition to \code{covariates}.
 #' @param seed_model Optional integer seed for reproducibility of the initial
 #'   MGM fit.
 #' @param seed_boot Optional integer seed passed to \code{future.apply} for
@@ -69,7 +69,7 @@
 #'   compute network loadings (EGAnet net.loads) for communities.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Valid options are:
-#'   \code{"general_index"} (intra-layer centrality indices),
+#'   \code{"general_index"} (intralayer centrality indices),
 #'   \code{"interlayer_index"} (interlayer-only node metrics),
 #'   \code{"bridge_index"} (bridge metrics for nodes in communities),
 #'   \code{"excluded_index"} (bridge metrics for nodes treated as excluded),
@@ -88,7 +88,7 @@
 #' \itemize{
 #'   \item \code{call}: the matched function call.
 #'   \item \code{settings}: list of main settings (e.g., \code{reps},
-#'     \code{cluster_method}, \code{exclude_from_graph},
+#'     \code{cluster_method}, \code{covariates},
 #'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
 #'     \code{boot_what}).
 #'   \item \code{model}: list with the fitted masked \code{mgm} object and basic
@@ -96,7 +96,7 @@
 #'   \item \code{layers}: list describing the multilayer structure
 #'     (assignment of nodes to layers, \code{layer_rules} matrix used and color of each layer in \code{palette}).
 #'   \item \code{layer_fits}: named list (one element per layer) with
-#'     single-layer fits, including community structure, node-level statistics,
+#'     single layer fits, including community structure, node-level statistics,
 #'     edge-level statistics, bridge metrics, and (optionally) community loadings
 #'     with bootstrap information.
 #'   \item \code{interlayer}: list collecting interlayer-only node metrics
@@ -115,7 +115,7 @@
 #' parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)}) before
 #' calling \code{multimixMN()}. If \code{"none"} is the only element of
 #' \code{boot_what} and \code{reps > 0}, node-level metrics are not
-#' bootstrapped, but intra- and inter-layer edge-weight bootstrap and the
+#' bootstrapped, but intra and interlayer edge-weight bootstrap and the
 #' corresponding confidence intervals are still computed.
 #'
 #' @references
@@ -147,7 +147,7 @@ multimixMN <- function(
     k = 2, ruleReg = "AND", threshold = "LW",
     overparameterize = FALSE, thresholdCat = TRUE,
     conf_level = 0.95,
-    exclude_from_graph = NULL,
+    covariates = NULL,
     exclude_from_cluster = NULL,
     seed_model = NULL, seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
@@ -201,9 +201,9 @@ multimixMN <- function(
 
   all_nodes <- colnames(data); p <- ncol(data)
 
-  if (is.null(exclude_from_graph)) exclude_from_graph <- character(0)
-  exclude_from_graph <- unique(exclude_from_graph)
-  covariates <- intersect(exclude_from_graph, all_nodes)
+  if (is.null(covariates)) covariates <- character(0)
+  covariates <- unique(covariates)
+  covariates <- intersect(covariates, all_nodes)
   network_nodes <- setdiff(all_nodes, covariates)
 
   if (is.null(exclude_from_cluster)) exclude_from_cluster <- character(0)
@@ -221,7 +221,7 @@ multimixMN <- function(
     stop(
       paste0(
         "multimixMN is designed for MULTILAYER networks (>= 2 layers). ",
-        "You provided only one layer. For single-layer networks, please use the ",
+        "You provided only one layer. For single layer networks, please use the ",
         "`mixMN()` function instead."
       ),
       call. = FALSE
@@ -235,7 +235,7 @@ multimixMN <- function(
 
   if (!all(network_nodes %in% names(layers))) {
     miss <- setdiff(network_nodes, names(layers))
-    stop("`layers` must cover all variables except `exclude_from_graph` (covariates). Missing: ",
+    stop("`layers` must cover all variables except `covariates`. Missing: ",
          paste(miss, collapse = ", "))
   }
 
@@ -416,7 +416,7 @@ multimixMN <- function(
       wadj_signed = sub_w,
       nodes = nL,
       conf_level = conf_level,
-      exclude_from_graph   = NULL,
+      covariates   = NULL,
       exclude_from_cluster = intersect(exclude_from_cluster, nL),
       cluster_method = cluster_method,
       reps          = 0,
@@ -523,7 +523,7 @@ multimixMN <- function(
     nodes_c <- if (!is.null(membL)) names(membL) else character(0)
     nodes_ex <- layer_nodes_excluded[[L]]
     list(
-      # general indices intra-layer
+      # general indices intralayer
       strength_boot     = if (do_intra_general_boot)
         matrix(NA_real_, reps, length(nodes_g), dimnames = list(NULL, nodes_g)) else NULL,
       ei1_boot          = if (do_intra_general_boot)
@@ -533,7 +533,7 @@ multimixMN <- function(
       betweenness_boot  = if (do_intra_general_boot)
         matrix(NA_real_, reps, length(nodes_g), dimnames = list(NULL, nodes_g)) else NULL,
 
-      # edges intra-layer
+      # edges intralayer
       edge_boot_mat     = {
         en <- .edge_names_lt(nodes_g)
         if (length(en)) matrix(NA_real_, length(en), reps,
@@ -550,7 +550,7 @@ multimixMN <- function(
         vector("list", reps)
       } else NULL,
 
-      # bridge intra-layer
+      # bridge intralayer
       bridge_strength_boot     = if (do_bridge_boot && length(nodes_c) > 0)
         matrix(NA_real_, reps, length(nodes_c), dimnames = list(NULL, nodes_c)) else NULL,
       bridge_ei1_boot          = if (do_bridge_boot && length(nodes_c) > 0)
@@ -708,7 +708,7 @@ multimixMN <- function(
         }
       }
 
-      # --- general indices intra-layer ---
+      # --- general indices intralayer ---
       if (do_intra_general_boot) {
         cent <- tryCatch(
           qgraph::centrality(Wg),
@@ -1233,7 +1233,7 @@ multimixMN <- function(
     settings = list(
       reps                         = reps,
       cluster_method               = cluster_method,
-      exclude_from_graph           = exclude_from_graph,
+      covariates                   = covariates,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,

@@ -42,8 +42,8 @@ Unified plotting interface for objects returned by \code{mixMN()} and
 \code{multimixMN()}. Depending on \code{what}, it can:
 \itemize{
   \item \code{what = "network"}: plot the estimated network
-        (single-layer or multilayer);
-  \item \code{what = "intra"}: plot intra-layer node/edge statistics with
+        (single layer or multilayer);
+  \item \code{what = "intra"}: plot intralayer node/edge statistics with
         bootstrap CIs at the level stored in the object (centrality and bridge metrics);
   \item \code{what = "inter"}: plot interlayer node metrics or interlayer
         edge weights with bootstrap CIs at the level stored in the object (multilayer only),

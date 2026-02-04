@@ -22,10 +22,10 @@
 #' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
 #'   Stored in \code{$settings} for consistency with \code{mixMN()}, but no CIs
 #'   are computed here because no bootstrap is performed.
-#' @param exclude_from_graph Character vector. Nodes excluded entirely from the
+#' @param covariates Character vector. Nodes excluded entirely from the
 #'   graph (removed from adjacency matrix, edges and node-level metrics).
 #' @param exclude_from_cluster Character vector. Nodes excluded from community
-#'   detection (in addition to \code{exclude_from_graph}). These nodes remain in
+#'   detection (in addition to \code{covariates}). These nodes remain in
 #'   the graph and in node-level metrics, but receive \code{NA} community labels.
 #' @param cluster_method Community detection algorithm, one of
 #'   \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.
@@ -53,7 +53,7 @@
 #'   \item{\code{call}}{The matched function call.}
 #'   \item{\code{settings}}{
 #'     List echoing the main arguments, including \code{reps},
-#'     \code{cluster_method}, \code{exclude_from_graph},
+#'     \code{cluster_method}, \code{covariates},
 #'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
 #'     \code{boot_what}, and \code{conf_level}.
 #'   }
@@ -116,7 +116,7 @@ mixMN_from_wadj <- function(
     wadj_signed,
     nodes,
     conf_level = 0.95,
-    exclude_from_graph = NULL,
+    covariates = NULL,
     exclude_from_cluster = NULL,
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
     reps = 0,
@@ -146,8 +146,8 @@ mixMN_from_wadj <- function(
   all_nodes <- nodes
 
   # --- Keep nodes for graph/cluster scopes ---
-  keep_nodes_graph   <- setdiff(all_nodes, exclude_from_graph)
-  keep_nodes_cluster <- setdiff(all_nodes, unique(c(exclude_from_graph, exclude_from_cluster)))
+  keep_nodes_graph   <- setdiff(all_nodes, covariates)
+  keep_nodes_cluster <- setdiff(all_nodes, unique(c(covariates, exclude_from_cluster)))
 
   wadj_signed_graph   <- wadj_signed[keep_nodes_graph,   keep_nodes_graph, drop = FALSE]
   wadj_signed_cluster <- wadj_signed[keep_nodes_cluster, keep_nodes_cluster, drop = FALSE]
@@ -383,7 +383,7 @@ mixMN_from_wadj <- function(
     settings = list(
       reps                         = reps,
       cluster_method               = cluster_method,
-      exclude_from_graph           = exclude_from_graph,
+      covariates                   = covariates,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,

@@ -2,7 +2,7 @@
 % Please edit documentation in R/mixmashnet-summary.R
 \name{summary.mixmashnet}
 \alias{summary.mixmashnet}
-\title{Summarize MixMashNet fits (single- and multilayer) in long format}
+\title{Summarize MixMashNet fits (single and multilayer) in long format}
 \usage{
 \method{summary}{mixmashnet}(
   object,
@@ -20,8 +20,8 @@
 
 \item{what}{Character string indicating which part of the model to summarize:
 \itemize{
-  \item \code{"intra"}: intra-layer quantities (node-level indices and/or
-    intra-layer edges);
+  \item \code{"intra"}: intralayer quantities (node-level indices and/or
+    intralayer edges);
   \item \code{"inter"}: interlayer quantities (node-level indices on the
     interlayer-only graph and/or cross-layer edges; multilayer fits only).
 }}
@@ -42,14 +42,14 @@
 
   If \code{statistics = NULL}, then:
   \itemize{
-    \item for \code{what = "intra"}, all available intra-layer statistics
+    \item for \code{what = "intra"}, all available intralayer statistics
       (including \code{"edges"}) are returned;
     \item for \code{what = "inter"}, all available interlayer statistics
       (including \code{"edges"}) are returned.
   }}
 
 \item{layer}{Optional character vector of layer names to subset. Used for
-\code{what = "intra"} in multilayer fits. Ignored for single-layer fits.}
+\code{what = "intra"} in multilayer fits. Ignored for single layer fits.}
 
 \item{pairs}{Optional character vector of layer-pair names (e.g.
 \code{"bio_dis"}) used for \code{what = "inter"} when summarizing
@@ -71,7 +71,7 @@ bootstrap confidence intervals (\code{$conf_level}).
   be \code{NULL}.
 }
 \description{
-Summarizes fitted MixMashNet objects (single- and multilayer) in long format.
+Summarizes fitted MixMashNet objects (single and multilayer) in long format.
 The summary includes the original estimates and, when available, bootstrap
 means, standard errors, and confidence intervals.
 }

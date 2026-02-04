@@ -5,8 +5,8 @@
 #' \code{multimixMN()}. Depending on \code{what}, it can:
 #' \itemize{
 #'   \item \code{what = "network"}: plot the estimated network
-#'         (single-layer or multilayer);
-#'   \item \code{what = "intra"}: plot intra-layer node/edge statistics with
+#'         (single layer or multilayer);
+#'   \item \code{what = "intra"}: plot intralayer node/edge statistics with
 #'         bootstrap CIs at the level stored in the object (centrality and bridge metrics);
 #'   \item \code{what = "inter"}: plot interlayer node metrics or interlayer
 #'         edge weights with bootstrap CIs at the level stored in the object (multilayer only),
@@ -69,15 +69,15 @@ plot.mixmashnet <- function(
   # --- logica per what ---
   if (missing(what)) {
     if (is_single && wants_centrality) {
-      # single-layer + statistics/order/etc → intra
+      # single layer + statistics/order/etc → intra
       what <- "intra"
 
     } else if (is_multi && wants_centrality && is.null(layer)) {
       stop(
         "You are plotting statistics on a multilayer object.\n",
         "Please specify one of:\n",
-        "  - layer = \"bio\"   # intra-layer statistics for a specific layer\n",
-        "  - what  = \"intra\" # intra-layer statistics for ALL layers\n",
+        "  - layer = \"bio\"   # intralayer statistics for a specific layer\n",
+        "  - what  = \"intra\" # intralayer statistics for ALL layers\n",
         "  - what  = \"inter\" # interlayer statistics\n"
       )
 
@@ -132,14 +132,14 @@ plot.mixmashnet <- function(
 
     if (!has_statistics) {
       message(
-        "Using default statistics for intra-layer plots: ",
+        "Using default statistics for intralayer plots: ",
         paste(default_stats, collapse = ", "),
         ". To choose other metrics, use the `statistics` argument."
       )
     }
 
     if (is_single) {
-      # ---- single-layer ----
+      # ---- single layer ----
       args <- dots
       if (!has_statistics) {
         args$statistics <- default_stats

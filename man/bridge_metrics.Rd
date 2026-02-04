@@ -29,9 +29,6 @@ inverse of the mean shortest-path distance to nodes in other communities.
 \details{
 Bridge betweenness and closeness are computed on the positive-weight subgraph
 only, with weights converted to distances as \eqn{d = 1/w}.
-Bridge centrality measures implemented in this function follow the bridge
-centrality framework proposed by Jones implemented in the
-\pkg{networktools} package.
 }
 \references{
 Jones, P. J. (2025). \pkg{networktools}: Tools for identifying important nodes

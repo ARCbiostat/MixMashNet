@@ -105,7 +105,7 @@ fit0 <- mixMN(
   lambdaSel          = "EBIC",
   seed_model         = 42,
   cluster_method     = "louvain",
-  exclude_from_graph = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
+  covariates         = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
 )
 ```
 
@@ -133,7 +133,7 @@ fit1 <- mixMN(
   seed_model         = 42,
   seed_boot          = 42,
   cluster_method     = "infomap",
-  exclude_from_graph = c("age", "sex", "re")
+  covariates         = c("age", "sex", "re")
 )
 ```
 
@@ -164,7 +164,7 @@ fit2 <- mixMN(
   seed_model           = 42,
   seed_boot            = 42,
   cluster_method       = "infomap",
-  exclude_from_graph   = c("age", "sex", "re"),
+  covariates           = c("age", "sex", "re"),
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )

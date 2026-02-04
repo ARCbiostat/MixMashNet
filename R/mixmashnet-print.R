@@ -4,13 +4,13 @@
 #' Compact textual summary for objects returned by \code{mixMN()} and
 #' \code{multimixMN()}. The method reports:
 #' \itemize{
-#'   \item whether the fit is single-layer (\code{mixMN}) or multilayer
+#'   \item whether the fit is single layer (\code{mixMN}) or multilayer
 #'         (\code{multimixMN});
 #'   \item number of subjects (if available) and variables;
 #'   \item for multilayer fits, the number of nodes and non-zero edges per layer
 #'         and, if present, per interlayer pair;
 #'   \item size of the global graph (nodes and edges);
-#'   \item number of communities (single-layer) or communities per layer
+#'   \item number of communities (single layer) or communities per layer
 #'         (multilayer);
 #'   \item covariates used for adjustment and nodes excluded from the graph
 #'         and/or clustering;
@@ -32,7 +32,7 @@ print.mixmashnet <- function(x, ...) {
   type_label <- if ("multimixMN_fit" %in% cls) {
     "Multilayer MGM (multimixMN)"
   } else if ("mixMN_fit" %in% cls) {
-    "Single-layer MGM (mixMN)"
+    "Single layer MGM (mixMN)"
   } else {
     "Unknown MixMashNet object"
   }
@@ -135,7 +135,7 @@ print.mixmashnet <- function(x, ...) {
   }
 
   ## ---- nodes excluded from graph / clustering ----
-  excl_g <- x$settings$exclude_from_graph %||% NULL
+  excl_g <- x$settings$covariates %||% NULL
   excl_c <- x$settings$exclude_from_cluster %||% NULL
 
   if (!is.null(excl_g) && length(excl_g)) {

@@ -1,7 +1,7 @@
-#' Summarize MixMashNet fits (single- and multilayer) in long format
+#' Summarize MixMashNet fits (single and multilayer) in long format
 #'
 #' @description
-#' Summarizes fitted MixMashNet objects (single- and multilayer) in long format.
+#' Summarizes fitted MixMashNet objects (single and multilayer) in long format.
 #' The summary includes the original estimates and, when available, bootstrap
 #' means, standard errors, and confidence intervals.
 #'
@@ -9,8 +9,8 @@
 #'   \code{mixMN()} or \code{multimixMN()}.
 #' @param what Character string indicating which part of the model to summarize:
 #'   \itemize{
-#'     \item \code{"intra"}: intra-layer quantities (node-level indices and/or
-#'       intra-layer edges);
+#'     \item \code{"intra"}: intralayer quantities (node-level indices and/or
+#'       intralayer edges);
 #'     \item \code{"inter"}: interlayer quantities (node-level indices on the
 #'       interlayer-only graph and/or cross-layer edges; multilayer fits only).
 #'   }
@@ -30,13 +30,13 @@
 #'
 #'   If \code{statistics = NULL}, then:
 #'   \itemize{
-#'     \item for \code{what = "intra"}, all available intra-layer statistics
+#'     \item for \code{what = "intra"}, all available intralayer statistics
 #'       (including \code{"edges"}) are returned;
 #'     \item for \code{what = "inter"}, all available interlayer statistics
 #'       (including \code{"edges"}) are returned.
 #'   }
 #' @param layer Optional character vector of layer names to subset. Used for
-#'   \code{what = "intra"} in multilayer fits. Ignored for single-layer fits.
+#'   \code{what = "intra"} in multilayer fits. Ignored for single layer fits.
 #' @param pairs Optional character vector of layer-pair names (e.g.
 #'   \code{"bio_dis"}) used for \code{what = "inter"} when summarizing
 #'   interlayer edges. If \code{NULL}, all available layer pairs are included.
@@ -96,8 +96,8 @@ summary.mixmashnet <- function(object,
           stop(
             "You are summarizing statistics on a multilayer object.\n",
             "Please specify one of:\n",
-            "  - layer = \"...\" and what = \"intra\"   # intra-layer statistics for a specific layer\n",
-            "  - what  = \"intra\"                     # intra-layer statistics for ALL layers\n",
+            "  - layer = \"...\" and what = \"intra\"   # intralayer statistics for a specific layer\n",
+            "  - what  = \"intra\"                     # intralayer statistics for ALL layers\n",
             "  - what  = \"inter\"                     # interlayer statistics\n"
           )
         }
@@ -188,7 +188,7 @@ summary.mixmashnet <- function(object,
   pr_global  <- .ci_probs(conf_level)
 
   # ------------------------------------------------------------------
-  # 1) INTRA-LAYER NODE-LEVEL INDICES (index)
+  # 1) INTRALAYER NODE-LEVEL INDICES (index)
   # ------------------------------------------------------------------
   index_tab <- NULL
 
@@ -319,7 +319,7 @@ summary.mixmashnet <- function(object,
       if (length(blocks)) index_tab <- do.call(rbind, blocks)
 
     } else {
-      # single-layer: no concept of layer; use "1"
+      # single layer: no concept of layer; use "1"
       true_df   <- object$statistics$node$true
       boot_list <- object$statistics$node$boot
       ci_list   <- object$statistics$node$ci
@@ -336,7 +336,7 @@ summary.mixmashnet <- function(object,
   }
 
   # ------------------------------------------------------------------
-  # 2) INTRA-LAYER EDGES (edges)
+  # 2) INTRALAYER EDGES (edges)
   # ------------------------------------------------------------------
   edges_tab <- NULL
 
@@ -721,9 +721,9 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
     df
   }
 
-  # ---------- 1) INDEX (intra-layer, node-level) ----------
+  # ---------- 1) INDEX (intralayer, node-level) ----------
   if (!is.null(x$index) && nrow(x$index)) {
-    cat("\nNode-level indices (intra-layer):\n")
+    cat("\nNode-level indices (intralayer):\n")
 
     idx <- round_df(x$index, digits)
     metrics_idx <- unique(idx$metric)
@@ -762,9 +762,9 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
     }
   }
 
-  # ---------- 2) EDGES (intra-layer) ----------
+  # ---------- 2) EDGES (intralayer) ----------
   if (!is.null(x$edges) && nrow(x$edges)) {
-    cat("\nIntra-layer edges:\n")
+    cat("\nIntralayer edges:\n")
 
     ed <- round_df(x$edges, digits)
 

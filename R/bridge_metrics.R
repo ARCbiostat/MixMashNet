@@ -17,9 +17,6 @@
 #' @details
 #' Bridge betweenness and closeness are computed on the positive-weight subgraph
 #' only, with weights converted to distances as \eqn{d = 1/w}.
-#' Bridge centrality measures implemented in this function follow the bridge
-#' centrality framework proposed by Jones implemented in the
-#' \pkg{networktools} package.
 #'
 #' @references
 #'

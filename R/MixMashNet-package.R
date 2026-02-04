@@ -1,12 +1,12 @@
-#' MixMashNet: Multilayer and Single-Layer Network Modeling
+#' MixMashNet: Multilayer and Single Layer Network Modeling
 #'
 #' @description
-#' Tools for estimating and analyzing single-layer and multilayer networks
+#' Tools for estimating and analyzing single layer and multilayer networks
 #' using Mixed Graphical Models (MGMs), accommodating continuous, count, and
 #' categorical variables.
 #' In the multilayer setting, layers may comprise different types and numbers
 #' of variables, and users can explicitly impose a predefined multilayer
-#' topology to constrain the estimation of inter- and intra-layer connections.
+#' topology to constrain the estimation of inter and intralayer connections.
 #' The package implements bootstrap procedures to derive confidence intervals
 #' for edge weights and node-level centrality and bridge metrics, and provides
 #' tools to assess the stability of node community membership. In addition,

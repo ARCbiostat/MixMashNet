@@ -2,7 +2,7 @@
 % Please edit documentation in R/mixMN.R
 \name{mixMN}
 \alias{mixMN}
-\title{Estimate single-layer MGM network with bootstrap centrality, bridge metrics, clustering,
+\title{Estimate single layer MGM network with bootstrap centrality, bridge metrics, clustering,
 and (optionally) community scores with CIs}
 \usage{
 mixMN(
@@ -24,7 +24,7 @@ mixMN(
   overparameterize = FALSE,
   thresholdCat = TRUE,
   conf_level = 0.95,
-  exclude_from_graph = NULL,
+  covariates = NULL,
   exclude_from_cluster = NULL,
   treat_singletons_as_excluded = FALSE,
   seed_model = NULL,
@@ -78,11 +78,11 @@ variables are set to zero.}
 \item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
 Must be a single number between 0 and 1.}
 
-\item{exclude_from_graph}{Character vector. Nodes excluded from the graph and
+\item{covariates}{Character vector. Nodes excluded from the graph and
 from all node-level metrics.}
 
 \item{exclude_from_cluster}{Character vector. Nodes excluded from community
-detection (in addition to \code{exclude_from_graph}).}
+detection (in addition to \code{covariates}).}
 
 \item{treat_singletons_as_excluded}{Logical; if \code{TRUE}, singleton
 communities (size 1) are treated as excluded nodes when computing
@@ -130,7 +130,7 @@ the following top-level components:
   \item{\code{settings}}{
     List of main settings used in the call, including
     \code{reps}, \code{cluster_method},
-    \code{exclude_from_graph}, \code{exclude_from_cluster},
+    \code{covariates}, \code{exclude_from_cluster},
     \code{treat_singletons_as_excluded}, and \code{boot_what}.
   }
   \item{\code{model}}{
@@ -204,7 +204,7 @@ the following top-level components:
   }
 }
 \description{
-Estimates a single-layer Mixed Graphical Model (MGM) network on the original data,
+Estimates a single layer Mixed Graphical Model (MGM) network on the original data,
 using the estimation framework implemented in the \pkg{mgm} package, and performs
 non-parametric bootstrap (row resampling) to compute centrality indices, bridge
 metrics, clustering stability, and confidence intervals (CIs) for node metrics

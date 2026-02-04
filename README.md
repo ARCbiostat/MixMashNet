@@ -52,6 +52,7 @@ Data preparation (mixed: continuous + categorical)
 
 ``` r
 library(dplyr)
+#> Warning: package 'dplyr' was built under R version 4.5.2
 #> 
 #> Attaching package: 'dplyr'
 #> The following objects are masked from 'package:stats':
@@ -113,7 +114,7 @@ fit0 <- mixMN(
   lambdaSel          = "EBIC",
   seed_model         = 42,
   cluster_method     = "louvain",
-  exclude_from_graph = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
+  covariates         = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
 )
 ```
 
@@ -143,8 +144,9 @@ fit1 <- mixMN(
   seed_model         = 42,
   seed_boot          = 42,
   cluster_method     = "infomap",
-  exclude_from_graph = c("age", "sex", "re")
+  covariates         = c("age", "sex", "re")
 )
+#> Total computation time: 20.1 seconds (~ 0.34 minutes).
 ```
 
 Plot item stability:
@@ -176,10 +178,11 @@ fit2 <- mixMN(
   seed_model           = 42,
   seed_boot            = 42,
   cluster_method       = "infomap",
-  exclude_from_graph   = c("age", "sex", "re"),
+  covariates           = c("age", "sex", "re"),
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
+#> Total computation time: 7.8 seconds (~ 0.13 minutes).
 ```
 
 Recompute stability:
