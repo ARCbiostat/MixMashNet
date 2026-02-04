@@ -126,20 +126,13 @@ print.mixmashnet <- function(x, ...) {
     }
   }
 
-  ## ---- covariate variables ----
-  covars <- x$settings$covariates %||% NULL
-  if (!is.null(covars) && length(covars)) {
-    cat("  Covariates (adjusted for): ",
-        paste(covars, collapse = ", "),
-        "\n", sep = "")
-  }
 
   ## ---- nodes excluded from graph / clustering ----
   excl_g <- x$settings$covariates %||% NULL
   excl_c <- x$settings$exclude_from_cluster %||% NULL
 
   if (!is.null(excl_g) && length(excl_g)) {
-    cat("  Nodes excluded from graph: ",
+    cat("  Covariates (adjusted for): ",
         paste(excl_g, collapse = ", "),
         "\n", sep = "")
   }
