@@ -53,27 +53,6 @@ library(MixMashNet)
 data(nhgh_data) # example dataset bundled with the package
 ```
 
-Data preparation (mixed: continuous + categorical)
-
-```{r}
-library(dplyr)
-library(tidyr)
-
-df <- nhgh_data
-
-# Continuous nodes used in the network (will be "g" in mgm)
-cont_vars <- c("wt","ht","bmi","leg","arml","armc","tri","sub","gh","albumin","bun","SCr","age")
-
-# Categorical nodes (will be "c" in mgm)
-cat_vars  <- c("sex","re")
-
-
-# 3) Build 'type' and 'level' vectors (ORDER must match the columns you pass to mgm)
-type  <- c(rep("g", length(cont_vars)), rep("c", length(cat_vars)))
-level <- c(rep(1L, length(cont_vars)),
-           length(unique(nhgh_data$sex)),
-           length(unique(nhgh_data$re)))
-```
 
 ### Parallel execution (optional)
 
@@ -98,9 +77,7 @@ Here, covariates (`age`, `sex`, `re`) are included in the estimation to adjust t
 
 ```{r,results='hide'}
 fit0 <- mixMN(
-  data               = df,
-  type               = type,
-  level              = level,
+  data               = nhgh_data,
   reps               = 0,                # no bootstrap: just estimate the network
   lambdaSel          = "EBIC",
   seed_model         = 42,
@@ -125,9 +102,7 @@ To assess the robustness of community assignment, we re-estimate the model with 
 
 ```{r,results='hide'}
 fit1 <- mixMN(
-  data               = df,
-  type               = type,
-  level              = level,
+  data               = nhgh_data,
   reps               = 20,             # increase reps for stable results
   lambdaSel          = "EBIC",
   seed_model         = 42,
@@ -156,9 +131,7 @@ low_stability <- names(stab1$membership.stability$empirical.dimensions)[
   ]
 
 fit2 <- mixMN(
-  data                 = df,
-  type                 = type,
-  level                = level,
+  data                 = nhgh_data,
   reps                 = 20,                    
   lambdaSel            = "EBIC",
   seed_model           = 42,

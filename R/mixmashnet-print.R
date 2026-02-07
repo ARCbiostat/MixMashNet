@@ -14,7 +14,8 @@
 #'         (multilayer);
 #'   \item covariates used for adjustment and nodes excluded from the graph
 #'         and/or clustering;
-#'   \item main settings for community detection and bootstrap.
+#'   \item main settings for community detection and bootstrap;
+#'   \item data info.
 #' }
 #'
 #' @param x An object of class \code{mixmashnet}, returned by
@@ -158,12 +159,72 @@ print.mixmashnet <- function(x, ...) {
   if (!is.null(s$reps)) {
     cat("  Bootstrap replications: ", s$reps, "\n", sep = "")
   }
-  if (!is.null(s$boot_what)) {
-    cat("  Bootstrapped quantities: ",
-        paste(s$boot_what, collapse = ", "),
-        "\n", sep = "")
+
+  reps_i <- as.integer(s$reps %||% 0L)
+  if (is.finite(reps_i) && reps_i > 0L) {
+    if (!is.null(s$boot_what) && length(s$boot_what)) {
+      cat("  Bootstrapped quantities: ",
+          paste(s$boot_what, collapse = ", "),
+          "\n", sep = "")
+    }
+  } else {
+    cat("  Bootstrapped quantities: none (reps = 0)\n", sep = "")
   }
 
+  ## ---- data_info: inferred mgm types + ONLY variables recoded to {0,1} ----
+  if (!is.null(x$data_info)) {
+
+    tl <- x$data_info$mgm_type_level
+
+    # --- report inferred "c" and "p" ---
+    if (is.data.frame(tl) && nrow(tl) > 0 && all(c("node", "mgm_type") %in% names(tl))) {
+
+      vars_c <- tl$node[tl$mgm_type == "c"]
+      vars_p <- tl$node[tl$mgm_type == "p"]
+
+      if (length(vars_c) || length(vars_p)) {
+        cat("  Data info:\n")
+        if (length(vars_c)) {
+          cat("    - Inferred as 'c' (categorical): ",
+              paste(vars_c, collapse = ", "), "\n", sep = "")
+        }
+        if (length(vars_p)) {
+          cat("    - Inferred as 'p' (Poisson/count): ",
+              paste(vars_p, collapse = ", "), "\n", sep = "")
+        }
+      }
+    }
+
+    # --- ONLY variables that were actually recoded to {0,1} ---
+    brm <- x$data_info$binary_recode_map
+    if (!is.null(brm) && length(brm) > 0) {
+
+      fmt_map <- function(m) {
+        # m is a named numeric vector: names = original labels, values = 0/1
+        if (is.atomic(m) && !is.null(names(m))) {
+          paste0(names(m), "->", as.character(m), collapse = ", ")
+        } else {
+          paste(as.character(m), collapse = ", ")
+        }
+      }
+
+      # ensure we have the "Data info:" header even if the 'c/p' block didn't print
+      if (!(is.data.frame(tl) && nrow(tl) > 0 && all(c("node", "mgm_type") %in% names(tl)) &&
+            (length(tl$node[tl$mgm_type == "c"]) || length(tl$node[tl$mgm_type == "p"])))) {
+        cat("  Data info:\n")
+      }
+
+      cat("    - Recoded to {0,1} for mgm fitting: ", length(brm), " variable(s)\n", sep = "")
+      nm <- names(brm)
+      show_nm <- nm[seq_len(min(length(nm), 10))]
+      for (v in show_nm) {
+        cat("      * ", v, ": ", fmt_map(brm[[v]]), "\n", sep = "")
+      }
+      if (length(nm) > 10) {
+        cat("      * ... (", length(nm) - 10, " more)\n", sep = "")
+      }
+    }
+  }
 
   invisible(x)
 }

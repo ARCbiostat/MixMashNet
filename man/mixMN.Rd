@@ -7,8 +7,6 @@ and (optionally) community score loadings}
 \usage{
 mixMN(
   data,
-  type,
-  level,
   reps = 100,
   scale = TRUE,
   lambdaSel = c("CV", "EBIC"),
@@ -38,9 +36,9 @@ mixMN(
 )
 }
 \arguments{
-\item{data}{Matrix or data.frame (n x p) with variables in columns.}
-
-\item{type, level}{Vectors as required by \code{mgm::mgm}.}
+\item{data}{A data.frame (n x p) with variables in columns.
+Character variables are not allowed and must be converted to \code{factor}
+or \code{numeric} types before fitting.}
 
 \item{reps}{Integer (>= 0). Number of bootstrap replications.}
 
@@ -127,6 +125,14 @@ the following top-level components:
     \code{reps}, \code{cluster_method},
     \code{covariates}, \code{exclude_from_cluster},
     \code{treat_singletons_as_excluded}, and \code{boot_what}.
+  }
+ \item{\code{data_info}}{
+    List with information derived from the input data used for model setup:
+    \code{mgm_type_level} (data frame with one row per variable, reporting
+    the original R class and the inferred MGM \code{type} and \code{level},
+    as used in the call to \code{mgm::mgm}),
+    and \code{binary_recode_map} (named list describing the mapping from
+    original binary labels to the internal \{0,1\} coding used for model fitting).
   }
   \item{\code{model}}{
     List with:

@@ -11,11 +11,9 @@
 #' The function additionally returns interlayer-only node metrics and summaries
 #' of cross-layer edge weights.
 #'
-#' @param data A numeric matrix or data frame (n x p) with variables in columns.
-#' @param type Length-\code{p} vector of variable types as required by
-#'   \code{mgm::mgm}.
-#' @param level Length-\code{p} vector of variable levels as required by
-#'   \code{mgm::mgm}.
+#' @param data A data.frame (n x p) with variables in columns.
+#'   Character variables are not allowed and must be converted to \code{factor}
+#'   or \code{numeric} types before fitting.
 #' @param layers A named vector (names = variable names) assigning each node to a
 #'   layer (character or factor). Must cover all columns of \code{data}
 #'   except variables listed in \code{covariates} (treated as adjustment covariates).
@@ -85,6 +83,14 @@
 #'   \item{\code{call}}{
 #'   The matched function call.
 #'   }
+#'  \item{\code{data_info}}{
+#'     List with information derived from the input data used for model setup:
+#'     \code{mgm_type_level} (data frame with one row per variable, reporting
+#'     the original R class and the inferred MGM \code{type} and \code{level},
+#'     as used in the call to \code{mgm::mgm}),
+#'     and \code{binary_recode_map} (named list describing the mapping from
+#'     original binary labels to the internal \{0,1\} coding used for model fitting).
+#'   }
 #'   \item{\code{settings}}{
 #'   List of main settings used in the call, including
 #'    \code{reps}, \code{cluster_method}, \code{covariates},
@@ -149,7 +155,7 @@
 #' @importFrom EGAnet net.loads
 #' @export
 multimixMN <- function(
-    data, type, level,
+    data,
     layers, layer_rules,
     scale = TRUE,
     reps = 100,
@@ -175,6 +181,15 @@ multimixMN <- function(
   lambdaSel <- match.arg(lambdaSel)
   cluster_method <- match.arg(cluster_method)
   if (!is.null(seed_model)) set.seed(seed_model)
+
+  spec <- infer_mgm_spec(data, recode_binary = TRUE)
+
+  type     <- spec$type
+  level    <- spec$level
+  data_mgm <- spec$data_mgm
+
+  var_interpretation <- spec$data_info
+  binary_recode_map  <- spec$binary_recode_map
 
   # confidence interval
   if (!is.numeric(conf_level) || length(conf_level) != 1L ||
@@ -385,7 +400,7 @@ multimixMN <- function(
 
   # --- MGM (masked) fit
   mgm_model <- mgm_masked(
-    data = as.matrix(data), type = type, level = level,
+    data = data_mgm, type = type, level = level,
     lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
     alphaSeq = alphaSeq, alphaSel = alphaSel, alphaFolds = alphaFolds, alphaGam = alphaGam,
     ruleReg = ruleReg, threshold = threshold, overparameterize = overparameterize,
@@ -625,8 +640,8 @@ multimixMN <- function(
     if (!is.null(p)) {
       p(sprintf("Bootstrap %d/%d", bi, reps))
     }
-    idx <- sample(seq_len(nrow(data)), replace=TRUE)
-    Xb  <- as.matrix(data[idx, , drop=FALSE])
+    idx <- sample(seq_len(nrow(data_mgm)), replace = TRUE)
+    Xb  <- data_mgm[idx, , drop = FALSE]
     boot_model <- tryCatch(mgm_masked(
       data = Xb, type = type, level = level,
       lambdaSel = lambdaSel, lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
@@ -1252,6 +1267,11 @@ multimixMN <- function(
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,
       conf_level = conf_level
+    ),
+
+    data_info = list(
+      mgm_type_level    = var_interpretation,
+      binary_recode_map = binary_recode_map
     ),
 
     model = list(

@@ -10,8 +10,9 @@
 #' Optionally, the function computes community score loadings (for later prediction
 #' on new data) and can bootstrap the corresponding loadings.
 #'
-#' @param data Matrix or data.frame (n x p) with variables in columns.
-#' @param type,level Vectors as required by \code{mgm::mgm}.
+#' @param data A data.frame (n x p) with variables in columns.
+#'   Character variables are not allowed and must be converted to \code{factor}
+#'   or \code{numeric} types before fitting.
 #' @param reps Integer (>= 0). Number of bootstrap replications.
 #' @param scale Logical; if \code{TRUE} (default) Gaussian variables
 #'   (\code{type == "g"}) are z-standardized internally by \code{mgm()}. Use
@@ -73,6 +74,14 @@
 #'     \code{reps}, \code{cluster_method},
 #'     \code{covariates}, \code{exclude_from_cluster},
 #'     \code{treat_singletons_as_excluded}, and \code{boot_what}.
+#'   }
+#'  \item{\code{data_info}}{
+#'     List with information derived from the input data used for model setup:
+#'     \code{mgm_type_level} (data frame with one row per variable, reporting
+#'     the original R class and the inferred MGM \code{type} and \code{level},
+#'     as used in the call to \code{mgm::mgm}),
+#'     and \code{binary_recode_map} (named list describing the mapping from
+#'     original binary labels to the internal \{0,1\} coding used for model fitting).
 #'   }
 #'   \item{\code{model}}{
 #'     List with:
@@ -171,8 +180,6 @@
 #' @export
 mixMN <- function(
     data,
-    type,
-    level,
     reps = 100,
     scale = TRUE,
     lambdaSel = c("CV", "EBIC"),
@@ -203,6 +210,16 @@ mixMN <- function(
   lambdaSel <- match.arg(lambdaSel)
   cluster_method <- match.arg(cluster_method)
   if (!is.null(seed_model)) set.seed(seed_model)
+
+  # ---- Infer mgm spec + build mgm matrix (0/1 for binary factors/logicals) ----
+  spec <- infer_mgm_spec(data, recode_binary = TRUE)  # TRUE perché sotto usi binarySign=TRUE
+  type  <- spec$type
+  level <- spec$level
+  data_mgm <- spec$data_mgm
+
+  # for print
+  var_interpretation <- spec$data_info
+  binary_recode_map  <- spec$binary_recode_map
 
   all_nodes <- colnames(data)
 
@@ -280,7 +297,7 @@ mixMN <- function(
 
   # ---- Fit MGM on original data ----
   mgm_args <- list(
-    data = as.matrix(data),
+    data = data_mgm,
     type = type,
     level = level,
     lambdaSel = lambdaSel,
@@ -580,8 +597,8 @@ mixMN <- function(
       p(sprintf("Bootstrap %d/%d", i, reps))
     }
 
-    index <- sample(1:nrow(data), replace = TRUE)
-    boot_data <- as.matrix(data[index, , drop = FALSE])
+    index <- sample(seq_len(nrow(data_mgm)), replace = TRUE)
+    boot_data <- data_mgm[index, , drop = FALSE]
 
     boot_args <- list(
       data = boot_data, type = type, level = level,
@@ -999,6 +1016,11 @@ mixMN <- function(
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,
       conf_level = conf_level
+    ),
+
+    data_info = list(
+      mgm_type_level     = var_interpretation,
+      binary_recode_map  = binary_recode_map
     ),
 
     model = list(

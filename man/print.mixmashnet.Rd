@@ -29,7 +29,8 @@ Compact textual summary for objects returned by \code{mixMN()} and
         (multilayer);
   \item covariates used for adjustment and nodes excluded from the graph
         and/or clustering;
-  \item main settings for community detection and bootstrap.
+  \item main settings for community detection and bootstrap;
+  \item data info.
 }
 }
 \seealso{

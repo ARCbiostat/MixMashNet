@@ -6,8 +6,6 @@
 \usage{
 multimixMN(
   data,
-  type,
-  level,
   layers,
   layer_rules,
   scale = TRUE,
@@ -39,13 +37,9 @@ multimixMN(
 )
 }
 \arguments{
-\item{data}{A numeric matrix or data frame (n x p) with variables in columns.}
-
-\item{type}{Length-\code{p} vector of variable types as required by
-\code{mgm::mgm}.}
-
-\item{level}{Length-\code{p} vector of variable levels as required by
-\code{mgm::mgm}.}
+\item{data}{A data.frame (n x p) with variables in columns.
+Character variables are not allowed and must be converted to \code{factor}
+or \code{numeric} types before fitting.}
 
 \item{layers}{A named vector (names = variable names) assigning each node to a
 layer (character or factor). Must cover all columns of \code{data}
@@ -141,6 +135,14 @@ list contains at least the following components:
 \describe{
   \item{\code{call}}{
   The matched function call.
+  }
+ \item{\code{data_info}}{
+    List with information derived from the input data used for model setup:
+    \code{mgm_type_level} (data frame with one row per variable, reporting
+    the original R class and the inferred MGM \code{type} and \code{level},
+    as used in the call to \code{mgm::mgm}),
+    and \code{binary_recode_map} (named list describing the mapping from
+    original binary labels to the internal \{0,1\} coding used for model fitting).
   }
   \item{\code{settings}}{
   List of main settings used in the call, including

@@ -48,38 +48,6 @@ library(MixMashNet)
 data(nhgh_data) # example dataset bundled with the package
 ```
 
-Data preparation (mixed: continuous + categorical)
-
-``` r
-library(dplyr)
-#> Warning: package 'dplyr' was built under R version 4.5.2
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
-library(tidyr)
-#> Warning: package 'tidyr' was built under R version 4.5.2
-
-df <- nhgh_data
-
-# Continuous nodes used in the network (will be "g" in mgm)
-cont_vars <- c("wt","ht","bmi","leg","arml","armc","tri","sub","gh","albumin","bun","SCr","age")
-
-# Categorical nodes (will be "c" in mgm)
-cat_vars  <- c("sex","re")
-
-
-# 3) Build 'type' and 'level' vectors (ORDER must match the columns you pass to mgm)
-type  <- c(rep("g", length(cont_vars)), rep("c", length(cat_vars)))
-level <- c(rep(1L, length(cont_vars)),
-           length(unique(nhgh_data$sex)),
-           length(unique(nhgh_data$re)))
-```
-
 ### Parallel execution (optional)
 
 To speed up bootstrap replications we can enable parallelism with the
@@ -107,9 +75,7 @@ centrality metrics.
 
 ``` r
 fit0 <- mixMN(
-  data               = df,
-  type               = type,
-  level              = level,
+  data               = nhgh_data,
   reps               = 0,                # no bootstrap: just estimate the network
   lambdaSel          = "EBIC",
   seed_model         = 42,
@@ -127,7 +93,7 @@ set.seed(2)
 plot(fit0)
 ```
 
-<img src="man/figures/README-unnamed-chunk-5-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-4-1.png" alt="" width="100%" />
 
 ### Node stability
 
@@ -136,9 +102,7 @@ model with non-parametric bootstrap.
 
 ``` r
 fit1 <- mixMN(
-  data               = df,
-  type               = type,
-  level              = level,
+  data               = nhgh_data,
   reps               = 20,             # increase reps for stable results
   lambdaSel          = "EBIC",
   seed_model         = 42,
@@ -146,7 +110,7 @@ fit1 <- mixMN(
   cluster_method     = "infomap",
   covariates         = c("age", "sex", "re")
 )
-#> Total computation time: 20.1 seconds (~ 0.34 minutes).
+#> Total computation time: 20.2 seconds (~ 0.34 minutes).
 ```
 
 Plot item stability:
@@ -155,7 +119,7 @@ Plot item stability:
 plot(fit1, what = "stability")
 ```
 
-<img src="man/figures/README-unnamed-chunk-7-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-6-1.png" alt="" width="100%" />
 
 ### Excluding unstable nodes
 
@@ -170,9 +134,7 @@ low_stability <- names(stab1$membership.stability$empirical.dimensions)[
   ]
 
 fit2 <- mixMN(
-  data                 = df,
-  type                 = type,
-  level                = level,
+  data                 = nhgh_data,
   reps                 = 20,                    
   lambdaSel            = "EBIC",
   seed_model           = 42,
@@ -191,7 +153,7 @@ Recompute stability:
 plot(fit2, what = "stability")
 ```
 
-<img src="man/figures/README-unnamed-chunk-9-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-8-1.png" alt="" width="100%" />
 
 ### Visualization with excluded nodes
 
@@ -203,7 +165,7 @@ set.seed(2)
 plot(fit2)
 ```
 
-<img src="man/figures/README-unnamed-chunk-10-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-9-1.png" alt="" width="100%" />
 
 ### Edge weights
 
@@ -214,7 +176,7 @@ Confidence intervals that include zero are shown in grey.
 plot(fit2, statistics = "edges")
 ```
 
-<img src="man/figures/README-unnamed-chunk-11-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-10-1.png" alt="" width="100%" />
 
 ### General centrality indices
 
@@ -229,7 +191,7 @@ plot(fit2,
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-12-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-11-1.png" alt="" width="100%" />
 
 ### Bridge centrality indices
 
@@ -245,7 +207,7 @@ plot(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-13-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-12-1.png" alt="" width="100%" />
 
 ### Bridge centrality indices for excluded nodes
 
@@ -262,7 +224,7 @@ plot(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-14-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-13-1.png" alt="" width="100%" />
 
 ✨ That’s it! With just a few lines of code, you can mix, mash, and
 explore your networks.
