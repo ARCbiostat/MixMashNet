@@ -34,7 +34,7 @@
 #'   \item{Drug}{Drug use with 0=no and 1=yes.}
 #'   \item{Diet}{Dietary quality with 1=Poor, 2=Fair, 3=Good, 4=Very good, 5=Excellent.}
 #'   \item{Alcohol}{Alcohol consumption with 0=no and 1=yes.}
-#'   \item{Work}{Employment status (1–4: working; employed but absent; seeking work; not working).}
+#'   \item{Work}{Employment status with 1=working, 2=employed but absent, 3=seeking work, 4=not working.}
 #'   \item{MonInc}{Monthly income category (1–12), where higher values indicate higher income.}
 #'   \item{Gender}{Gender with 0=male and 1=female.}
 #'   \item{Age}{Age (numeric).}

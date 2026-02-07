@@ -1,0 +1,27 @@
+meta <- packageDescription("MixMashNet")
+year <- sub("-.*", "", meta$Date)
+vers <- sprintf("R package version: %s", meta$Version)
+
+bibentry(
+  bibtype = "Misc",
+  title   = "MixMashNet: An R Package for Single and Multilayer Networks",
+  author  = c(
+    person("Maria", "De Martino"),
+    person("Federico", "Triolo"),
+    person("Adrien", "Perigord"),
+    person("Alice Margherita", "Ornago"),
+    person("Davide Liborio", "Vetrano"),
+    person("Caterina", "Gregorio")
+  ),
+  year = "2026",
+  eprint = "2602.05716",
+  archivePrefix = "arXiv",
+  url = "https://arxiv.org/abs/2602.05716",
+
+  header = "To cite MixMashNet in publications use:",
+  textVersion = paste(
+    "De Martino M, Triolo F, Perigord A, Ornago AM, Vetrano DL, Gregorio C (2026).",
+    "MixMashNet: An R Package for Single and Multilayer Networks.",
+    "arXiv:2602.05716."
+  )
+)

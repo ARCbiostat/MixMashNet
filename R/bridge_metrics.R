@@ -11,9 +11,10 @@
 #' between nodes belonging to different communities; and bridge closeness as the
 #' inverse of the mean shortest-path distance to nodes in other communities.
 #'
-#' @param g An igraph object with edge attribute `weight`.
-#' @param membership Named vector/factor of community labels for a subset of nodes (names must match `V(g)$name`).
-#' @return A data.frame with columns: node, cluster, bridge_strength, bridge_ei1, bridge_ei2, bridge_betweenness, bridge_closeness.
+#' @param g An igraph object with edge attribute \code{weight}.
+#' @param membership Named vector/factor of community labels for a subset of nodes (names must match \code{V(g)$name}).
+#' @return A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_ei1},
+#'        \code{bridge_ei2}, \code{bridge_betweenness}, \code{bridge_closeness}.
 #' @details
 #' Bridge betweenness and closeness are computed on the positive-weight subgraph
 #' only, with weights converted to distances as \eqn{d = 1/w}.

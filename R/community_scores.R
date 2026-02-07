@@ -5,13 +5,9 @@
 #' weighted sums of the variables belonging to each detected community, where
 #' weights correspond to the standardized community loadings estimated via
 #' \code{EGAnet::net.loads} and stored in the fitted \code{mixMN_fit} object.
-#'
-#' By default, the function returns z-standardized community scores.
-#'
 #' Scores are computed using the dataset provided via the \code{data} argument.
 #' If \code{data = NULL}, the original dataset used to fit the model
 #' (\code{fit$model$data}) is used by default.
-#'
 #' Optionally, percentile bootstrap confidence intervals for the community
 #' scores can be computed if bootstrap community loadings are available in
 #' \code{fit$community_loadings$boot}.
@@ -24,7 +20,7 @@
 #'   If NULL, scores are computed for all layers and returned as a named list.
 #' @param scale Logical; if \code{TRUE} (default), z-standardize variables used
 #'   for scoring, using the mean/SD computed from the dataset used for scoring.
-#' @param conf_level Optional numeric in (0,1), e.g. 0.95 or 0.99. If provided,
+#' @param conf_level Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
 #'   percentile bootstrap confidence intervals are computed for community scores
 #'   (requires \code{fit$community_loadings$boot}).
 #' @param return_ci Logical; if \code{TRUE}, return CIs.
@@ -279,8 +275,6 @@ community_scores <- function(
     alpha <- 1 - conf_level
     probs <- c(alpha/2, 1 - alpha/2)
 
-    # Build bootstrap score array: (reps x n x K) in a memory-friendlier way
-    # We'll compute per-rep scores and then quantiles per cell.
     reps <- length(L_boot)
     n <- nrow(X)
     K <- ncol(L_true)

@@ -6,14 +6,11 @@
 #' two (EI1 and EI2), quantifying their role in connecting nodes across different
 #' communities.
 #'
-#' @param g An \code{igraph} graph. If edge attribute \code{weight} is missing,
-#'          unweighted adjacency (1 for edges, 0 otherwise) is used.
-#' @param membership A named vector/factor of community labels for a subset of nodes;
-#'          names must match \code{V(g)$name}. Nodes not present here are treated as excluded.
-#'
-#' @return A data.frame with columns: node, bridge_strength, bridge_closeness, bridge_betweenness,
-#'         bridge_expected_influence1, bridge_expected_influence2, cluster.
-#'
+#' @param g An igraph object with edge attribute \code{weight}.
+#' @param membership Named vector/factor of community labels for a subset of nodes (names must match \code{V(g)$name}).
+#'        Nodes not present here are treated as excluded.
+#' @return A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_closeness}, \code{bridge_betweenness},
+#'         \code{bridge_expected_influence1}, \code{bridge_expected_influence2}.
 #' @details
 #' Bridge betweenness excluded and closeness excluded are computed on the positive-weight subgraph
 #' only, with weights converted to distances as \eqn{d = 1/w}.
@@ -88,7 +85,6 @@ bridge_metrics_excluded <- function(g, membership) {
   # - take absolute weights
   # - drop edges with |w| <= EPS
   # - invert remaining weights (1/|w|) to represent distances
-  # - BUT compute shortest paths as UNWEIGHTED counts on this edge set
   Wabs <- suppressWarnings(
     as.matrix(igraph::as_adjacency_matrix(g, attr = "weight", sparse = FALSE))
   )

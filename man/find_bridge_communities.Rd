@@ -13,7 +13,8 @@ find_bridge_communities(fit, node)
 \code{fit$graph$keep_nodes_graph}.}
 }
 \value{
-A list with the following components:
+An object of class \code{"bridge_profiles"} (a named list) with the
+  following components:
 \describe{
   \item{\code{bridge_strength}}{Bridge strength. List with \code{overall}, the total
     value across all other communities, and \code{by_comm}, a tibble with
@@ -32,9 +33,10 @@ A list with the following components:
 \description{
 Identifies which communities contribute most to the bridge role of a
 given node, by decomposing its bridge connectivity into community-specific
-contributions. The function is designed as an interpretative companion to
-\code{bridge_metrics()} and \code{bridge_metrics_excluded()}, providing the
-components underlying the corresponding overall bridge indices.
+contributions, excluding its own community when assigned. The function is
+designed as an interpretative companion to \code{bridge_metrics()} and
+\code{bridge_metrics_excluded()}, providing the components underlying
+the corresponding overall bridge indices.
 }
 \details{
 Bridge connectivity is summarized using five complementary profiles: bridge
@@ -51,4 +53,8 @@ Notes:
         node as an intermediate vertex. When multiple shortest paths exist,
         each path is counted separately.
 }
+
+
+The returned object has class \code{"bridge_profiles"} and a dedicated
+\code{print()} method (\code{print.bridge_profiles}) for convenient inspection.
 }

@@ -1,5 +1,5 @@
 #' Estimate single layer MGM network with bootstrap centrality, bridge metrics, clustering,
-#' and (optionally) community scores with CIs
+#' and (optionally) community score loadings
 #'
 #' @description
 #' Estimates a single layer Mixed Graphical Model (MGM) network on the original data,
@@ -33,39 +33,33 @@
 #'   variables are set to zero.
 #' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
 #'   Must be a single number between 0 and 1.
-#' @param covariates Character vector. Nodes excluded from the graph and
-#'   from all node-level metrics.
+#' @param covariates Character vector. Variables used as adjustment covariates
+#'   in model estimation.
 #' @param exclude_from_cluster Character vector. Nodes excluded from community
 #'   detection (in addition to \code{covariates}).
 #' @param treat_singletons_as_excluded Logical; if \code{TRUE}, singleton
 #'   communities (size 1) are treated as excluded nodes when computing
 #'   bridge metrics.
-#' @param seed_model,seed_boot Optional numeric seeds for reproducibility of the
-#'   original MGM fit and bootstrap replications, respectively.
+#' @param seed_model Optional integer seed for reproducibility of the initial
+#'   MGM fit.
+#' @param seed_boot Optional integer seed passed to \code{future.apply} for
+#'   reproducibility of bootstrap replications.
 #' @param cluster_method Community detection algorithm used on the network:
 #'   \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
-#' @param compute_loadings Logical; if TRUE (default),
+#' @param compute_loadings Logical; if \code{TRUE} (default),
 #'   compute network loadings (EGAnet net.loads) for communities.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
-#'   Can include:
-#'   \itemize{
-#'     \item \code{"general_index"}: strength, expected influence 1-step,
-#'       harmonic closeness, betweenness.
-#'     \item \code{"bridge_index"}: bridge strength, bridge expected influence
-#'       1- and 2-step, bridge closeness, bridge betweenness (nodes in
-#'       communities).
-#'     \item \code{"excluded_index"}: bridge metrics for nodes excluded from
-#'       communities (or treated as such).
-#'     \item \code{"community"}: bootstrap community memberships.
-#'     \item \code{"loadings"}: bootstrap loadings
-#'       (only if \code{compute_loadings = TRUE}).
-#'     \item \code{"none"}: skip node-level bootstrap (edge-weight bootstrap is
-#'       still performed if \code{reps > 0}).
-#'   }
-#' @param save_data Logical; if TRUE, store the original data in the output object.
-#' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress
-#'   bar when the \pkg{progressr} package is available.
+#'   Valid options are:
+#'    \code{"general_index"} (centrality indices),
+#'    \code{"bridge_index"} (bridge metrics for nodes in communities),
+#'    \code{"excluded_index"} (bridge metrics for nodes treated as excluded),
+#'    \code{"community"} (community memberships),
+#'    \code{"loadings"} (community loadings, only if \code{compute_loadings = TRUE}),
+#'    and \code{"none"} (skip all node-level bootstrap: only edge-weight
+#'    bootstrap is performed if \code{reps > 0}).
+#' @param save_data Logical; if \code{TRUE}, store the original data in the output object.
+#' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress bar.
 #'
 #' @return
 #' An object of class \code{c("mixmashnet", "mixMN_fit")}, that is a list with
@@ -135,8 +129,8 @@
 #'     \code{boot} (matrix of bootstrap edge weights of dimension
 #'     \code{n_edges x reps}); and
 #'     \code{ci} (matrix of CIs for edge weights,
-#'     \code{n_edges x 2}, with columns \code{2.5\%} and \code{97.5\%}, or
-#'     \code{NULL} if \code{reps = 0}).
+#'     \code{n_edges x 2}, with columns corresponding to the lower and upper
+#'     confidence bounds, or \code{NULL} if \code{reps = 0}).
 #'   }
 #'   \item{\code{community_loadings}}{
 #'     List containing community-loading information (based on

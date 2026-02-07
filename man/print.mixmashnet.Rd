@@ -7,7 +7,7 @@
 \method{print}{mixmashnet}(x, ...)
 }
 \arguments{
-\item{x}{An object of class \code{mixmashnet}, typically returned by
+\item{x}{An object of class \code{mixmashnet}, returned by
 \code{mixMN()} or \code{multimixMN()}.}
 
 \item{...}{Additional arguments.}

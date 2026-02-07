@@ -55,6 +55,3 @@ Estimating the Stability of Psychological Dimensions via Bootstrap Exploratory G
 A Monte Carlo Simulation and Tutorial. \emph{Psych}, 3(3), 479–500.
 \doi{10.3390/psych3030032}
 }
-\seealso{
-\code{\link{plot.mixmashnet}}
-}

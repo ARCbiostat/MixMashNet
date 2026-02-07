@@ -7,12 +7,13 @@
 bridge_metrics(g, membership)
 }
 \arguments{
-\item{g}{An igraph object with edge attribute `weight`.}
+\item{g}{An igraph object with edge attribute \code{weight}.}
 
-\item{membership}{Named vector/factor of community labels for a subset of nodes (names must match `V(g)$name`).}
+\item{membership}{Named vector/factor of community labels for a subset of nodes (names must match \code{V(g)$name}).}
 }
 \value{
-A data.frame with columns: node, cluster, bridge_strength, bridge_ei1, bridge_ei2, bridge_betweenness, bridge_closeness.
+A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_ei1},
+       \code{bridge_ei2}, \code{bridge_betweenness}, \code{bridge_closeness}.
 }
 \description{
 Computes bridge centrality measures for nodes with an assigned community.

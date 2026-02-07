@@ -2,9 +2,10 @@
 #'
 #' Identifies which communities contribute most to the bridge role of a
 #' given node, by decomposing its bridge connectivity into community-specific
-#' contributions. The function is designed as an interpretative companion to
-#' \code{bridge_metrics()} and \code{bridge_metrics_excluded()}, providing the
-#' components underlying the corresponding overall bridge indices.
+#' contributions, excluding its own community when assigned. The function is
+#' designed as an interpretative companion to \code{bridge_metrics()} and
+#' \code{bridge_metrics_excluded()}, providing the components underlying
+#' the corresponding overall bridge indices.
 #'
 #' Bridge connectivity is summarized using five complementary profiles: bridge
 #' strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.
@@ -25,7 +26,8 @@
 #' @param node Character scalar: node of interest; must belong to
 #'   \code{fit$graph$keep_nodes_graph}.
 #'
-#' @return A list with the following components:
+#' @return An object of class \code{"bridge_profiles"} (a named list) with the
+#'   following components:
 #' \describe{
 #'   \item{\code{bridge_strength}}{Bridge strength. List with \code{overall}, the total
 #'     value across all other communities, and \code{by_comm}, a tibble with
@@ -40,6 +42,10 @@
 #'     \code{by_pair}, a tibble with contributions by community pair
 #'     (\code{Ci}, \code{Cj}, \code{hits}).}
 #' }
+#'
+#' @details
+#' The returned object has class \code{"bridge_profiles"} and a dedicated
+#' \code{print()} method (\code{print.bridge_profiles}) for convenient inspection.
 #'
 #' @importFrom igraph graph_from_adjacency_matrix delete_edges distances is_directed degree get.all.shortest.paths
 #' @importFrom dplyr bind_rows arrange desc

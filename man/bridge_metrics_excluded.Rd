@@ -7,15 +7,14 @@
 bridge_metrics_excluded(g, membership)
 }
 \arguments{
-\item{g}{An \code{igraph} graph. If edge attribute \code{weight} is missing,
-unweighted adjacency (1 for edges, 0 otherwise) is used.}
+\item{g}{An igraph object with edge attribute \code{weight}.}
 
-\item{membership}{A named vector/factor of community labels for a subset of nodes;
-names must match \code{V(g)$name}. Nodes not present here are treated as excluded.}
+\item{membership}{Named vector/factor of community labels for a subset of nodes (names must match \code{V(g)$name}).
+Nodes not present here are treated as excluded.}
 }
 \value{
-A data.frame with columns: node, bridge_strength, bridge_closeness, bridge_betweenness,
-        bridge_expected_influence1, bridge_expected_influence2, cluster.
+A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_closeness}, \code{bridge_betweenness},
+        \code{bridge_expected_influence1}, \code{bridge_expected_influence2}.
 }
 \description{
 Computes bridge centrality measures for nodes that are not assigned to any

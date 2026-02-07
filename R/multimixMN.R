@@ -22,8 +22,7 @@
 #' @param layer_rules A logical or numeric square matrix with row/column names
 #'   equal to layer names. Values \code{TRUE} or \code{1} indicate that
 #'   cross-layer edges are allowed between the corresponding layer pair.
-#'   Intralayer edges are always allowed; if the diagonal is \code{NA}, it is
-#'   treated as allowed.
+#'   Intralayer edges are always allowed.
 #' @param scale Logical; if \code{TRUE} (default) Gaussian variables
 #'   (\code{type == "g"}) are z-standardized internally by \code{mgm()}. Use
 #'   \code{scale = FALSE} if your data are already standardized.
@@ -33,8 +32,7 @@
 #'   \code{"CV"} or \code{"EBIC"}.
 #' @param lambdaFolds Number of folds for CV (if \code{lambdaSel = "CV"}).
 #' @param lambdaGam EBIC gamma parameter (if \code{lambdaSel = "EBIC"}).
-#' @param alphaSeq Alpha parameters of the elastic net penalty (values in
-#'   \eqn{(0, 1]}).
+#' @param alphaSeq Alpha parameters of the elastic net penalty (values between 0 and 1).
 #' @param alphaSel Method for selecting the alpha parameter:
 #'   \code{"CV"} or \code{"EBIC"}.
 #' @param alphaFolds Number of folds for CV (if \code{alphaSel = "CV"}).
@@ -50,9 +48,8 @@
 #'   variables are set to zero.
 #' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
 #'   Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
-#' @param covariates Character vector of variable names treated as
-#'   adjustment covariates. They are included in all nodewise regressions in
-#'   \code{mgm()}, but excluded from the estimated network.
+#' @param covariates Character vector. Variables used as adjustment covariates
+#'   in model estimation.
 #' @param exclude_from_cluster Character vector of node names. Nodes in this set
 #'   are excluded from community detection in addition to \code{covariates}.
 #' @param seed_model Optional integer seed for reproducibility of the initial
@@ -65,7 +62,7 @@
 #' @param cluster_method Community detection algorithm applied within each
 #'   layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
-#' @param compute_loadings Logical; if TRUE (default),
+#' @param compute_loadings Logical; if \code{TRUE} (default),
 #'   compute network loadings (EGAnet net.loads) for communities.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Valid options are:
@@ -73,41 +70,58 @@
 #'   \code{"interlayer_index"} (interlayer-only node metrics),
 #'   \code{"bridge_index"} (bridge metrics for nodes in communities),
 #'   \code{"excluded_index"} (bridge metrics for nodes treated as excluded),
-#'   \code{"community"} (bootstrap community memberships),
-#'   \code{"loadings"} (bootstrap within-layer community loadings, only if
+#'   \code{"community"} (community memberships),
+#'   \code{"loadings"} (within-layer community loadings, only if
 #'   \code{compute_loadings = TRUE}),
 #'   and \code{"none"} (skip all node-level bootstrap: only edge-weight
 #'   bootstrap is performed if \code{reps > 0}).
-#' @param save_data Logical; if TRUE, store the original data in the output object.
-#' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress
-#'   bar when the \pkg{progressr} package is available.
+#' @param save_data Logical; if \code{TRUE}, store the original data in the output object.
+#' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress bar.
 #'
 #' @return
 #' An object of class \code{c("mixmashnet", "multimixMN_fit")}. The returned
 #' list contains at least the following components:
-#' \itemize{
-#'   \item \code{call}: the matched function call.
-#'   \item \code{settings}: list of main settings (e.g., \code{reps},
-#'     \code{cluster_method}, \code{covariates},
+#' \describe{
+#'   \item{\code{call}}{
+#'   The matched function call.
+#'   }
+#'   \item{\code{settings}}{
+#'   List of main settings used in the call, including
+#'    \code{reps}, \code{cluster_method}, \code{covariates},
 #'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
 #'     \code{boot_what}).
-#'   \item \code{model}: list with the fitted masked \code{mgm} object and basic
-#'     information on the data (\code{nodes}, \code{n}, \code{p}).
-#'   \item \code{layers}: list describing the multilayer structure
+#'   }
+#'   \item{\code{model}}{
+#'     List with:
+#'     \code{mgm} (the fitted \code{mgm} object),
+#'     \code{nodes} (character vector of all node names),
+#'     \code{n} (number of observations),
+#'     \code{p} (number of variables), and
+#'     \code{data}.
+#'   }
+#'   \item{\code{layers}}{
+#'    List describing the multilayer structure
 #'     (assignment of nodes to layers, \code{layer_rules} matrix used and color of each layer in \code{palette}).
-#'   \item \code{layer_fits}: named list (one element per layer) with
+#'   }
+#'   \item{\code{layer_fits}}{
+#'    Named list (one element per layer) with
 #'     single layer fits, including community structure, node-level statistics,
 #'     edge-level statistics, bridge metrics, and (optionally) community loadings
 #'     with bootstrap information.
-#'   \item \code{interlayer}: list collecting interlayer-only node metrics
-#'     (strength, expected influence, closeness, betweenness, with or without
-#'     bootstrap) and cross-layer edge summaries for each allowed pair of
-#'     layers.
-#'   \item \code{graph}: list containing a global \pkg{igraph} object built on
-#'     the retained nodes (\code{keep_nodes_graph}), with vertex attributes
-#'     such as \code{name}, \code{layer}, \code{membership}, and edge attributes
-#'     such as \code{weight}, \code{abs_weight}, \code{sign},
-#'     \code{type} (intra vs inter) and \code{layer_pair}.
+#'   }
+#'   \item{\code{interlayer}}{
+#'   List collecting interlayer-only node metrics
+#'   (strength, expected influence, closeness, betweenness, with or without
+#'   bootstrap) and cross-layer edge summaries for each allowed pair of
+#'   layers.
+#'   }
+#'   \item{\code{graph}}{
+#'   List containing a global \pkg{igraph} object built on
+#'   the retained nodes (\code{keep_nodes_graph}), with vertex attributes
+#'   such as \code{name}, \code{layer}, \code{membership}, and edge attributes
+#'   such as \code{weight}, \code{abs_weight}, \code{sign},
+#'   \code{type} (intra vs inter) and \code{layer_pair}.
+#'   }
 #' }
 #'
 #' @details

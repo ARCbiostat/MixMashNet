@@ -1,7 +1,7 @@
 #' Summarize MixMashNet fits (single and multilayer) in long format
 #'
 #' @description
-#' Summarizes fitted MixMashNet objects (single and multilayer) in long format.
+#' Summarizes fitted MixMashNet objects (single and multilayer).
 #' The summary includes the original estimates and, when available, bootstrap
 #' means, standard errors, and confidence intervals.
 #'

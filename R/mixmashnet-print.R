@@ -17,7 +17,7 @@
 #'   \item main settings for community detection and bootstrap.
 #' }
 #'
-#' @param x An object of class \code{mixmashnet}, typically returned by
+#' @param x An object of class \code{mixmashnet}, returned by
 #'   \code{mixMN()} or \code{multimixMN()}.
 #' @param ... Additional arguments.
 #'

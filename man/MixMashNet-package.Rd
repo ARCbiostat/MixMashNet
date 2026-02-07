@@ -16,10 +16,13 @@ The package implements bootstrap procedures to derive confidence intervals
 for edge weights and node-level centrality and bridge metrics, and provides
 tools to assess the stability of node community membership. In addition,
 subject-level community scores can be computed to summarize the latent
-dimensions identified through network clustering, facilitating downstream
-statistical analyses.
+dimensions identified through network clustering.
 }
 \references{
+De Martino, M., Triolo, F., Perigord, A., Ornago, A. M., Vetrano, D. L., Gregorio, C. (2026).
+MixMashNet: An R Package for Single and Multilayer Networks.
+\url{https://arxiv.org/abs/2602.05716}
+
 Christensen, A. P., & Golino, H. (2021).
 Estimating the Stability of Psychological Dimensions via Bootstrap Exploratory Graph Analysis:
 A Monte Carlo Simulation and Tutorial. \emph{Psych}, 3(3), 479–500.

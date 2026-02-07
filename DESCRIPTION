@@ -1,13 +1,13 @@
 Package: MixMashNet
-Title: Tools for Multilayer and Single-Layer Network Modeling
+Title: Tools for Multilayer and Single Layer Network Modeling
 Version: 0.1.0
 Authors@R: c(person("Maria", "De Martino", email = "maria.demartino@uniud.it", role = c("aut","cre")),
          person("Caterina", "Gregorio", email = "caterina.gregorio@ki.se", role = "aut"),
          person("Adrien", "Perigord", email = "adrien.perigord@ki.se", role = "ctb"))
 Maintainer: Maria De Martino <maria.demartino@uniud.it>         
-Description: Estimation and bootstrap utilities for single-layer and multilayer 
-    Mixed Graphical Models, with functions for centrality, bridge metrics, 
-    membership stability, and plotting. 
+Description: Estimation and bootstrap utilities for single layer and multilayer 
+    Mixed Graphical Models, including functions for centrality, bridge metrics,
+    membership stability, and plotting (De Martino et al. (2026) <arXiv:2602.05716>).
 License: AGPL (>= 3)
 Encoding: UTF-8
 LazyData: true
