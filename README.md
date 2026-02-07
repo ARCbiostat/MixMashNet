@@ -103,7 +103,7 @@ model with non-parametric bootstrap.
 ``` r
 fit1 <- mixMN(
   data               = nhgh_data,
-  reps               = 20,             # increase reps for stable results
+  reps               = 20,             # increase reps for more stable results
   lambdaSel          = "EBIC",
   seed_model         = 42,
   seed_boot          = 42,
@@ -144,7 +144,7 @@ fit2 <- mixMN(
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
-#> Total computation time: 7.8 seconds (~ 0.13 minutes).
+#> Total computation time: 7.7 seconds (~ 0.13 minutes).
 ```
 
 Recompute stability:
