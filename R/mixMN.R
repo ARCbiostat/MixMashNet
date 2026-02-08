@@ -10,9 +10,18 @@
 #' Optionally, the function computes community score loadings (for later prediction
 #' on new data) and can bootstrap the corresponding loadings.
 #'
-#' @param data A data.frame (n x p) with variables in columns.
-#'   Character variables are not allowed and must be converted to \code{factor}
-#'   or \code{numeric} types before fitting.
+#' @param data A \code{data.frame} (n x p) with variables in columns.
+#'   Variables may be numeric, integer, logical, or factors.
+#'   Character and Date/POSIXt variables are not supported and must be converted
+#'   prior to model fitting.
+#'   Variable types are internally mapped to MGM types as follows:
+#'   numeric variables are treated as Gaussian;
+#'   integer variables are treated as Poisson unless they take only values
+#'   in \{0,1\}, in which case they are treated as binary categorical;
+#'   factors and logical variables are treated as categorical.
+#'   Binary categorical variables (two-level
+#'   factors and logical variables) are internally recoded to \{0,1\} for model
+#'   fitting. The original input data are not modified.
 #' @param reps Integer (>= 0). Number of bootstrap replications.
 #' @param scale Logical; if \code{TRUE} (default) Gaussian variables
 #'   (\code{type == "g"}) are z-standardized internally by \code{mgm()}. Use

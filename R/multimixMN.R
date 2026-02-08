@@ -11,9 +11,18 @@
 #' The function additionally returns interlayer-only node metrics and summaries
 #' of cross-layer edge weights.
 #'
-#' @param data A data.frame (n x p) with variables in columns.
-#'   Character variables are not allowed and must be converted to \code{factor}
-#'   or \code{numeric} types before fitting.
+#' @param data A \code{data.frame} (n x p) with variables in columns.
+#'   Variables may be numeric, integer, logical, or factors.
+#'   Character and Date/POSIXt variables are not supported and must be converted
+#'   prior to model fitting.
+#'   Variable types are internally mapped to MGM types as follows:
+#'   numeric variables are treated as Gaussian;
+#'   integer variables are treated as Poisson unless they take only values
+#'   in \{0,1\}, in which case they are treated as binary categorical;
+#'   factors and logical variables are treated as categorical.
+#'   Binary categorical variables (two-level
+#'   factors and logical variables) are internally recoded to \{0,1\} for model
+#'   fitting. The original input data are not modified.
 #' @param layers A named vector (names = variable names) assigning each node to a
 #'   layer (character or factor). Must cover all columns of \code{data}
 #'   except variables listed in \code{covariates} (treated as adjustment covariates).
