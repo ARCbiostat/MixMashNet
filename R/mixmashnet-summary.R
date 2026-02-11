@@ -3,7 +3,7 @@
 #' @description
 #' Summarizes fitted MixMashNet objects (single and multilayer).
 #' The summary includes the original estimates and, when available, bootstrap
-#' means, standard errors, and confidence intervals.
+#' means, standard errors, and quantile regions.
 #'
 #' @param object An object of class \code{"mixmashnet"} returned by
 #'   \code{mixMN()} or \code{multimixMN()}.
@@ -48,8 +48,8 @@
 #' @return
 #' A list (class \code{"summary.mixmashnet"}) with up to four data frames
 #' (\code{$index}, \code{$edges}, \code{$interlayer_index},
-#' \code{$interlayer_edges}) and the confidence level used to compute the
-#' bootstrap confidence intervals (\code{$conf_level}).
+#' \code{$interlayer_edges}) and the quantile region used to compute the
+#' bootstrap quantile regions (\code{$quantile_level}).
 #'
 #'   Depending on \code{what} and \code{statistics}, some of these elements may
 #'   be \code{NULL}.
@@ -70,16 +70,16 @@ summary.mixmashnet <- function(object,
 
   is_multi <- inherits(object, "multimixMN_fit")
 
-  .get_conf_level <- function(fit, default = 0.95) {
-    cl <- fit$settings$conf_level
+  .get_quantile_level <- function(fit, default = 0.95) {
+    cl <- fit$settings$quantile_level
     if (is.null(cl) || !is.numeric(cl) || length(cl) != 1L ||
         is.na(cl) || cl <= 0 || cl >= 1) cl <- default
     cl
   }
 
-  # quantile probs from conf_level
-  .ci_probs <- function(conf_level) {
-    alpha <- (1 - conf_level) / 2
+  # quantile probs from quantile_level
+  .quantile_region_probs <- function(quantile_level) {
+    alpha <- (1 - quantile_level) / 2
     c(alpha, 1 - alpha)
   }
 
@@ -184,8 +184,8 @@ summary.mixmashnet <- function(object,
     df
   }
 
-  conf_level <- .get_conf_level(object, default = 0.95)
-  pr_global  <- .ci_probs(conf_level)
+  quantile_level <- .get_quantile_level(object, default = 0.95)
+  pr_global  <- .quantile_region_probs(quantile_level)
 
   # ------------------------------------------------------------------
   # 1) INTRALAYER NODE-LEVEL INDICES (index)
@@ -194,7 +194,7 @@ summary.mixmashnet <- function(object,
 
   if (what == "intra" && length(stats_intra_nd)) {
 
-    build_index_long <- function(true_df, boot_list, ci_list,
+    build_index_long <- function(true_df, boot_list, quantile_region_list,
                                  layer_label, stats_names, digits) {
       if (is.null(true_df) || !nrow(true_df)) return(NULL)
       if (!"node" %in% colnames(true_df)) {
@@ -203,7 +203,7 @@ summary.mixmashnet <- function(object,
 
       nodes <- as.character(true_df$node)
 
-      # mapping statistic name -> column name in true_df / boot_list / ci_list
+      # mapping statistic name -> column name in true_df / boot_list / quantile_region_list
       map_intra <- c(
         expected_influence = "ei1"
       )
@@ -249,23 +249,23 @@ summary.mixmashnet <- function(object,
           sd_boot   <- apply(boot_full, 2, stats::sd, na.rm = TRUE)
         }
 
-        # CI (if available)
-        if (!is.null(ci_list) &&
-            !is.null(ci_list[[met]]) &&
-            is.matrix(ci_list[[met]]) &&
-            ncol(ci_list[[met]]) >= 2) {
-          ci_mat <- ci_list[[met]]
-          if (is.null(rownames(ci_mat))) {
-            k2 <- min(nrow(ci_mat), length(nodes))
-            lower[seq_len(k2)] <- ci_mat[seq_len(k2), 1]
-            upper[seq_len(k2)] <- ci_mat[seq_len(k2), 2]
+        # quantile region (if available)
+        if (!is.null(quantile_region_list) &&
+            !is.null(quantile_region_list[[met]]) &&
+            is.matrix(quantile_region_list[[met]]) &&
+            ncol(quantile_region_list[[met]]) >= 2) {
+          quantile_region_mat <- quantile_region_list[[met]]
+          if (is.null(rownames(quantile_region_mat))) {
+            k2 <- min(nrow(quantile_region_mat), length(nodes))
+            lower[seq_len(k2)] <- quantile_region_mat[seq_len(k2), 1]
+            upper[seq_len(k2)] <- quantile_region_mat[seq_len(k2), 2]
           } else {
-            common <- intersect(nodes, rownames(ci_mat))
+            common <- intersect(nodes, rownames(quantile_region_mat))
             if (length(common)) {
-              ir   <- match(common, rownames(ci_mat))
+              ir   <- match(common, rownames(quantile_region_mat))
               inod <- match(common, nodes)
-              lower[inod] <- ci_mat[ir, 1]
-              upper[inod] <- ci_mat[ir, 2]
+              lower[inod] <- quantile_region_mat[ir, 1]
+              upper[inod] <- quantile_region_mat[ir, 2]
             }
           }
         }
@@ -277,8 +277,8 @@ summary.mixmashnet <- function(object,
           estimated          = estimated,
           mean.bootstrap     = mean_boot,
           SE.bootstrap       = sd_boot,
-          CI.lower.bootstrap = lower,
-          CI.upper.bootstrap = upper,
+          quantile_region.lower.bootstrap = lower,
+          quantile_region.upper.bootstrap = upper,
           stringsAsFactors   = FALSE
         )
       }
@@ -304,12 +304,12 @@ summary.mixmashnet <- function(object,
 
         true_df   <- fitL$statistics$node$true
         boot_list <- fitL$statistics$node$boot
-        ci_list   <- fitL$statistics$node$ci
+        quantile_region_list   <- fitL$statistics$node$quantile_region
 
         blocks[[j]] <- build_index_long(
           true_df     = true_df,
           boot_list   = boot_list,
-          ci_list     = ci_list,
+          quantile_region_list     = quantile_region_list,
           layer_label = L,
           stats_names = stats_intra_nd,
           digits      = digits
@@ -322,12 +322,12 @@ summary.mixmashnet <- function(object,
       # single layer: no concept of layer; use "1"
       true_df   <- object$statistics$node$true
       boot_list <- object$statistics$node$boot
-      ci_list   <- object$statistics$node$ci
+      quantile_region_list   <- object$statistics$node$quantile_region
 
       index_tab <- build_index_long(
         true_df     = true_df,
         boot_list   = boot_list,
-        ci_list     = ci_list,
+        quantile_region_list     = quantile_region_list,
         layer_label = "1",
         stats_names = stats_intra_nd,
         digits      = digits
@@ -374,7 +374,7 @@ summary.mixmashnet <- function(object,
         mean_boot <- rowMeans(boot_full, na.rm = TRUE)
         sd_boot   <- apply(boot_full, 1, stats::sd, na.rm = TRUE)
 
-        pr <- .ci_probs(conf_level)
+        pr <- .quantile_region_probs(quantile_level)
         lower <- apply(boot_full, 1, stats::quantile, probs = pr[1], na.rm = TRUE, type = 6)
         upper <- apply(boot_full, 1, stats::quantile, probs = pr[2], na.rm = TRUE, type = 6)
 
@@ -386,8 +386,8 @@ summary.mixmashnet <- function(object,
         estimated          = weight_obs,
         mean.bootstrap     = mean_boot,
         SE.bootstrap       = sd_boot,
-        CI.lower.bootstrap = lower,
-        CI.upper.bootstrap = upper,
+        quantile_region.lower.bootstrap = lower,
+        quantile_region.upper.bootstrap = upper,
         stringsAsFactors   = FALSE
       )
       rownames(out) <- NULL
@@ -443,21 +443,21 @@ summary.mixmashnet <- function(object,
 
       true_df   <- inter_cent$true
       boot_list <- inter_cent$boot
-      ci_list   <- inter_cent$ci_results
+      quantile_region_list   <- inter_cent$quantile_region_results
 
       if (!"node" %in% colnames(true_df)) {
         stop("`object$interlayer$centrality$true` must contain a column 'node'.")
       }
       nodes_all <- as.character(true_df$node)
 
-      # mapping: user-level -> internal column names / CI keys
+      # mapping: user-level -> internal column names / quantile region keys
       stat_to_true <- c(
         strength           = "strength",
         expected_influence = "ei1",
         closeness          = "closeness",
         betweenness        = "betweenness"
       )
-      stat_to_ci <- c(
+      stat_to_quantile_region <- c(
         strength           = "strength",
         expected_influence = "ei1",
         closeness          = "closeness",
@@ -494,7 +494,7 @@ summary.mixmashnet <- function(object,
         for (k in seq_along(stats_inter_nd)) {
           stat_name <- stats_inter_nd[k]
           true_col  <- stat_to_true[[stat_name]]
-          ci_key    <- stat_to_ci[[stat_name]]
+          quantile_region_key    <- stat_to_quantile_region[[stat_name]]
 
           if (is.na(true_col) || !true_col %in% colnames(true_df)) {
             stop("Interlayer true table does not contain column '", true_col,
@@ -528,25 +528,25 @@ summary.mixmashnet <- function(object,
             sd_boot   <- apply(boot_full, 2, stats::sd, na.rm = TRUE)
           }
 
-          # CI (indexed by ci_key)
-          if (!is.null(ci_key) &&
-              !is.null(ci_list) &&
-              !is.null(ci_list[[ci_key]]) &&
-              is.matrix(ci_list[[ci_key]]) &&
-              ncol(ci_list[[ci_key]]) >= 2) {
+          # quantile region (indexed by quantile_region_key)
+          if (!is.null(quantile_region_key) &&
+              !is.null(quantile_region_list) &&
+              !is.null(quantile_region_list[[quantile_region_key]]) &&
+              is.matrix(quantile_region_list[[quantile_region_key]]) &&
+              ncol(quantile_region_list[[quantile_region_key]]) >= 2) {
 
-            ci_mat <- ci_list[[ci_key]]
-            if (is.null(rownames(ci_mat))) {
-              k2 <- min(nrow(ci_mat), length(nodes_use))
-              lower[seq_len(k2)] <- ci_mat[seq_len(k2), 1]
-              upper[seq_len(k2)] <- ci_mat[seq_len(k2), 2]
+            quantile_region_mat <- quantile_region_list[[quantile_region_key]]
+            if (is.null(rownames(quantile_region_mat))) {
+              k2 <- min(nrow(quantile_region_mat), length(nodes_use))
+              lower[seq_len(k2)] <- quantile_region_mat[seq_len(k2), 1]
+              upper[seq_len(k2)] <- quantile_region_mat[seq_len(k2), 2]
             } else {
-              common <- intersect(nodes_use, rownames(ci_mat))
+              common <- intersect(nodes_use, rownames(quantile_region_mat))
               if (length(common)) {
-                ir   <- match(common, rownames(ci_mat))
+                ir   <- match(common, rownames(quantile_region_mat))
                 inod <- match(common, nodes_use)
-                lower[inod] <- ci_mat[ir, 1]
-                upper[inod] <- ci_mat[ir, 2]
+                lower[inod] <- quantile_region_mat[ir, 1]
+                upper[inod] <- quantile_region_mat[ir, 2]
               }
             }
           }
@@ -557,8 +557,8 @@ summary.mixmashnet <- function(object,
             estimated          = estimated,
             mean.bootstrap     = mean_boot,
             SE.bootstrap       = sd_boot,
-            CI.lower.bootstrap = lower,
-            CI.upper.bootstrap = upper,
+            quantile_region.lower.bootstrap = lower,
+            quantile_region.upper.bootstrap = upper,
             stringsAsFactors   = FALSE
           )
         }
@@ -634,8 +634,8 @@ summary.mixmashnet <- function(object,
         estimated          = weight_obs,
         mean.bootstrap     = mean_boot,
         SE.bootstrap       = sd_boot,
-        CI.lower.bootstrap = lower,
-        CI.upper.bootstrap = upper,
+        quantile_region.lower.bootstrap = lower,
+        quantile_region.upper.bootstrap = upper,
         stringsAsFactors   = FALSE
       )
       rownames(out) <- NULL
@@ -660,7 +660,7 @@ summary.mixmashnet <- function(object,
     edges            = edges_tab,
     interlayer_index = inter_idx_tab,
     interlayer_edges = inter_edges_tab,
-    conf_level       = if (is_multi) .get_conf_level(object) else .get_conf_level(object)
+    quantile_level       = if (is_multi) .get_quantile_level(object) else .get_quantile_level(object)
   )
   class(out) <- c("summary.mixmashnet", "list")
   out
@@ -702,16 +702,16 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
   }
 
   # helper function to make column names more readable for printing
-  prettify_colnames <- function(df, conf_level = 0.95) {
+  prettify_colnames <- function(df, quantile_level = 0.95) {
     if (is.null(df) || !nrow(df)) return(df)
 
-    ci_pct <- paste0(round(100 * conf_level), "%")
+    quantile_region_pct <- paste0(round(100 * quantile_level), "%")
 
     map <- c(
       "mean.bootstrap"      = "mean (bootstrap)",
       "SE.bootstrap"        = "SE (bootstrap)",
-      "CI.lower.bootstrap"  = paste0(ci_pct, " CI lower (bootstrap)"),
-      "CI.upper.bootstrap"  = paste0(ci_pct, " CI upper (bootstrap)")
+      "quantile_region.lower.bootstrap"  = paste0(quantile_region_pct, " quantile lower bound (bootstrap)"),
+      "quantile_region.upper.bootstrap"  = paste0(quantile_region_pct, " quantile upper bound (bootstrap)")
     )
 
     cn <- colnames(df)
@@ -746,7 +746,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 
       sub_met <- order_by(sub_met, c("node"))
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
-      sub_met <- prettify_colnames(sub_met, conf_level = x$conf_level %||% 0.95)
+      sub_met <- prettify_colnames(sub_met, quantile_level = x$quantile_level %||% 0.95)
 
       # --- TOP_N FILTER ---
       if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
@@ -770,7 +770,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 
     ed <- order_by(ed, c("layer", "edge"))
 
-    ed <- prettify_colnames(ed, conf_level = x$conf_level %||% 0.95)
+    ed <- prettify_colnames(ed, quantile_level = x$quantile_level %||% 0.95)
 
     cat("\n")
     # --- TOP_N FILTER for intra edges ---
@@ -800,7 +800,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 
       sub_met <- sub_met[, setdiff(colnames(sub_met), "metric"), drop = FALSE]
 
-      sub_met <- prettify_colnames(sub_met, conf_level = x$conf_level %||% 0.95)
+      sub_met <- prettify_colnames(sub_met, quantile_level = x$quantile_level %||% 0.95)
 
       # --- TOP_N FILTER for interlayer node metrics ---
       if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
@@ -826,7 +826,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
       for (pp in pairs_vals) {
         sub_pp <- ed2[ed2$pairs == pp, , drop = FALSE]
         sub_pp <- order_by(sub_pp, c("pairs", "edge"))
-        sub_pp <- prettify_colnames(sub_pp, conf_level = x$conf_level %||% 0.95)
+        sub_pp <- prettify_colnames(sub_pp, quantile_level = x$quantile_level %||% 0.95)
         cat("\n  Pair:", pp, "\n")
 
         # --- TOP_N FILTER for interlayer edges (for pair) ---
@@ -842,7 +842,7 @@ print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
       }
     } else {
       ed2 <- order_by(ed2, c("edge"))
-      ed2 <- prettify_colnames(ed2, conf_level = x$conf_level %||% 0.95)
+      ed2 <- prettify_colnames(ed2, quantile_level = x$quantile_level %||% 0.95)
       cat("\n")
 
       # --- TOP_N FILTER for interlayer edges (together) ---

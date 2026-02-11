@@ -1,8 +1,8 @@
-#' Plot bootstrap centrality with CIs (nodes or edges)
+#' Plot bootstrap centrality with quantile regions (nodes or edges)
 #'
 #' @description
 #' Internal helper used by \code{plot.mixmashnet()} to visualize node and edge
-#' centrality with bootstrap confidence intervals.
+  #' centrality with bootstrap quantile regions.
 #'
 #' @keywords internal
 #' @noRd
@@ -34,22 +34,22 @@ plotCentrality <- function(
   if (is.null(fit$statistics) || is.null(fit$statistics$node))
     stop("`fit$statistics$node` is missing. Did you run mixMN() with bootstrap?")
 
-  # ---- inherit CI level from fit ----
-  conf_level <- fit$settings$conf_level
-  if (is.null(conf_level) || !is.numeric(conf_level) || length(conf_level) != 1L ||
-      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
-    conf_level <- 0.95
+  # ---- inherit quantile region level from fit ----
+  quantile_level <- fit$settings$quantile_level
+  if (is.null(quantile_level) || !is.numeric(quantile_level) || length(quantile_level) != 1L ||
+      is.na(quantile_level) || quantile_level <= 0 || quantile_level >= 1) {
+    quantile_level <- 0.95
   }
-  alpha <- (1 - conf_level) / 2
+  alpha <- (1 - quantile_level) / 2
   p_lo  <- alpha
   p_hi  <- 1 - alpha
   lab_lo <- paste0(formatC(100 * p_lo, format = "f", digits = 1), "%")
   lab_hi <- paste0(formatC(100 * p_hi, format = "f", digits = 1), "%")
 
-  ci_txt <- paste0(round(100 * conf_level), "% CI")
+  quantile_region_txt <- paste0(round(100 * quantile_level), "% quantile region")
 
   if (is.null(title)) {
-    title <- paste0("Bootstrap Centrality with ", ci_txt)
+    title <- paste0("Bootstrap Centrality with ", quantile_region_txt)
   }
 
   statistics  <- match.arg(statistics, several.ok = TRUE)
@@ -95,36 +95,36 @@ plotCentrality <- function(
     edges = "edges"
   )
 
-  .pick_ci_cols <- function(ci_mat, ids, lab_lo, lab_hi) {
-    if (is.null(ci_mat)) return(list(lower = rep(NA_real_, length(ids)),
+  .pick_quantile_region_cols <- function(quantile_region_mat, ids, lab_lo, lab_hi) {
+    if (is.null(quantile_region_mat)) return(list(lower = rep(NA_real_, length(ids)),
                                      upper = rep(NA_real_, length(ids))))
-    ci_mat <- as.matrix(ci_mat)
-    if (!is.null(rownames(ci_mat))) {
-      ci_mat <- ci_mat[match(ids, rownames(ci_mat)), , drop = FALSE]
+    quantile_region_mat <- as.matrix(quantile_region_mat)
+    if (!is.null(rownames(quantile_region_mat))) {
+      quantile_region_mat <- quantile_region_mat[match(ids, rownames(quantile_region_mat)), , drop = FALSE]
     }
-    rownames(ci_mat) <- NULL
-    cn <- colnames(ci_mat)
+    rownames(quantile_region_mat) <- NULL
+    cn <- colnames(quantile_region_mat)
     # 1) standard "x%" columns
     if (!is.null(cn) && all(c(lab_lo, lab_hi) %in% cn)) {
-      return(list(lower = as.numeric(ci_mat[, lab_lo]),
-                  upper = as.numeric(ci_mat[, lab_hi])))
+      return(list(lower = as.numeric(quantile_region_mat[, lab_lo]),
+                  upper = as.numeric(quantile_region_mat[, lab_hi])))
     }
     # 2) allow "lower"/"upper"
     if (!is.null(cn) && all(c("lower", "upper") %in% cn)) {
-      return(list(lower = as.numeric(ci_mat[, "lower"]),
-                  upper = as.numeric(ci_mat[, "upper"])))
+      return(list(lower = as.numeric(quantile_region_mat[, "lower"]),
+                  upper = as.numeric(quantile_region_mat[, "upper"])))
     }
 
-    if (ncol(ci_mat) >= 2) {
-      return(list(lower = as.numeric(ci_mat[, 1]),
-                  upper = as.numeric(ci_mat[, 2])))
+    if (ncol(quantile_region_mat) >= 2) {
+      return(list(lower = as.numeric(quantile_region_mat[, 1]),
+                  upper = as.numeric(quantile_region_mat[, 2])))
     }
 
     list(lower = rep(NA_real_, length(ids)),
          upper = rep(NA_real_, length(ids)))
   }
 
-  .warn_outside_ci <- function(df, statistic) {
+  .warn_outside_quantile_region <- function(df, statistic) {
     if (is.null(df) || !nrow(df)) return(invisible(NULL))
     if (!all(c("observed", "lower", "upper") %in% names(df))) return(invisible(NULL))
 
@@ -151,12 +151,12 @@ plotCentrality <- function(
     }
 
     ok_obs <- is.finite(df$observed)
-    ok_ci  <- is.finite(df$lower) & is.finite(df$upper)
-    outside_ci <- ok_obs & ok_ci & (df$observed < df$lower | df$observed > df$upper)
+    ok_quantile_region  <- is.finite(df$lower) & is.finite(df$upper)
+    outside_quantile_region <- ok_obs & ok_quantile_region & (df$observed < df$lower | df$observed > df$upper)
 
-    if (!any(outside_ci, na.rm = TRUE)) return(invisible(NULL))
+    if (!any(outside_quantile_region, na.rm = TRUE)) return(invisible(NULL))
 
-    bad_ids <- df[[id_col]][which(outside_ci)]
+    bad_ids <- df[[id_col]][which(outside_quantile_region)]
     n_bad <- length(bad_ids)
 
     show_max <- 15
@@ -168,7 +168,7 @@ plotCentrality <- function(
 
     warning(
       sprintf(
-        "plot(): '%s' : %d %s have observed value outside the bootstrap CI. %s: %s%s",
+        "plot(): '%s' : %d %s have observed value outside the bootstrap quantile region. %s: %s%s",
         statistic, n_bad, obj_txt, lab_txt,
         paste(shown, collapse = ", "), tail_txt
       ),
@@ -185,29 +185,29 @@ plotCentrality <- function(
 
     if (statistic == "edges") {
       edges_true <- fit$statistics$edge$true
-      ci <- fit$statistics$edge$ci
+      quantile_region <- fit$statistics$edge$quantile_region
       if (is.null(edges_true) || nrow(edges_true) == 0) next
 
       edges_true <- edges_true[edges_true$weight != 0, , drop = FALSE]
 
       edge_set <- edges_true$edge
-      ci_pair <- if (is.null(ci)) {
+      quantile_region_pair <- if (is.null(quantile_region)) {
         list(lower = rep(NA_real_, length(edge_set)),
              upper = rep(NA_real_, length(edge_set)))
       } else {
-        .pick_ci_cols(ci, edge_set, lab_lo, lab_hi)
+        .pick_quantile_region_cols(quantile_region, edge_set, lab_lo, lab_hi)
       }
 
       df <- data.frame(
         node = edge_set,
         observed = edges_true$weight,
-        lower = ci_pair$lower,
-        upper = ci_pair$upper,
+        lower = quantile_region_pair$lower,
+        upper = quantile_region_pair$upper,
         statistic = "edges",
         community = NA
       )
 
-      .warn_outside_ci(df, statistic = "edges")
+      .warn_outside_quantile_region(df, statistic = "edges")
 
       if (!is.null(edges_top_n) && is.finite(edges_top_n) && edges_top_n > 0) {
         df <- dplyr::mutate(df, abs_obs = abs(observed))
@@ -260,10 +260,10 @@ plotCentrality <- function(
     node_set <- ct$node
     observed_values <- ct[[internal]]
 
-    ci <- fit$statistics$node$ci[[statistic]]
-    ci_pair <- .pick_ci_cols(ci, node_set, lab_lo, lab_hi)
-    lower_vec <- ci_pair$lower
-    upper_vec <- ci_pair$upper
+    quantile_region <- fit$statistics$node$quantile_region[[statistic]]
+    quantile_region_pair <- .pick_quantile_region_cols(quantile_region, node_set, lab_lo, lab_hi)
+    lower_vec <- quantile_region_pair$lower
+    upper_vec <- quantile_region_pair$upper
 
     ## --- observed and community ---
     ct_filtered <- fit$statistics$node$true %>%
@@ -294,12 +294,12 @@ plotCentrality <- function(
       check.names = FALSE
     )
 
-    .warn_outside_ci(df, statistic = statistic)
+    .warn_outside_quantile_region(df, statistic = statistic)
 
-    # ---- WARN: CI available but observed missing ----
-    miss_obs_with_ci <- is.na(df$observed) & (is.finite(df$lower) | is.finite(df$upper))
-    if (any(miss_obs_with_ci, na.rm = TRUE)) {
-      bad_nodes <- df$node[which(miss_obs_with_ci)]
+    # ---- WARN: quantile region available but observed missing ----
+    miss_obs_with_quantile_region <- is.na(df$observed) & (is.finite(df$lower) | is.finite(df$upper))
+    if (any(miss_obs_with_quantile_region, na.rm = TRUE)) {
+      bad_nodes <- df$node[which(miss_obs_with_quantile_region)]
       n_bad <- length(bad_nodes)
 
       # abbreviate long lists
@@ -309,7 +309,7 @@ plotCentrality <- function(
 
       warning(
         sprintf(
-          "plot(): '%s' : %d nodes have observed closeness = NA in the original network (isolated nodes). Bootstrap CIs may still exist because the node is connected in some resamples. Nodes: %s%s",
+          "plot(): '%s' : %d nodes have observed closeness = NA in the original network (isolated nodes). Bootstrap quantile regions may still exist because the node is connected in some resamples. Nodes: %s%s",
           statistic, n_bad, paste(shown, collapse = ", "), tail_txt
         ),
         call. = FALSE
@@ -457,9 +457,9 @@ plotCentrality <- function(
       subtitle = NULL,
       x = x_lab,
       y = if (standardize)
-        paste0("Z-score of estimated value with ", ci_txt)
+        paste0("Z-score of estimated value with ", quantile_region_txt)
       else
-        paste0("Estimated value with ", ci_txt)
+        paste0("Estimated value with ", quantile_region_txt)
     ) +
     ggplot2::facet_wrap(~ statistic, ncol = length(statistics), scales = "free_x") +
     ggplot2::theme_minimal() +

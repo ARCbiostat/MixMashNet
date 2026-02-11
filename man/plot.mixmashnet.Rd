@@ -44,9 +44,9 @@ Unified plotting interface for objects returned by \code{mixMN()} and
   \item \code{what = "network"}: plot the estimated network
         (single layer or multilayer);
   \item \code{what = "intra"}: plot intralayer node/edge statistics with
-        bootstrap CIs at the level stored in the object (centrality and bridge metrics);
+        bootstrap quantile regions at the level stored in the object (centrality and bridge metrics);
   \item \code{what = "inter"}: plot interlayer node metrics or interlayer
-        edge weights with bootstrap CIs at the level stored in the object (multilayer only),
+        edge weights with bootstrap quantile regions at the level stored in the object (multilayer only),
         and the chosen \code{statistics};
   \item \code{what = "stability"}: plot node stability within communities
         based on bootstrap community assignments.

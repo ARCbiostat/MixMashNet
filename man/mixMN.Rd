@@ -21,7 +21,7 @@ mixMN(
   threshold = "LW",
   overparameterize = FALSE,
   thresholdCat = TRUE,
-  conf_level = 0.95,
+  quantile_level = 0.95,
   covariates = NULL,
   exclude_from_cluster = NULL,
   treat_singletons_as_excluded = FALSE,
@@ -36,9 +36,18 @@ mixMN(
 )
 }
 \arguments{
-\item{data}{A data.frame (n x p) with variables in columns.
-Character variables are not allowed and must be converted to \code{factor}
-or \code{numeric} types before fitting.}
+\item{data}{A \code{data.frame} (n x p) with variables in columns.
+Variables may be numeric, integer, logical, or factors.
+Character and Date/POSIXt variables are not supported and must be converted
+prior to model fitting.
+Variable types are internally mapped to MGM types as follows:
+numeric variables are treated as Gaussian;
+integer variables are treated as Poisson unless they take only values
+in \{0,1\}, in which case they are treated as binary categorical;
+factors and logical variables are treated as categorical.
+Binary categorical variables (two-level
+factors and logical variables) are internally recoded to \{0,1\} for model
+fitting. The original input data are not modified.}
 
 \item{reps}{Integer (>= 0). Number of bootstrap replications.}
 
@@ -73,7 +82,7 @@ version of \code{mgm}.}
 \item{thresholdCat}{Logical; if \code{FALSE} thresholds of categorical
 variables are set to zero.}
 
-\item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
+\item{quantile_level}{Level of the central bootstrap quantile region (default 0.95).
 Must be a single number between 0 and 1.}
 
 \item{covariates}{Character vector. Variables used as adjustment covariates
@@ -179,18 +188,18 @@ the following top-level components:
     \code{boot} (list of bootstrap matrices for each metric, each of
     dimension \code{reps x length(keep_nodes_graph)}, possibly \code{NULL}
     if the metric was not requested or if \code{reps = 0}); and
-    \code{ci} (list of CIs for each node metric, one
-    \code{p x 2} matrix per metric, with columns \code{2.5\%} and
-    \code{97.5\%}, or \code{NULL} if no bootstrap was performed).
+    \code{quantile_region} (list of quantile regions for each node metric, one
+    \code{p x 2} matrix per metric, with columns corresponding to the lower and upper
+    quantile bounds implied by \code{quantile_level}, or \code{NULL} if no bootstrap was performed).
 
     \code{edge} is a list with:
     \code{true} (data frame with columns \code{edge} and \code{weight} for
     all unique undirected edges among \code{keep_nodes_graph});
     \code{boot} (matrix of bootstrap edge weights of dimension
     \code{n_edges x reps}); and
-    \code{ci} (matrix of CIs for edge weights,
+    \code{quantile_region} (matrix of quantile regions for edge weights,
     \code{n_edges x 2}, with columns corresponding to the lower and upper
-    confidence bounds, or \code{NULL} if \code{reps = 0}).
+    bootstrap quantile bounds, or \code{NULL} if \code{reps = 0}).
   }
   \item{\code{community_loadings}}{
     List containing community-loading information (based on
@@ -208,7 +217,7 @@ the following top-level components:
 Estimates a single layer Mixed Graphical Model (MGM) network on the original data,
 using the estimation framework implemented in the \pkg{mgm} package, and performs
 non-parametric bootstrap (row resampling) to compute centrality indices, bridge
-metrics, clustering stability, and confidence intervals (CIs) for node metrics
+metrics, clustering stability, and quantile regions for node metrics
 and edge weights.
 Optionally, the function computes community score loadings (for later prediction
 on new data) and can bootstrap the corresponding loadings.
@@ -218,7 +227,7 @@ This function does \strong{not} call \code{future::plan()}. To enable
 parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)})
 before calling \code{mixMN()}. If \code{boot_what} is \code{"none"} and
 \code{reps > 0}, node-level metrics are not bootstrapped but edge-weight
-bootstrap and corresponding CIs are still computed.
+bootstrap and corresponding quantile regions are still computed.
 }
 \references{
 Haslbeck, J. M. B., & Waldorp, L. J. (2020).

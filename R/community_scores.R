@@ -8,7 +8,7 @@
 #' Scores are computed using the dataset provided via the \code{data} argument.
 #' If \code{data = NULL}, the original dataset used to fit the model
 #' (\code{fit$model$data}) is used by default.
-#' Optionally, percentile bootstrap confidence intervals for the community
+#' Optionally, percentile bootstrap quantile regions for the community
 #' scores can be computed if bootstrap community loadings are available in
 #' \code{fit$community_loadings$boot}.
 #'
@@ -20,10 +20,10 @@
 #'   If NULL, scores are computed for all layers and returned as a named list.
 #' @param scale Logical; if \code{TRUE} (default), z-standardize variables used
 #'   for scoring, using the mean/SD computed from the dataset used for scoring.
-#' @param conf_level Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
-#'   percentile bootstrap confidence intervals are computed for community scores
+#' @param quantile_level Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
+#'   percentile bootstrap quantile regions are computed for community scores
 #'   (requires \code{fit$community_loadings$boot}).
-#' @param return_ci Logical; if \code{TRUE}, return CIs.
+#' @param return_quantile_region Logical; if \code{TRUE}, return quantile regions.
 #' @param na_action Character. How to handle missing values in the scoring data:
 #'   \code{"stop"} (default) stops if any missing value is present in the
 #'   required variables; \code{"omit"} computes scores using row-wise omission
@@ -33,12 +33,12 @@
 #' @return A list with class \code{c("mixmashnet","community_scores")} containing:
 #' \describe{
 #'   \item{\code{call}}{The matched call.}
-#'   \item{\code{settings}}{List with \code{scale}, \code{conf_level}, and \code{na_action}.}
+#'   \item{\code{settings}}{List with \code{scale}, \code{quantile_level}, and \code{na_action}.}
 #'   \item{\code{ids}}{Character vector of subject IDs (rownames of \code{data}).}
 #'   \item{\code{communities}}{Character vector of community score names.}
 #'   \item{\code{scores}}{Numeric matrix of scores (n × K).}
-#'   \item{\code{ci}}{If requested and available, a list with \code{lower} and \code{upper}
-#'     matrices (n × K) for percentile bootstrap CIs; otherwise \code{NULL}.}
+#'   \item{\code{quantile_region}}{If requested and available, a list with \code{lower} and \code{upper}
+#'     matrices (n × K) for percentile bootstrap quantile regions; otherwise \code{NULL}.}
 #'   \item{\code{details}}{List containing \code{nodes_used}, \code{loadings_true},
 #'     \code{loadings_boot_available}, and scaling parameters (\code{center}, \code{scale}).}
 #' }
@@ -64,14 +64,14 @@ community_scores <- function(
     data = NULL,
     layer = NULL,
     scale = TRUE,
-    conf_level = 0.95,
-    return_ci = FALSE,
+    quantile_level = 0.95,
+    return_quantile_region = FALSE,
     na_action = c("stop", "omit")
 ) {
   na_action <- match.arg(na_action)
 
-  if (!missing(conf_level)) {
-    return_ci <- TRUE
+  if (!missing(quantile_level)) {
+    return_quantile_region <- TRUE
   }
 
   # ---- MULTI: compute per layer ----
@@ -102,8 +102,8 @@ community_scores <- function(
           data  = data,
           layer = NULL,
           scale = scale,
-          conf_level = conf_level,
-          return_ci = return_ci,
+          quantile_level = quantile_level,
+          return_quantile_region = return_quantile_region,
           na_action = na_action
         )
       })
@@ -128,8 +128,8 @@ community_scores <- function(
         fit   = fit$layer_fits[[layer]],
         data  = data,
         scale = scale,
-        conf_level = conf_level,
-        return_ci = return_ci,
+        quantile_level = quantile_level,
+        return_quantile_region = return_quantile_region,
         na_action = na_action
       )
     )
@@ -259,20 +259,20 @@ community_scores <- function(
     rownames(scores) <- ids
   }
 
-  # ---- confidence intervals (optional) ----
-  ci_out <- NULL
-  if (isTRUE(return_ci)) {
-    if (!is.numeric(conf_level) || length(conf_level) != 1L ||
-        is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
-      stop("`conf_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
+  # ---- quantile regions (optional) ----
+  quantile_region_out <- NULL
+  if (isTRUE(return_quantile_region)) {
+    if (!is.numeric(quantile_level) || length(quantile_level) != 1L ||
+        is.na(quantile_level) || quantile_level <= 0 || quantile_level >= 1) {
+      stop("`quantile_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
     }
 
     L_boot <- fit$community_loadings$boot
     if (is.null(L_boot) || length(L_boot) == 0) {
-      stop("CI requested but `fit$community_loadings$boot` is NULL/empty. Run mixMN with boot_what including \"loadings\".")
+      stop("Quantile region requested but `fit$community_loadings$boot` is NULL/empty. Run mixMN with boot_what including \"loadings\".")
     }
 
-    alpha <- 1 - conf_level
+    alpha <- 1 - quantile_level
     probs <- c(alpha/2, 1 - alpha/2)
 
     reps <- length(L_boot)
@@ -338,20 +338,20 @@ community_scores <- function(
       }
     }
 
-    ci_out <- list(lower = lower, upper = upper, conf_level = conf_level)
+    quantile_region_out <- list(lower = lower, upper = upper, quantile_level = quantile_level)
   }
 
   out <- list(
     call = match.call(),
     settings = list(
       scale = isTRUE(scale),
-      conf_level = conf_level,
+      quantile_level = quantile_level,
       na_action = na_action
     ),
     ids = ids,
     communities = colnames(L_true),
     scores = scores,
-    ci = ci_out,
+    quantile_region = quantile_region_out,
     details = list(
       nodes_used = nodes,
       loadings_true = L_true,

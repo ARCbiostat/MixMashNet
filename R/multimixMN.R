@@ -1,4 +1,4 @@
-#' Multilayer MGM with bootstrap, intra/interlayer metrics, and CIs
+#' Multilayer MGM with bootstrap, intra/interlayer metrics, and quantile regions
 #'
 #' @description
 #' Estimates a multilayer Mixed Graphical Model (MGM) using the estimation
@@ -53,7 +53,7 @@
 #'   version of \code{mgm}.
 #' @param thresholdCat Logical; if \code{FALSE} thresholds of categorical
 #'   variables are set to zero.
-#' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
+#' @param quantile_level Level of the central bootstrap quantile region (default 0.95).
 #'   Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
 #' @param covariates Character vector. Variables used as adjustment covariates
 #'   in model estimation.
@@ -145,7 +145,7 @@
 #' calling \code{multimixMN()}. If \code{"none"} is the only element of
 #' \code{boot_what} and \code{reps > 0}, node-level metrics are not
 #' bootstrapped, but intra and interlayer edge-weight bootstrap and the
-#' corresponding confidence intervals are still computed.
+#' corresponding quantile regions are still computed.
 #'
 #' @references
 #'
@@ -175,7 +175,7 @@ multimixMN <- function(
     alphaFolds = 5, alphaGam = 0.25,
     k = 2, ruleReg = "AND", threshold = "LW",
     overparameterize = FALSE, thresholdCat = TRUE,
-    conf_level = 0.95,
+    quantile_level = 0.95,
     covariates = NULL,
     exclude_from_cluster = NULL,
     seed_model = NULL, seed_boot = NULL,
@@ -200,12 +200,12 @@ multimixMN <- function(
   var_interpretation <- spec$data_info
   binary_recode_map  <- spec$binary_recode_map
 
-  # confidence interval
-  if (!is.numeric(conf_level) || length(conf_level) != 1L ||
-      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
-    stop("`conf_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
+  # quantile region
+  if (!is.numeric(quantile_level) || length(quantile_level) != 1L ||
+      is.na(quantile_level) || quantile_level <= 0 || quantile_level >= 1) {
+    stop("`quantile_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
   }
-  alpha <- 1 - conf_level
+  alpha <- 1 - quantile_level
   probs <- c(alpha/2, 1 - alpha/2)
 
   # --- parse 'boot_what' argument ---
@@ -352,16 +352,16 @@ multimixMN <- function(
     cl[no_reach] <- NA_real_
     stats::setNames(cl, vnames)
   }
-  .calc_ci <- function(mat, probs) {
+  .calc_quantile_region <- function(mat, probs) {
     if (is.null(mat)) return(NULL)
-    ci <- apply(mat, 2, function(x) {
+    quantile_region <- apply(mat, 2, function(x) {
       if (all(is.na(x))) {
         setNames(c(NA_real_, NA_real_), paste0(100*probs, "%"))
       } else {
         stats::quantile(x, probs = probs, na.rm = TRUE, names = TRUE)
       }
     })
-    t(ci)
+    t(quantile_region)
   }
   .edge_names_lt <- function(nodes) utils::combn(nodes, 2, FUN=function(x) paste(x[1],x[2],sep="--"))
   .edge_names_cross <- function(A,B) as.vector(outer(A,B,function(a,b) paste(a,b,sep="--")))
@@ -453,7 +453,7 @@ multimixMN <- function(
     fitL <- mixMN_from_wadj(
       wadj_signed = sub_w,
       nodes = nL,
-      conf_level = conf_level,
+      quantile_level = quantile_level,
       covariates   = NULL,
       exclude_from_cluster = intersect(exclude_from_cluster, nL),
       cluster_method = cluster_method,
@@ -1064,44 +1064,44 @@ multimixMN <- function(
     }
   } # end bootstrap
 
-  # ---------- CIs per layer ----------
+  # ---------- quantile regions per layer ----------
   for (L in uniq_layers) {
     LB <- layer_boot[[L]]; if (is.null(LB)) next
 
-    ci_list <- list(
+    quantile_region_list <- list(
       strength           = if (do_intra_general_boot && !is.null(LB$strength_boot))
-        .calc_ci(LB$strength_boot, probs) else NULL,
+        .calc_quantile_region(LB$strength_boot, probs) else NULL,
       expected_influence = if (do_intra_general_boot && !is.null(LB$ei1_boot))
-        .calc_ci(LB$ei1_boot, probs) else NULL,
+        .calc_quantile_region(LB$ei1_boot, probs) else NULL,
       closeness          = if (do_intra_general_boot && !is.null(LB$closeness_boot))
-        .calc_ci(LB$closeness_boot, probs) else NULL,
+        .calc_quantile_region(LB$closeness_boot, probs) else NULL,
       betweenness        = if (do_intra_general_boot && !is.null(LB$betweenness_boot))
-        .calc_ci(LB$betweenness_boot, probs) else NULL,
+        .calc_quantile_region(LB$betweenness_boot, probs) else NULL,
 
       edge_weights       = if (!is.null(LB$edge_boot_mat))
-        .calc_ci(t(LB$edge_boot_mat), probs) else NULL,
+        .calc_quantile_region(t(LB$edge_boot_mat), probs) else NULL,
 
       bridge_strength    = if (do_bridge_boot && !is.null(LB$bridge_strength_boot))
-        .calc_ci(LB$bridge_strength_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_strength_boot, probs) else NULL,
       bridge_betweenness = if (do_bridge_boot && !is.null(LB$bridge_betweenness_boot))
-        .calc_ci(LB$bridge_betweenness_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_betweenness_boot, probs) else NULL,
       bridge_closeness   = if (do_bridge_boot && !is.null(LB$bridge_closeness_boot))
-        .calc_ci(LB$bridge_closeness_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_closeness_boot, probs) else NULL,
       bridge_ei1         = if (do_bridge_boot && !is.null(LB$bridge_ei1_boot))
-        .calc_ci(LB$bridge_ei1_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_ei1_boot, probs) else NULL,
       bridge_ei2         = if (do_bridge_boot && !is.null(LB$bridge_ei2_boot))
-        .calc_ci(LB$bridge_ei2_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_ei2_boot, probs) else NULL,
 
       bridge_strength_excluded    = if (do_excluded_boot && !is.null(LB$bridge_strength_excl_boot))
-        .calc_ci(LB$bridge_strength_excl_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_strength_excl_boot, probs) else NULL,
       bridge_betweenness_excluded = if (do_excluded_boot && !is.null(LB$bridge_betweenness_excl_boot))
-        .calc_ci(LB$bridge_betweenness_excl_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_betweenness_excl_boot, probs) else NULL,
       bridge_closeness_excluded   = if (do_excluded_boot && !is.null(LB$bridge_closeness_excl_boot))
-        .calc_ci(LB$bridge_closeness_excl_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_closeness_excl_boot, probs) else NULL,
       bridge_ei1_excluded         = if (do_excluded_boot && !is.null(LB$bridge_ei1_excl_boot))
-        .calc_ci(LB$bridge_ei1_excl_boot, probs) else NULL,
+        .calc_quantile_region(LB$bridge_ei1_excl_boot, probs) else NULL,
       bridge_ei2_excluded         = if (do_excluded_boot && !is.null(LB$bridge_ei2_excl_boot))
-        .calc_ci(LB$bridge_ei2_excl_boot, probs) else NULL
+        .calc_quantile_region(LB$bridge_ei2_excl_boot, probs) else NULL
     )
 
     layer_fits[[L]]$settings$reps <- reps
@@ -1129,19 +1129,19 @@ multimixMN <- function(
       bridge_ei2_excluded         = LB$bridge_ei2_excl_boot
     )
 
-    # --- NODE METRICS: CI ---
-    node_ci <- ci_list[c(
+    # --- NODE METRICS: quantile region ---
+    node_quantile_region <- quantile_region_list[c(
       "strength","expected_influence","closeness","betweenness",
       "bridge_strength","bridge_betweenness","bridge_closeness",
       "bridge_ei1","bridge_ei2",
       "bridge_strength_excluded","bridge_betweenness_excluded",
       "bridge_closeness_excluded","bridge_ei1_excluded","bridge_ei2_excluded"
     )]
-    layer_fits[[L]]$statistics$node$ci <- node_ci
+    layer_fits[[L]]$statistics$node$quantile_region <- node_quantile_region
 
-    # --- EDGES: boot + CI ---
+    # --- EDGES: boot + quantile region ---
     layer_fits[[L]]$statistics$edge$boot <- LB$edge_boot_mat
-    layer_fits[[L]]$statistics$edge$ci   <- ci_list$edge_weights
+    layer_fits[[L]]$statistics$edge$quantile_region   <- quantile_region_list$edge_weights
 
     # --- MEMBERSHIP BOOT ---
     layer_fits[[L]]$communities$boot_memberships <- LB$boot_memberships
@@ -1164,18 +1164,18 @@ multimixMN <- function(
     )
 
     eb <- interlayer_boot[[key]]
-    ci_edges <- if (!is.null(eb)) .calc_ci(t(eb), probs) else NULL
+    quantile_region_edges <- if (!is.null(eb)) .calc_quantile_region(t(eb), probs) else NULL
 
     interlayer_fits[[key]] <- list(
       edges   = list(
         true = edges_true_df,   # cross-layer edges
         boot = eb,              # bootstrap matrix (edge x reps)
-        ci   = ci_edges         # CIs edge
+        quantile_region   = quantile_region_edges         # quantile regions edge
       )
     )
   }
 
-  # ---------- interlayer-only node metrics TRUE + CI ----------
+  # ---------- interlayer-only node metrics TRUE + quantile region ----------
   inter_node_true <- data.frame(
     node = nodes_int,
     strength_interlayer    = inter_strength_true[nodes_int],
@@ -1184,15 +1184,15 @@ multimixMN <- function(
     betweenness_interlayer = inter_betweenness_true[nodes_int],
     row.names = NULL
   )
-  inter_node_ci <- list(
+  inter_node_quantile_region <- list(
     strength_interlayer    = if (do_interlayer_boot && !is.null(inter_strength_boot))
-      .calc_ci(inter_strength_boot, probs) else NULL,
+      .calc_quantile_region(inter_strength_boot, probs) else NULL,
     ei1_interlayer         = if (do_interlayer_boot && !is.null(inter_ei1_boot))
-      .calc_ci(inter_ei1_boot, probs) else NULL,
+      .calc_quantile_region(inter_ei1_boot, probs) else NULL,
     closeness_interlayer   = if (do_interlayer_boot && !is.null(inter_closeness_boot))
-      .calc_ci(inter_closeness_boot, probs) else NULL,
+      .calc_quantile_region(inter_closeness_boot, probs) else NULL,
     betweenness_interlayer = if (do_interlayer_boot && !is.null(inter_betweenness_boot))
-      .calc_ci(inter_betweenness_boot, probs) else NULL
+      .calc_quantile_region(inter_betweenness_boot, probs) else NULL
   )
   inter_centrality_true <- data.frame(
     node        = inter_node_true$node,
@@ -1202,15 +1202,15 @@ multimixMN <- function(
     betweenness = inter_node_true$betweenness_interlayer,
     row.names = NULL
   )
-  inter_ci_results <- list(
-    strength           = inter_node_ci$strength_interlayer,
-    ei1                = inter_node_ci$ei1_interlayer,
-    closeness          = inter_node_ci$closeness_interlayer,
-    betweenness        = inter_node_ci$betweenness_interlayer
+  inter_quantile_region_results <- list(
+    strength           = inter_node_quantile_region$strength_interlayer,
+    ei1                = inter_node_quantile_region$ei1_interlayer,
+    closeness          = inter_node_quantile_region$closeness_interlayer,
+    betweenness        = inter_node_quantile_region$betweenness_interlayer
   )
   interlayer_centrality <- list(
     true       = inter_centrality_true,
-    ci_results = inter_ci_results,
+    quantile_region_results = inter_quantile_region_results,
     boot       = list(
       strength    = inter_strength_boot,
       ei1         = inter_ei1_boot,
@@ -1275,7 +1275,7 @@ multimixMN <- function(
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,
-      conf_level = conf_level
+      quantile_level = quantile_level
     ),
 
     data_info = list(

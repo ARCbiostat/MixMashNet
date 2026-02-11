@@ -64,8 +64,8 @@ summary to nodes belonging to one of the layers in the given pair.}
 \value{
 A list (class \code{"summary.mixmashnet"}) with up to four data frames
 (\code{$index}, \code{$edges}, \code{$interlayer_index},
-\code{$interlayer_edges}) and the confidence level used to compute the
-bootstrap confidence intervals (\code{$conf_level}).
+\code{$interlayer_edges}) and the quantile region used to compute the
+bootstrap quantile regions (\code{$quantile_level}).
 
   Depending on \code{what} and \code{statistics}, some of these elements may
   be \code{NULL}.
@@ -73,5 +73,5 @@ bootstrap confidence intervals (\code{$conf_level}).
 \description{
 Summarizes fitted MixMashNet objects (single and multilayer).
 The summary includes the original estimates and, when available, bootstrap
-means, standard errors, and confidence intervals.
+means, standard errors, and quantile regions.
 }

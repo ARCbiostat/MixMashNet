@@ -9,8 +9,8 @@ community_scores(
   data = NULL,
   layer = NULL,
   scale = TRUE,
-  conf_level = 0.95,
-  return_ci = FALSE,
+  quantile_level = 0.95,
+  return_quantile_region = FALSE,
   na_action = c("stop", "omit")
 )
 }
@@ -27,11 +27,11 @@ If NULL, scores are computed for all layers and returned as a named list.}
 \item{scale}{Logical; if \code{TRUE} (default), z-standardize variables used
 for scoring, using the mean/SD computed from the dataset used for scoring.}
 
-\item{conf_level}{Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
-percentile bootstrap confidence intervals are computed for community scores
+\item{quantile_level}{Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
+percentile bootstrap quantile regions are computed for community scores
 (requires \code{fit$community_loadings$boot}).}
 
-\item{return_ci}{Logical; if \code{TRUE}, return CIs.}
+\item{return_quantile_region}{Logical; if \code{TRUE}, return quantile regions.}
 
 \item{na_action}{Character. How to handle missing values in the scoring data:
 \code{"stop"} (default) stops if any missing value is present in the
@@ -43,12 +43,12 @@ weights within community for that row).}
 A list with class \code{c("mixmashnet","community_scores")} containing:
 \describe{
   \item{\code{call}}{The matched call.}
-  \item{\code{settings}}{List with \code{scale}, \code{conf_level}, and \code{na_action}.}
+  \item{\code{settings}}{List with \code{scale}, \code{quantile_level}, and \code{na_action}.}
   \item{\code{ids}}{Character vector of subject IDs (rownames of \code{data}).}
   \item{\code{communities}}{Character vector of community score names.}
   \item{\code{scores}}{Numeric matrix of scores (n × K).}
-  \item{\code{ci}}{If requested and available, a list with \code{lower} and \code{upper}
-    matrices (n × K) for percentile bootstrap CIs; otherwise \code{NULL}.}
+  \item{\code{quantile_region}}{If requested and available, a list with \code{lower} and \code{upper}
+    matrices (n × K) for percentile bootstrap quantile regions; otherwise \code{NULL}.}
   \item{\code{details}}{List containing \code{nodes_used}, \code{loadings_true},
     \code{loadings_boot_available}, and scaling parameters (\code{center}, \code{scale}).}
 }
@@ -65,7 +65,7 @@ weights correspond to the standardized community loadings estimated via
 Scores are computed using the dataset provided via the \code{data} argument.
 If \code{data = NULL}, the original dataset used to fit the model
 (\code{fit$model$data}) is used by default.
-Optionally, percentile bootstrap confidence intervals for the community
+Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 \code{fit$community_loadings$boot}.
 }

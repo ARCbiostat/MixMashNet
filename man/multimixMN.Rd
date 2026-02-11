@@ -2,7 +2,7 @@
 % Please edit documentation in R/multimixMN.R
 \name{multimixMN}
 \alias{multimixMN}
-\title{Multilayer MGM with bootstrap, intra/interlayer metrics, and CIs}
+\title{Multilayer MGM with bootstrap, intra/interlayer metrics, and quantile regions}
 \usage{
 multimixMN(
   data,
@@ -22,7 +22,7 @@ multimixMN(
   threshold = "LW",
   overparameterize = FALSE,
   thresholdCat = TRUE,
-  conf_level = 0.95,
+  quantile_level = 0.95,
   covariates = NULL,
   exclude_from_cluster = NULL,
   seed_model = NULL,
@@ -37,9 +37,18 @@ multimixMN(
 )
 }
 \arguments{
-\item{data}{A data.frame (n x p) with variables in columns.
-Character variables are not allowed and must be converted to \code{factor}
-or \code{numeric} types before fitting.}
+\item{data}{A \code{data.frame} (n x p) with variables in columns.
+Variables may be numeric, integer, logical, or factors.
+Character and Date/POSIXt variables are not supported and must be converted
+prior to model fitting.
+Variable types are internally mapped to MGM types as follows:
+numeric variables are treated as Gaussian;
+integer variables are treated as Poisson unless they take only values
+in \{0,1\}, in which case they are treated as binary categorical;
+factors and logical variables are treated as categorical.
+Binary categorical variables (two-level
+factors and logical variables) are internally recoded to \{0,1\} for model
+fitting. The original input data are not modified.}
 
 \item{layers}{A named vector (names = variable names) assigning each node to a
 layer (character or factor). Must cover all columns of \code{data}
@@ -87,7 +96,7 @@ version of \code{mgm}.}
 \item{thresholdCat}{Logical; if \code{FALSE} thresholds of categorical
 variables are set to zero.}
 
-\item{conf_level}{Confidence level for percentile bootstrap CIs (default 0.95).
+\item{quantile_level}{Level of the central bootstrap quantile region (default 0.95).
 Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).}
 
 \item{covariates}{Character vector. Variables used as adjustment covariates
@@ -200,7 +209,7 @@ parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)}) before
 calling \code{multimixMN()}. If \code{"none"} is the only element of
 \code{boot_what} and \code{reps > 0}, node-level metrics are not
 bootstrapped, but intra and interlayer edge-weight bootstrap and the
-corresponding confidence intervals are still computed.
+corresponding quantile regions are still computed.
 }
 \references{
 Haslbeck, J. M. B., & Waldorp, L. J. (2020).

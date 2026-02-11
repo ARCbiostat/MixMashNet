@@ -12,7 +12,7 @@ categorical variables.
 In the multilayer setting, layers may comprise different types and numbers
 of variables, and users can explicitly impose a predefined multilayer
 topology to constrain the estimation of inter and intralayer connections.
-The package implements bootstrap procedures to derive confidence intervals
+The package implements bootstrap procedures to derive quantile regions
 for edge weights and node-level centrality and bridge metrics, and provides
 tools to assess the stability of node community membership. In addition,
 subject-level community scores can be computed to summarize the latent

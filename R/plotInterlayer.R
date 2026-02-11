@@ -41,11 +41,11 @@ interlayerPairs <- function(object) {
 }
 
 
-#' Plot interlayer node metrics or interlayer edge weights with CIs
+#' Plot interlayer node metrics or interlayer edge weights with quantile regions.
 #'
 #' @description
 #' Internal helper used by \code{plot.mixmashnet()} to visualize interlayer
-#' node metrics or interlayer edge weights with bootstrap confidence intervals.
+#' node metrics or interlayer edge weights with bootstrap quantile regions.
 #'
 #' @keywords internal
 #' @noRd
@@ -100,51 +100,51 @@ plotInterlayer <- function(
     }, character(1))
   }
 
-  # ---- inherit CI level from fit ----
-  conf_level <- fit_multi$settings$conf_level
-  if (is.null(conf_level) || !is.numeric(conf_level) || length(conf_level) != 1L ||
-      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
-    conf_level <- 0.95
+  # ---- inherit quantile region level from fit ----
+  quantile_level <- fit_multi$settings$quantile_level
+  if (is.null(quantile_level) || !is.numeric(quantile_level) || length(quantile_level) != 1L ||
+      is.na(quantile_level) || quantile_level <= 0 || quantile_level >= 1) {
+    quantile_level <- 0.95
   }
-  ci_txt <- paste0(round(100 * conf_level), "% CI")
+  quantile_region_txt <- paste0(round(100 * quantile_level), "% quantile region")
 
-  alpha <- (1 - conf_level) / 2
+  alpha <- (1 - quantile_level) / 2
   p_lo  <- alpha
   p_hi  <- 1 - alpha
   lab_lo <- paste0(formatC(100 * p_lo, format = "f", digits = 1), "%")
   lab_hi <- paste0(formatC(100 * p_hi, format = "f", digits = 1), "%")
 
-  .pick_ci_cols <- function(ci_mat, ids, lab_lo, lab_hi) {
-    if (is.null(ci_mat)) return(list(lower = rep(NA_real_, length(ids)),
+  .pick_quantile_region_cols <- function(quantile_region_mat, ids, lab_lo, lab_hi) {
+    if (is.null(quantile_region_mat)) return(list(lower = rep(NA_real_, length(ids)),
                                      upper = rep(NA_real_, length(ids))))
-    ci_mat <- as.matrix(ci_mat)
+    quantile_region_mat <- as.matrix(quantile_region_mat)
 
-    if (!is.null(rownames(ci_mat))) {
-      ci_mat <- ci_mat[match(ids, rownames(ci_mat)), , drop = FALSE]
+    if (!is.null(rownames(quantile_region_mat))) {
+      quantile_region_mat <- quantile_region_mat[match(ids, rownames(quantile_region_mat)), , drop = FALSE]
     }
-    rownames(ci_mat) <- NULL
-    cn <- colnames(ci_mat)
+    rownames(quantile_region_mat) <- NULL
+    cn <- colnames(quantile_region_mat)
     if (!is.null(cn) && all(c(lab_lo, lab_hi) %in% cn)) {
-      return(list(lower = as.numeric(ci_mat[, lab_lo]),
-                  upper = as.numeric(ci_mat[, lab_hi])))
+      return(list(lower = as.numeric(quantile_region_mat[, lab_lo]),
+                  upper = as.numeric(quantile_region_mat[, lab_hi])))
     }
     if (!is.null(cn) && all(c("2.5%", "97.5%") %in% cn)) {
-      return(list(lower = as.numeric(ci_mat[, "2.5%"]),
-                  upper = as.numeric(ci_mat[, "97.5%"])))
+      return(list(lower = as.numeric(quantile_region_mat[, "2.5%"]),
+                  upper = as.numeric(quantile_region_mat[, "97.5%"])))
     }
     if (!is.null(cn) && all(c("lower", "upper") %in% cn)) {
-      return(list(lower = as.numeric(ci_mat[, "lower"]),
-                  upper = as.numeric(ci_mat[, "upper"])))
+      return(list(lower = as.numeric(quantile_region_mat[, "lower"]),
+                  upper = as.numeric(quantile_region_mat[, "upper"])))
     }
-    if (ncol(ci_mat) >= 2) {
-      return(list(lower = as.numeric(ci_mat[, 1]),
-                  upper = as.numeric(ci_mat[, 2])))
+    if (ncol(quantile_region_mat) >= 2) {
+      return(list(lower = as.numeric(quantile_region_mat[, 1]),
+                  upper = as.numeric(quantile_region_mat[, 2])))
     }
     list(lower = rep(NA_real_, length(ids)),
          upper = rep(NA_real_, length(ids)))
   }
 
-  .warn_outside_ci <- function(df, statistic) {
+  .warn_outside_quantile_region <- function(df, statistic) {
     if (is.null(df) || !nrow(df)) return(invisible(NULL))
     if (!all(c("observed", "lower", "upper") %in% names(df))) return(invisible(NULL))
 
@@ -171,12 +171,12 @@ plotInterlayer <- function(
     }
 
     ok_obs <- is.finite(df$observed)
-    ok_ci  <- is.finite(df$lower) & is.finite(df$upper)
-    outside_ci <- ok_obs & ok_ci & (df$observed < df$lower | df$observed > df$upper)
+    ok_quantile_region  <- is.finite(df$lower) & is.finite(df$upper)
+    outside_quantile_region <- ok_obs & ok_quantile_region & (df$observed < df$lower | df$observed > df$upper)
 
-    if (!any(outside_ci, na.rm = TRUE)) return(invisible(NULL))
+    if (!any(outside_quantile_region, na.rm = TRUE)) return(invisible(NULL))
 
-    bad_ids <- df[[id_col]][which(outside_ci)]
+    bad_ids <- df[[id_col]][which(outside_quantile_region)]
     n_bad <- length(bad_ids)
 
     show_max <- 15
@@ -188,7 +188,7 @@ plotInterlayer <- function(
 
     warning(
       sprintf(
-        "plot(): '%s' : %d %s have observed value outside the bootstrap CI. %s: %s%s",
+        "plot(): '%s' : %d %s have observed value outside the bootstrap quantile region. %s: %s%s",
         statistic, n_bad, obj_txt, lab_txt,
         paste(shown, collapse = ", "), tail_txt
       ),
@@ -202,7 +202,7 @@ plotInterlayer <- function(
   if (types_selected["node"]) {
     # Title default for nodes
     if (is.null(title)) {
-      title <- paste0("Interlayer node metrics (", ci_txt, ")")
+      title <- paste0("Interlayer node metrics (", quantile_region_txt, ")")
     }
 
     ct <- interlayer$centrality$true
@@ -226,8 +226,8 @@ plotInterlayer <- function(
       }
     }
 
-    # Map from requested statistics to names in ci_results
-    ci_all <- interlayer$centrality$ci_results
+    # Map from requested statistics to names in quantile_region_results
+    quantile_region_all <- interlayer$centrality$quantile_region_results
     name_map <- c(
       strength           = "strength",
       expected_influence = "ei1",
@@ -240,15 +240,15 @@ plotInterlayer <- function(
     dfs <- lapply(stats_node, function(m) {
       internal <- name_map[[m]]
 
-      ci <- ci_all[[internal]]
-      ci_pair <- .pick_ci_cols(ci, ct$node, lab_lo, lab_hi)
+      quantile_region <- quantile_region_all[[internal]]
+      quantile_region_pair <- .pick_quantile_region_cols(quantile_region, ct$node, lab_lo, lab_hi)
 
       data.frame(
         node     = ct$node,
         metric   = m,
         observed = ct[[internal]],
-        lower    = ci_pair$lower,
-        upper    = ci_pair$upper,
+        lower    = quantile_region_pair$lower,
+        upper    = quantile_region_pair$upper,
         stringsAsFactors = FALSE
       )
     })
@@ -256,20 +256,20 @@ plotInterlayer <- function(
     df <- dplyr::bind_rows(dfs)
     for (m in stats_node) {
       dfi <- df[df$metric == m, , drop = FALSE]
-      .warn_outside_ci(dfi, statistic = m)
+      .warn_outside_quantile_region(dfi, statistic = m)
     }
     if (is.null(df) || !nrow(df)) {
       stop("No data for selected interlayer node statistics after filtering.")
     }
     df$metric <- factor(df$metric, levels = stats_node)
 
-    # ---- WARN (only for closeness): observed NA but CI exists ----
+    # ---- WARN (only for closeness): observed NA but quantile region exists ----
     df_clo <- df[df$metric == "closeness", , drop = FALSE]
     if (nrow(df_clo)) {
-      miss_obs_with_ci <- is.na(df_clo$observed) & (is.finite(df_clo$lower) | is.finite(df_clo$upper))
+      miss_obs_with_quantile_region <- is.na(df_clo$observed) & (is.finite(df_clo$lower) | is.finite(df_clo$upper))
 
-      if (any(miss_obs_with_ci, na.rm = TRUE)) {
-        bad_nodes <- df_clo$node[miss_obs_with_ci]
+      if (any(miss_obs_with_quantile_region, na.rm = TRUE)) {
+        bad_nodes <- df_clo$node[miss_obs_with_quantile_region]
         n_bad <- length(bad_nodes)
 
         show_max <- 15
@@ -278,7 +278,7 @@ plotInterlayer <- function(
 
         warning(
           sprintf(
-            "plot(): 'closeness' : %d nodes have observed closeness = NA in the original network (no edges to other layers). Bootstrap CIs may still exist because the node is connected in some resamples. Nodes: %s%s",
+            "plot(): 'closeness' : %d nodes have observed closeness = NA in the original network (no edges to other layers). Bootstrap quantile regions may still exist because the node is connected in some resamples. Nodes: %s%s",
             n_bad, paste(shown, collapse = ", "), tail_txt
           ),
           call. = FALSE
@@ -328,7 +328,7 @@ plotInterlayer <- function(
       ggplot2::labs(
         title = title,
         x = "Nodes",
-        y = if (standardize) paste0("Z-score (", ci_txt, ")") else paste0("Estimated (", ci_txt, ")")
+        y = if (standardize) paste0("Z-score (", quantile_region_txt, ")") else paste0("Estimated (", quantile_region_txt, ")")
       ) +
       ggplot2::facet_wrap(~ metric, ncol = length(stats_node), scales = "free_x") +
       ggplot2::theme_minimal() +
@@ -353,7 +353,7 @@ plotInterlayer <- function(
 
   # Title default per edges
   if (is.null(title)) {
-    title <- paste0("Interlayer edge weights (", ci_txt, ")")
+    title <- paste0("Interlayer edge weights (", quantile_region_txt, ")")
   }
 
   nms <- names(interlayer)
@@ -397,8 +397,8 @@ plotInterlayer <- function(
     ed <- interlayer[[nm]]$edges
     if (is.null(ed)) return(NULL)
     et <- ed$true
-    ci <- ed$ci
-    if (is.null(et) || is.null(ci) || !nrow(et)) return(NULL)
+    quantile_region <- ed$quantile_region
+    if (is.null(et) || is.null(quantile_region) || !nrow(et)) return(NULL)
 
     # Exclude nodes if requested
     if (!is.null(exclude_nodes) && length(exclude_nodes)) {
@@ -420,19 +420,19 @@ plotInterlayer <- function(
     et <- et[et$weight != 0, , drop = FALSE]
     if (!nrow(et)) return(NULL)
 
-    ci_pair <- .pick_ci_cols(ci, et$edge, lab_lo, lab_hi)
+    quantile_region_pair <- .pick_quantile_region_cols(quantile_region, et$edge, lab_lo, lab_hi)
 
     data.frame(
       pair     = pk_norm,
       edge     = et$edge,
       observed = et$weight,
-      lower    = ci_pair$lower,
-      upper    = ci_pair$upper,
+      lower    = quantile_region_pair$lower,
+      upper    = quantile_region_pair$upper,
       stringsAsFactors = FALSE
     )
   })
   df <- dplyr::bind_rows(dl)
-  .warn_outside_ci(df, statistic = "edges")
+  .warn_outside_quantile_region(df, statistic = "edges")
   if (is.null(df) || !nrow(df)) {
     return(.empty_plot(sprintf(
       "No interlayer edges after filtering.\nPairs used: %s",
@@ -499,7 +499,7 @@ plotInterlayer <- function(
     ggplot2::labs(
       title = title,
       x = "Edges",
-      y = if (standardize) paste0("Z-score (", ci_txt, ")") else paste0("Estimated (", ci_txt, ")")
+      y = if (standardize) paste0("Z-score (", quantile_region_txt, ")") else paste0("Estimated (", quantile_region_txt, ")")
     ) +
     ggplot2::facet_wrap(~ pair, scales = "free_x") +
     ggplot2::theme_minimal() +

@@ -9,7 +9,7 @@
 #' utilities.
 #'
 #' No bootstrap is performed inside this function. The arguments \code{reps},
-#' \code{seed_boot}, \code{conf_level}, and \code{boot_what} are stored in
+#' \code{seed_boot}, \code{quantile_level}, and \code{boot_what} are stored in
 #' \code{$settings} for interface compatibility with \code{mixMN()} and other
 #' bootstrap-based functions, but the corresponding bootstrap slots in the output
 #' are set to \code{NULL}.
@@ -19,8 +19,8 @@
 #'   Row and column names must correspond to \code{nodes}.
 #' @param nodes Character vector of node names (must match
 #'   \code{rownames(wadj_signed)} and \code{colnames(wadj_signed)}).
-#' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
-#'   Stored in \code{$settings} for consistency with \code{mixMN()}, but no CIs
+#' @param quantile_level Quantile level for quantile regions (default 0.95).
+#'   Stored in \code{$settings} for consistency with \code{mixMN()}, but no quantile regions
 #'   are computed here because no bootstrap is performed.
 #' @param covariates Character vector. Nodes excluded entirely from the
 #'   graph (removed from adjacency matrix, edges and node-level metrics).
@@ -55,7 +55,7 @@
 #'     List echoing the main arguments, including \code{reps},
 #'     \code{cluster_method}, \code{covariates},
 #'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
-#'     \code{boot_what}, and \code{conf_level}.
+#'     \code{boot_what}, and \code{quantile_level}.
 #'   }
 #'   \item{\code{model}}{
 #'     List with \code{mgm = NULL} and \code{nodes} (character vector of all node
@@ -86,8 +86,8 @@
 #'     \code{closeness}, \code{betweenness}, and bridge metrics
 #'     (\code{bridge_strength}, \code{bridge_betweenness}, \code{bridge_closeness},
 #'     \code{bridge_ei1}, \code{bridge_ei2}, plus \code{*_excluded} versions).
-#'     Bootstrap slots \code{node$boot}, \code{node$ci}, \code{edge$boot},
-#'     \code{edge$ci} are set to \code{NULL}.
+#'     Bootstrap slots \code{node$boot}, \code{node$quantile_region}, \code{edge$boot},
+#'     \code{edge$quantile_region} are set to \code{NULL}.
 #'   }
 #'   \item{\code{community_loadings}}{
 #'     List container for community loadings (aligned to \code{mixMN()}):
@@ -115,7 +115,7 @@
 mixMN_from_wadj <- function(
     wadj_signed,
     nodes,
-    conf_level = 0.95,
+    quantile_level = 0.95,
     covariates = NULL,
     exclude_from_cluster = NULL,
     cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
@@ -135,13 +135,13 @@ mixMN_from_wadj <- function(
     several.ok = TRUE
   )
 
-  # confidence interval
-  if (!is.numeric(conf_level) || length(conf_level) != 1L ||
-      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
-    stop("`conf_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
+  # quantile region
+  if (!is.numeric(quantile_level) || length(quantile_level) != 1L ||
+      is.na(quantile_level) || quantile_level <= 0 || quantile_level >= 1) {
+    stop("`quantile_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
   }
-  alpha <- 1 - conf_level
-  ci_probs <- c(alpha/2, 1 - alpha/2)
+  alpha <- 1 - quantile_level
+  quantile_region_probs <- c(alpha/2, 1 - alpha/2)
 
   all_nodes <- nodes
 
@@ -387,7 +387,7 @@ mixMN_from_wadj <- function(
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,
-      conf_level = conf_level
+      quantile_level = quantile_level
     ),
 
     model = list(
@@ -427,12 +427,12 @@ mixMN_from_wadj <- function(
           bridge_ei1_excluded         = NULL,
           bridge_ei2_excluded         = NULL
         ),
-        ci = NULL
+        quantile_region = NULL
       ),
       edge = list(
         true = edges_true_df,
         boot = NULL,
-        ci   = NULL
+        quantile_region   = NULL
       )
     ),
 

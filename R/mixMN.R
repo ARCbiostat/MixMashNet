@@ -5,7 +5,7 @@
 #' Estimates a single layer Mixed Graphical Model (MGM) network on the original data,
 #' using the estimation framework implemented in the \pkg{mgm} package, and performs
 #' non-parametric bootstrap (row resampling) to compute centrality indices, bridge
-#' metrics, clustering stability, and confidence intervals (CIs) for node metrics
+#' metrics, clustering stability, and quantile regions for node metrics
 #' and edge weights.
 #' Optionally, the function computes community score loadings (for later prediction
 #' on new data) and can bootstrap the corresponding loadings.
@@ -41,7 +41,7 @@
 #'   version of \code{mgm}.
 #' @param thresholdCat Logical; if \code{FALSE} thresholds of categorical
 #'   variables are set to zero.
-#' @param conf_level Confidence level for percentile bootstrap CIs (default 0.95).
+#' @param quantile_level Level of the central bootstrap quantile region (default 0.95).
 #'   Must be a single number between 0 and 1.
 #' @param covariates Character vector. Variables used as adjustment covariates
 #'   in model estimation.
@@ -137,18 +137,18 @@
 #'     \code{boot} (list of bootstrap matrices for each metric, each of
 #'     dimension \code{reps x length(keep_nodes_graph)}, possibly \code{NULL}
 #'     if the metric was not requested or if \code{reps = 0}); and
-#'     \code{ci} (list of CIs for each node metric, one
-#'     \code{p x 2} matrix per metric, with columns \code{2.5\%} and
-#'     \code{97.5\%}, or \code{NULL} if no bootstrap was performed).
+#'     \code{quantile_region} (list of quantile regions for each node metric, one
+#'     \code{p x 2} matrix per metric, with columns corresponding to the lower and upper
+#'     quantile bounds implied by \code{quantile_level}, or \code{NULL} if no bootstrap was performed).
 #'
 #'     \code{edge} is a list with:
 #'     \code{true} (data frame with columns \code{edge} and \code{weight} for
 #'     all unique undirected edges among \code{keep_nodes_graph});
 #'     \code{boot} (matrix of bootstrap edge weights of dimension
 #'     \code{n_edges x reps}); and
-#'     \code{ci} (matrix of CIs for edge weights,
+#'     \code{quantile_region} (matrix of quantile regions for edge weights,
 #'     \code{n_edges x 2}, with columns corresponding to the lower and upper
-#'     confidence bounds, or \code{NULL} if \code{reps = 0}).
+#'     bootstrap quantile bounds, or \code{NULL} if \code{reps = 0}).
 #'   }
 #'   \item{\code{community_loadings}}{
 #'     List containing community-loading information (based on
@@ -167,7 +167,7 @@
 #' parallel bootstrap, set a plan (e.g. \code{future::plan(multisession)})
 #' before calling \code{mixMN()}. If \code{boot_what} is \code{"none"} and
 #' \code{reps > 0}, node-level metrics are not bootstrapped but edge-weight
-#' bootstrap and corresponding CIs are still computed.
+#' bootstrap and corresponding quantile regions are still computed.
 #'
 #' @references
 #'
@@ -203,7 +203,7 @@ mixMN <- function(
     threshold = "LW",
     overparameterize = FALSE,
     thresholdCat = TRUE,
-    conf_level = 0.95,
+    quantile_level = 0.95,
     covariates = NULL,
     exclude_from_cluster = NULL,
     treat_singletons_as_excluded = FALSE,
@@ -238,12 +238,12 @@ mixMN <- function(
   }
   subject_ids <- rownames(data)
 
-  # confidence interval
-  if (!is.numeric(conf_level) || length(conf_level) != 1L ||
-      is.na(conf_level) || conf_level <= 0 || conf_level >= 1) {
-    stop("`conf_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
+  # quantile region
+  if (!is.numeric(quantile_level) || length(quantile_level) != 1L ||
+      is.na(quantile_level) || quantile_level <= 0 || quantile_level >= 1) {
+    stop("`quantile_level` must be a single number strictly between 0 and 1 (e.g., 0.95).")
   }
-  alpha <- 1 - conf_level
+  alpha <- 1 - quantile_level
   probs <- c(alpha/2, 1 - alpha/2)
 
 
@@ -589,7 +589,7 @@ mixMN <- function(
 
   # ---- Bootstrap containers ----
   boot_memberships <- list()
-  ci_results <- NULL
+  quantile_region_results <- NULL
   strength_boot <- ei1_boot <- closeness_boot <- betweenness_boot <- NULL
   bridge_strength_boot <- bridge_ei1_boot <- bridge_ei2_boot <- NULL
   bridge_betweenness_boot <- bridge_closeness_boot <- NULL
@@ -911,45 +911,45 @@ mixMN <- function(
       colnames(bridge_ei2_excl_boot)         <- keep_nodes_graph
     }
 
-    ## CI function
-    calc_ci <- function(mat, probs) {
-      ci <- apply(mat, 2, function(x) {
+    ## quantile region function
+    calc_quantile_region <- function(mat, probs) {
+      quantile_region <- apply(mat, 2, function(x) {
         if (all(is.na(x))) {
           setNames(c(NA_real_, NA_real_), paste0(100*probs, "%"))
         } else {
           stats::quantile(x, probs = probs, na.rm = TRUE, names = TRUE)
         }
       })
-      t(ci)
+      t(quantile_region)
     }
 
-    ci_results <- list()
+    quantile_region_results <- list()
 
     if (isTRUE(do_general_boot) && !is.null(strength_boot)) {
-      ci_results$strength           <- calc_ci(strength_boot, probs)
-      ci_results$expected_influence <- calc_ci(ei1_boot, probs)
-      ci_results$closeness          <- calc_ci(closeness_boot, probs)
-      ci_results$betweenness        <- calc_ci(betweenness_boot, probs)
+      quantile_region_results$strength           <- calc_quantile_region(strength_boot, probs)
+      quantile_region_results$expected_influence <- calc_quantile_region(ei1_boot, probs)
+      quantile_region_results$closeness          <- calc_quantile_region(closeness_boot, probs)
+      quantile_region_results$betweenness        <- calc_quantile_region(betweenness_boot, probs)
     }
 
     if (isTRUE(do_bridge_boot) && !is.null(bridge_strength_boot)) {
-      ci_results$bridge_strength    <- calc_ci(bridge_strength_boot, probs)
-      ci_results$bridge_betweenness <- calc_ci(bridge_betweenness_boot, probs)
-      ci_results$bridge_closeness   <- calc_ci(bridge_closeness_boot, probs)
-      ci_results$bridge_ei1         <- calc_ci(bridge_ei1_boot, probs)
-      ci_results$bridge_ei2         <- calc_ci(bridge_ei2_boot, probs)
+      quantile_region_results$bridge_strength    <- calc_quantile_region(bridge_strength_boot, probs)
+      quantile_region_results$bridge_betweenness <- calc_quantile_region(bridge_betweenness_boot, probs)
+      quantile_region_results$bridge_closeness   <- calc_quantile_region(bridge_closeness_boot, probs)
+      quantile_region_results$bridge_ei1         <- calc_quantile_region(bridge_ei1_boot, probs)
+      quantile_region_results$bridge_ei2         <- calc_quantile_region(bridge_ei2_boot, probs)
     }
 
     if (isTRUE(do_excluded_boot) && !is.null(bridge_strength_excl_boot)) {
-      ci_results$bridge_strength_excluded    <- calc_ci(bridge_strength_excl_boot, probs)
-      ci_results$bridge_betweenness_excluded <- calc_ci(bridge_betweenness_excl_boot, probs)
-      ci_results$bridge_closeness_excluded   <- calc_ci(bridge_closeness_excl_boot, probs)
-      ci_results$bridge_ei1_excluded         <- calc_ci(bridge_ei1_excl_boot, probs)
-      ci_results$bridge_ei2_excluded         <- calc_ci(bridge_ei2_excl_boot, probs)
+      quantile_region_results$bridge_strength_excluded    <- calc_quantile_region(bridge_strength_excl_boot, probs)
+      quantile_region_results$bridge_betweenness_excluded <- calc_quantile_region(bridge_betweenness_excl_boot, probs)
+      quantile_region_results$bridge_closeness_excluded   <- calc_quantile_region(bridge_closeness_excl_boot, probs)
+      quantile_region_results$bridge_ei1_excluded         <- calc_quantile_region(bridge_ei1_excl_boot, probs)
+      quantile_region_results$bridge_ei2_excluded         <- calc_quantile_region(bridge_ei2_excl_boot, probs)
     }
 
     ## edges
-    ci_results$edge_weights <- calc_ci(t(edge_boot_mat), probs)
+    quantile_region_results$edge_weights <- calc_quantile_region(t(edge_boot_mat), probs)
 
     # --- collect bootstrap loadings (one matrix per replication) ---
     if (isTRUE(do_loadings_boot) && !is.null(community_loadings_true)) {
@@ -989,29 +989,29 @@ mixMN <- function(
     igraph::V(g_igraph)$membership <- NA_integer_
   }
 
-  # ---- CIs organized for node/edge (NULL if no bootstrap) ----
-  node_ci <- if (!is.null(ci_results)) {
+  # ---- quantile regions organized for node/edge (NULL if no bootstrap) ----
+  node_quantile_region <- if (!is.null(quantile_region_results)) {
     list(
-      strength                    = ci_results$strength,
-      expected_influence          = ci_results$expected_influence,
-      closeness                   = ci_results$closeness,
-      betweenness                 = ci_results$betweenness,
-      bridge_strength             = ci_results$bridge_strength,
-      bridge_betweenness          = ci_results$bridge_betweenness,
-      bridge_closeness            = ci_results$bridge_closeness,
-      bridge_ei1                  = ci_results$bridge_ei1,
-      bridge_ei2                  = ci_results$bridge_ei2,
-      bridge_strength_excluded    = ci_results$bridge_strength_excluded,
-      bridge_betweenness_excluded = ci_results$bridge_betweenness_excluded,
-      bridge_closeness_excluded   = ci_results$bridge_closeness_excluded,
-      bridge_ei1_excluded         = ci_results$bridge_ei1_excluded,
-      bridge_ei2_excluded         = ci_results$bridge_ei2_excluded
+      strength                    = quantile_region_results$strength,
+      expected_influence          = quantile_region_results$expected_influence,
+      closeness                   = quantile_region_results$closeness,
+      betweenness                 = quantile_region_results$betweenness,
+      bridge_strength             = quantile_region_results$bridge_strength,
+      bridge_betweenness          = quantile_region_results$bridge_betweenness,
+      bridge_closeness            = quantile_region_results$bridge_closeness,
+      bridge_ei1                  = quantile_region_results$bridge_ei1,
+      bridge_ei2                  = quantile_region_results$bridge_ei2,
+      bridge_strength_excluded    = quantile_region_results$bridge_strength_excluded,
+      bridge_betweenness_excluded = quantile_region_results$bridge_betweenness_excluded,
+      bridge_closeness_excluded   = quantile_region_results$bridge_closeness_excluded,
+      bridge_ei1_excluded         = quantile_region_results$bridge_ei1_excluded,
+      bridge_ei2_excluded         = quantile_region_results$bridge_ei2_excluded
     )
   } else {
     NULL
   }
 
-  edge_ci <- if (!is.null(ci_results)) ci_results$edge_weights else NULL
+  edge_quantile_region <- if (!is.null(quantile_region_results)) quantile_region_results$edge_weights else NULL
 
   # ---- Return ----
   fit <- list(
@@ -1024,7 +1024,7 @@ mixMN <- function(
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,
-      conf_level = conf_level
+      quantile_level = quantile_level
     ),
 
     data_info = list(
@@ -1072,12 +1072,12 @@ mixMN <- function(
           bridge_ei1_excluded         = bridge_ei1_excl_boot,
           bridge_ei2_excluded         = bridge_ei2_excl_boot
         ),
-        ci = node_ci
+        quantile_region = node_quantile_region
       ),
       edge = list(
         true = edges_true_df,
         boot = edge_boot_mat,
-        ci   = edge_ci
+        quantile_region   = edge_quantile_region
       )
     ),
 
