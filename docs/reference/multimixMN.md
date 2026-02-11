@@ -1,4 +1,4 @@
-# Multilayer MGM with bootstrap, intra/interlayer metrics, and CIs
+# Multilayer MGM with bootstrap, intra/interlayer metrics, and quantile regions
 
 Estimates a multilayer Mixed Graphical Model (MGM) using the estimation
 framework implemented in the mgm package, with a masking scheme that
@@ -15,8 +15,6 @@ interlayer-only node metrics and summaries of cross-layer edge weights.
 ``` r
 multimixMN(
   data,
-  type,
-  level,
   layers,
   layer_rules,
   scale = TRUE,
@@ -33,7 +31,7 @@ multimixMN(
   threshold = "LW",
   overparameterize = FALSE,
   thresholdCat = TRUE,
-  conf_level = 0.95,
+  quantile_level = 0.95,
   covariates = NULL,
   exclude_from_cluster = NULL,
   seed_model = NULL,
@@ -52,17 +50,16 @@ multimixMN(
 
 - data:
 
-  A numeric matrix or data frame (n x p) with variables in columns.
-
-- type:
-
-  Length-`p` vector of variable types as required by
-  [`mgm::mgm`](https://rdrr.io/pkg/mgm/man/mgm.html).
-
-- level:
-
-  Length-`p` vector of variable levels as required by
-  [`mgm::mgm`](https://rdrr.io/pkg/mgm/man/mgm.html).
+  A `data.frame` (n x p) with variables in columns. Variables may be
+  numeric, integer, logical, or factors. Character and Date/POSIXt
+  variables are not supported and must be converted prior to model
+  fitting. Variable types are internally mapped to MGM types as follows:
+  numeric variables are treated as Gaussian; integer variables are
+  treated as Poisson unless they take only values in {0,1}, in which
+  case they are treated as binary categorical; factors and logical
+  variables are treated as categorical. Binary categorical variables
+  (two-level factors and logical variables) are internally recoded to
+  {0,1} for model fitting. The original input data are not modified.
 
 - layers:
 
@@ -75,7 +72,7 @@ multimixMN(
   A logical or numeric square matrix with row/column names equal to
   layer names. Values `TRUE` or `1` indicate that cross-layer edges are
   allowed between the corresponding layer pair. Intralayer edges are
-  always allowed; if the diagonal is `NA`, it is treated as allowed.
+  always allowed.
 
 - scale:
 
@@ -102,7 +99,7 @@ multimixMN(
 
 - alphaSeq:
 
-  Alpha parameters of the elastic net penalty (values in \\(0, 1\]\\).
+  Alpha parameters of the elastic net penalty (values between 0 and 1).
 
 - alphaSel:
 
@@ -138,16 +135,15 @@ multimixMN(
   Logical; if `FALSE` thresholds of categorical variables are set to
   zero.
 
-- conf_level:
+- quantile_level:
 
-  Confidence level for percentile bootstrap CIs (default 0.95). Must be
+  Level of the central bootstrap quantile region (default 0.95). Must be
   a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
 
 - covariates:
 
-  Character vector of variable names treated as adjustment covariates.
-  They are included in all nodewise regressions in `mgm()`, but excluded
-  from the estimated network.
+  Character vector. Variables used as adjustment covariates in model
+  estimation.
 
 - exclude_from_cluster:
 
@@ -176,7 +172,7 @@ multimixMN(
 
 - compute_loadings:
 
-  Logical; if TRUE (default), compute network loadings (EGAnet
+  Logical; if `TRUE` (default), compute network loadings (EGAnet
   net.loads) for communities.
 
 - boot_what:
@@ -185,52 +181,75 @@ multimixMN(
   options are: `"general_index"` (intralayer centrality indices),
   `"interlayer_index"` (interlayer-only node metrics), `"bridge_index"`
   (bridge metrics for nodes in communities), `"excluded_index"` (bridge
-  metrics for nodes treated as excluded), `"community"` (bootstrap
-  community memberships), `"loadings"` (bootstrap within-layer community
-  loadings, only if `compute_loadings = TRUE`), and `"none"` (skip all
-  node-level bootstrap: only edge-weight bootstrap is performed if
-  `reps > 0`).
+  metrics for nodes treated as excluded), `"community"` (community
+  memberships), `"loadings"` (within-layer community loadings, only if
+  `compute_loadings = TRUE`), and `"none"` (skip all node-level
+  bootstrap: only edge-weight bootstrap is performed if `reps > 0`).
 
 - save_data:
 
-  Logical; if TRUE, store the original data in the output object.
+  Logical; if `TRUE`, store the original data in the output object.
 
 - progress:
 
-  Logical; if `TRUE` (default), show a bootstrap progress bar when the
-  progressr package is available.
+  Logical; if `TRUE` (default), show a bootstrap progress bar.
 
 ## Value
 
 An object of class `c("mixmashnet", "multimixMN_fit")`. The returned
 list contains at least the following components:
 
-- `call`: the matched function call.
+- `call`:
 
-- `settings`: list of main settings (e.g., `reps`, `cluster_method`,
-  `covariates`, `exclude_from_cluster`, `treat_singletons_as_excluded`,
-  `boot_what`).
+  The matched function call.
 
-- `model`: list with the fitted masked `mgm` object and basic
-  information on the data (`nodes`, `n`, `p`).
+- `data_info`:
 
-- `layers`: list describing the multilayer structure (assignment of
-  nodes to layers, `layer_rules` matrix used and color of each layer in
+  List with information derived from the input data used for model
+  setup: `mgm_type_level` (data frame with one row per variable,
+  reporting the original R class and the inferred MGM `type` and
+  `level`, as used in the call to
+  [`mgm::mgm`](https://rdrr.io/pkg/mgm/man/mgm.html)), and
+  `binary_recode_map` (named list describing the mapping from original
+  binary labels to the internal {0,1} coding used for model fitting).
+
+- `settings`:
+
+  List of main settings used in the call, including `reps`,
+  `cluster_method`, `covariates`, `exclude_from_cluster`,
+  `treat_singletons_as_excluded`, `boot_what`).
+
+- `model`:
+
+  List with: `mgm` (the fitted `mgm` object), `nodes` (character vector
+  of all node names), `n` (number of observations), `p` (number of
+  variables), and `data`.
+
+- `layers`:
+
+  List describing the multilayer structure (assignment of nodes to
+  layers, `layer_rules` matrix used and color of each layer in
   `palette`).
 
-- `layer_fits`: named list (one element per layer) with single layer
-  fits, including community structure, node-level statistics, edge-level
-  statistics, bridge metrics, and (optionally) community loadings with
-  bootstrap information.
+- `layer_fits`:
 
-- `interlayer`: list collecting interlayer-only node metrics (strength,
-  expected influence, closeness, betweenness, with or without bootstrap)
-  and cross-layer edge summaries for each allowed pair of layers.
+  Named list (one element per layer) with single layer fits, including
+  community structure, node-level statistics, edge-level statistics,
+  bridge metrics, and (optionally) community loadings with bootstrap
+  information.
 
-- `graph`: list containing a global igraph object built on the retained
-  nodes (`keep_nodes_graph`), with vertex attributes such as `name`,
-  `layer`, `membership`, and edge attributes such as `weight`,
-  `abs_weight`, `sign`, `type` (intra vs inter) and `layer_pair`.
+- `interlayer`:
+
+  List collecting interlayer-only node metrics (strength, expected
+  influence, closeness, betweenness, with or without bootstrap) and
+  cross-layer edge summaries for each allowed pair of layers.
+
+- `graph`:
+
+  List containing a global igraph object built on the retained nodes
+  (`keep_nodes_graph`), with vertex attributes such as `name`, `layer`,
+  `membership`, and edge attributes such as `weight`, `abs_weight`,
+  `sign`, `type` (intra vs inter) and `layer_pair`.
 
 ## Details
 
@@ -240,7 +259,7 @@ To enable parallel bootstrap, set a plan (e.g.
 `future::plan(multisession)`) before calling `multimixMN()`. If `"none"`
 is the only element of `boot_what` and `reps > 0`, node-level metrics
 are not bootstrapped, but intra and interlayer edge-weight bootstrap and
-the corresponding confidence intervals are still computed.
+the corresponding quantile regions are still computed.
 
 ## References
 

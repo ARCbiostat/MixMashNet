@@ -2,8 +2,9 @@
 
 Identifies which communities contribute most to the bridge role of a
 given node, by decomposing its bridge connectivity into
-community-specific contributions. The function is designed as an
-interpretative companion to [`bridge_metrics()`](bridge_metrics.md) and
+community-specific contributions, excluding its own community when
+assigned. The function is designed as an interpretative companion to
+[`bridge_metrics()`](bridge_metrics.md) and
 [`bridge_metrics_excluded()`](bridge_metrics_excluded.md), providing the
 components underlying the corresponding overall bridge indices.
 
@@ -26,7 +27,8 @@ find_bridge_communities(fit, node)
 
 ## Value
 
-A list with the following components:
+An object of class `"bridge_profiles"` (a named list) with the following
+components:
 
 - `bridge_strength`:
 
@@ -71,3 +73,7 @@ Notes:
   pairs of nodes in different communities that pass through the focal
   node as an intermediate vertex. When multiple shortest paths exist,
   each path is counted separately.
+
+The returned object has class `"bridge_profiles"` and a dedicated
+[`print()`](https://rdrr.io/r/base/print.html) method
+(`print.bridge_profiles`) for convenient inspection.

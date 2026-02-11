@@ -3,7 +3,7 @@
  
 
 **MixMashNet** is an R package that provides a unified framework for
-estimating and analysing single-layer and multilayer networks using
+estimating and analysing single layer and multilayer networks using
 **Mixed Graphical Models (MGMs)**.
 
 The package is designed for the analysis of complex biomedical and
@@ -17,12 +17,12 @@ categorical), both within and across multiple layers.
 
 MixMashNet provides tools for:
 
-- estimation of homogeneous and heterogeneous MGM networks;
+- estimation of MGM networks;
 - specification and estimation of multilayer network structures;
-- bootstrap-based confidence intervals for edges and node-level indices;
+- bootstrap-based stability for edges and node-level indices;
 - computation of centrality and bridge metrics;
 - assessment of membership stability and community scores;
-- visualisation of networks and associated metrics, including
+- visualization of networks and associated metrics, including
   interactive exploration via **Shiny** applications.
 
 ------------------------------------------------------------------------

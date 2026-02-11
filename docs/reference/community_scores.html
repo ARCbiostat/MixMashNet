@@ -3,21 +3,19 @@
 weighted sums of the variables belonging to each detected community, where
 weights correspond to the standardized community loadings estimated via
 EGAnet::net.loads and stored in the fitted mixMN_fit object.
-By default, the function returns z-standardized community scores.
 Scores are computed using the dataset provided via the data argument.
 If data = NULL, the original dataset used to fit the model
 (fit$model$data) is used by default.
-Optionally, percentile bootstrap confidence intervals for the community
+Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 fit$community_loadings$boot."><meta property="og:description" content="Computes subject-level community scores. Community scores are obtained as
 weighted sums of the variables belonging to each detected community, where
 weights correspond to the standardized community loadings estimated via
 EGAnet::net.loads and stored in the fitted mixMN_fit object.
-By default, the function returns z-standardized community scores.
 Scores are computed using the dataset provided via the data argument.
 If data = NULL, the original dataset used to fit the model
 (fit$model$data) is used by default.
-Optionally, percentile bootstrap confidence intervals for the community
+Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 fit$community_loadings$boot."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -61,12 +59,11 @@ fit$community_loadings$boot."></head><body>
     <p>Computes subject-level community scores. Community scores are obtained as
 weighted sums of the variables belonging to each detected community, where
 weights correspond to the standardized community loadings estimated via
-<code><a href="https://r-ega.net/reference/net.loads.html" class="external-link">EGAnet::net.loads</a></code> and stored in the fitted <code>mixMN_fit</code> object.</p>
-<p>By default, the function returns z-standardized community scores.</p>
-<p>Scores are computed using the dataset provided via the <code>data</code> argument.
+<code><a href="https://r-ega.net/reference/net.loads.html" class="external-link">EGAnet::net.loads</a></code> and stored in the fitted <code>mixMN_fit</code> object.
+Scores are computed using the dataset provided via the <code>data</code> argument.
 If <code>data = NULL</code>, the original dataset used to fit the model
-(<code>fit$model$data</code>) is used by default.</p>
-<p>Optionally, percentile bootstrap confidence intervals for the community
+(<code>fit$model$data</code>) is used by default.
+Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 <code>fit$community_loadings$boot</code>.</p>
     </div>
@@ -78,8 +75,8 @@ scores can be computed if bootstrap community loadings are available in
 <span>  data <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  layer <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  scale <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  conf_level <span class="op">=</span> <span class="fl">0.95</span>,</span>
-<span>  return_ci <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  quantile_level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  return_quantile_region <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  na_action <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stop"</span>, <span class="st">"omit"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -108,14 +105,14 @@ If NULL, scores are computed for all layers and returned as a named list.</p></d
 for scoring, using the mean/SD computed from the dataset used for scoring.</p></dd>
 
 
-<dt id="arg-conf-level">conf_level<a class="anchor" aria-label="anchor" href="#arg-conf-level"></a></dt>
-<dd><p>Optional numeric in (0,1), e.g. 0.95 or 0.99. If provided,
-percentile bootstrap confidence intervals are computed for community scores
+<dt id="arg-quantile-level">quantile_level<a class="anchor" aria-label="anchor" href="#arg-quantile-level"></a></dt>
+<dd><p>Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
+percentile bootstrap quantile regions are computed for community scores
 (requires <code>fit$community_loadings$boot</code>).</p></dd>
 
 
-<dt id="arg-return-ci">return_ci<a class="anchor" aria-label="anchor" href="#arg-return-ci"></a></dt>
-<dd><p>Logical; if <code>TRUE</code>, return CIs.</p></dd>
+<dt id="arg-return-quantile-region">return_quantile_region<a class="anchor" aria-label="anchor" href="#arg-return-quantile-region"></a></dt>
+<dd><p>Logical; if <code>TRUE</code>, return quantile regions.</p></dd>
 
 
 <dt id="arg-na-action">na_action<a class="anchor" aria-label="anchor" href="#arg-na-action"></a></dt>
@@ -132,7 +129,7 @@ weights within community for that row).</p></dd>
 <dd><p>The matched call.</p></dd>
 
   <dt><code>settings</code></dt>
-<dd><p>List with <code>scale</code>, <code>conf_level</code>, and <code>na_action</code>.</p></dd>
+<dd><p>List with <code>scale</code>, <code>quantile_level</code>, and <code>na_action</code>.</p></dd>
 
   <dt><code>ids</code></dt>
 <dd><p>Character vector of subject IDs (rownames of <code>data</code>).</p></dd>
@@ -143,9 +140,9 @@ weights within community for that row).</p></dd>
   <dt><code>scores</code></dt>
 <dd><p>Numeric matrix of scores (n × K).</p></dd>
 
-  <dt><code>ci</code></dt>
+  <dt><code>quantile_region</code></dt>
 <dd><p>If requested and available, a list with <code>lower</code> and <code>upper</code>
-    matrices (n × K) for percentile bootstrap CIs; otherwise <code>NULL</code>.</p></dd>
+    matrices (n × K) for percentile bootstrap quantile regions; otherwise <code>NULL</code>.</p></dd>
 
   <dt><code>details</code></dt>
 <dd><p>List containing <code>nodes_used</code>, <code>loadings_true</code>,

@@ -1,20 +1,18 @@
-# Estimate single layer MGM network with bootstrap centrality, bridge metrics, clustering, and (optionally) community scores with CIs
+# Estimate single layer MGM network with bootstrap centrality, bridge metrics, clustering, and (optionally) community score loadings
 
 Estimates a single layer Mixed Graphical Model (MGM) network on the
 original data, using the estimation framework implemented in the mgm
 package, and performs non-parametric bootstrap (row resampling) to
 compute centrality indices, bridge metrics, clustering stability, and
-confidence intervals (CIs) for node metrics and edge weights.
-Optionally, the function computes community score loadings (for later
-prediction on new data) and can bootstrap the corresponding loadings.
+quantile regions for node metrics and edge weights. Optionally, the
+function computes community score loadings (for later prediction on new
+data) and can bootstrap the corresponding loadings.
 
 ## Usage
 
 ``` r
 mixMN(
   data,
-  type,
-  level,
   reps = 100,
   scale = TRUE,
   lambdaSel = c("CV", "EBIC"),
@@ -29,7 +27,7 @@ mixMN(
   threshold = "LW",
   overparameterize = FALSE,
   thresholdCat = TRUE,
-  conf_level = 0.95,
+  quantile_level = 0.95,
   covariates = NULL,
   exclude_from_cluster = NULL,
   treat_singletons_as_excluded = FALSE,
@@ -48,12 +46,16 @@ mixMN(
 
 - data:
 
-  Matrix or data.frame (n x p) with variables in columns.
-
-- type, level:
-
-  Vectors as required by
-  [`mgm::mgm`](https://rdrr.io/pkg/mgm/man/mgm.html).
+  A `data.frame` (n x p) with variables in columns. Variables may be
+  numeric, integer, logical, or factors. Character and Date/POSIXt
+  variables are not supported and must be converted prior to model
+  fitting. Variable types are internally mapped to MGM types as follows:
+  numeric variables are treated as Gaussian; integer variables are
+  treated as Poisson unless they take only values in {0,1}, in which
+  case they are treated as binary categorical; factors and logical
+  variables are treated as categorical. Binary categorical variables
+  (two-level factors and logical variables) are internally recoded to
+  {0,1} for model fitting. The original input data are not modified.
 
 - reps:
 
@@ -115,15 +117,15 @@ mixMN(
   Logical; if `FALSE` thresholds of categorical variables are set to
   zero.
 
-- conf_level:
+- quantile_level:
 
-  Confidence level for percentile bootstrap CIs (default 0.95). Must be
+  Level of the central bootstrap quantile region (default 0.95). Must be
   a single number between 0 and 1.
 
 - covariates:
 
-  Character vector. Nodes excluded from the graph and from all
-  node-level metrics.
+  Character vector. Variables used as adjustment covariates in model
+  estimation.
 
 - exclude_from_cluster:
 
@@ -135,10 +137,14 @@ mixMN(
   Logical; if `TRUE`, singleton communities (size 1) are treated as
   excluded nodes when computing bridge metrics.
 
-- seed_model, seed_boot:
+- seed_model:
 
-  Optional numeric seeds for reproducibility of the original MGM fit and
-  bootstrap replications, respectively.
+  Optional integer seed for reproducibility of the initial MGM fit.
+
+- seed_boot:
+
+  Optional integer seed passed to `future.apply` for reproducibility of
+  bootstrap replications.
 
 - cluster_method:
 
@@ -147,39 +153,26 @@ mixMN(
 
 - compute_loadings:
 
-  Logical; if TRUE (default), compute network loadings (EGAnet
+  Logical; if `TRUE` (default), compute network loadings (EGAnet
   net.loads) for communities.
 
 - boot_what:
 
-  Character vector specifying which quantities to bootstrap. Can
-  include:
-
-  - `"general_index"`: strength, expected influence 1-step, harmonic
-    closeness, betweenness.
-
-  - `"bridge_index"`: bridge strength, bridge expected influence 1- and
-    2-step, bridge closeness, bridge betweenness (nodes in communities).
-
-  - `"excluded_index"`: bridge metrics for nodes excluded from
-    communities (or treated as such).
-
-  - `"community"`: bootstrap community memberships.
-
-  - `"loadings"`: bootstrap loadings (only if
-    `compute_loadings = TRUE`).
-
-  - `"none"`: skip node-level bootstrap (edge-weight bootstrap is still
-    performed if `reps > 0`).
+  Character vector specifying which quantities to bootstrap. Valid
+  options are: `"general_index"` (centrality indices), `"bridge_index"`
+  (bridge metrics for nodes in communities), `"excluded_index"` (bridge
+  metrics for nodes treated as excluded), `"community"` (community
+  memberships), `"loadings"` (community loadings, only if
+  `compute_loadings = TRUE`), and `"none"` (skip all node-level
+  bootstrap: only edge-weight bootstrap is performed if `reps > 0`).
 
 - save_data:
 
-  Logical; if TRUE, store the original data in the output object.
+  Logical; if `TRUE`, store the original data in the output object.
 
 - progress:
 
-  Logical; if `TRUE` (default), show a bootstrap progress bar when the
-  progressr package is available.
+  Logical; if `TRUE` (default), show a bootstrap progress bar.
 
 ## Value
 
@@ -195,6 +188,16 @@ the following top-level components:
   List of main settings used in the call, including `reps`,
   `cluster_method`, `covariates`, `exclude_from_cluster`,
   `treat_singletons_as_excluded`, and `boot_what`.
+
+- `data_info`:
+
+  List with information derived from the input data used for model
+  setup: `mgm_type_level` (data frame with one row per variable,
+  reporting the original R class and the inferred MGM `type` and
+  `level`, as used in the call to
+  [`mgm::mgm`](https://rdrr.io/pkg/mgm/man/mgm.html)), and
+  `binary_recode_map` (named list describing the mapping from original
+  binary labels to the internal {0,1} coding used for model fitting).
 
 - `model`:
 
@@ -233,16 +236,17 @@ the following top-level components:
   `bridge_ei1_excluded`, `bridge_ei2_excluded`); `boot` (list of
   bootstrap matrices for each metric, each of dimension
   `reps x length(keep_nodes_graph)`, possibly `NULL` if the metric was
-  not requested or if `reps = 0`); and `ci` (list of CIs for each node
-  metric, one `p x 2` matrix per metric, with columns `2.5%` and
-  `97.5%`, or `NULL` if no bootstrap was performed).
+  not requested or if `reps = 0`); and `quantile_region` (list of
+  quantile regions for each node metric, one `p x 2` matrix per metric,
+  with columns corresponding to the lower and upper quantile bounds
+  implied by `quantile_level`, or `NULL` if no bootstrap was performed).
 
   `edge` is a list with: `true` (data frame with columns `edge` and
   `weight` for all unique undirected edges among `keep_nodes_graph`);
   `boot` (matrix of bootstrap edge weights of dimension
-  `n_edges x reps`); and `ci` (matrix of CIs for edge weights,
-  `n_edges x 2`, with columns `2.5%` and `97.5%`, or `NULL` if
-  `reps = 0`).
+  `n_edges x reps`); and `quantile_region` (matrix of quantile regions
+  for edge weights, `n_edges x 2`, with columns corresponding to the
+  lower and upper bootstrap quantile bounds, or `NULL` if `reps = 0`).
 
 - `community_loadings`:
 
@@ -261,7 +265,8 @@ This function does **not** call
 To enable parallel bootstrap, set a plan (e.g.
 `future::plan(multisession)`) before calling `mixMN()`. If `boot_what`
 is `"none"` and `reps > 0`, node-level metrics are not bootstrapped but
-edge-weight bootstrap and corresponding CIs are still computed.
+edge-weight bootstrap and corresponding quantile regions are still
+computed.
 
 ## References
 

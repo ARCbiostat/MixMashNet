@@ -22,17 +22,17 @@ bridge_metrics(g, membership)
 
 - g:
 
-  An igraph object with edge attribute \`weight\`.
+  An igraph object with edge attribute `weight`.
 
 - membership:
 
   Named vector/factor of community labels for a subset of nodes (names
-  must match \`V(g)\$name\`).
+  must match `V(g)$name`).
 
 ## Value
 
-A data.frame with columns: node, cluster, bridge_strength, bridge_ei1,
-bridge_ei2, bridge_betweenness, bridge_closeness.
+A data.frame with columns: `node`, `cluster`, `bridge_strength`,
+`bridge_ei1`, `bridge_ei2`, `bridge_betweenness`, `bridge_closeness`.
 
 ## Details
 

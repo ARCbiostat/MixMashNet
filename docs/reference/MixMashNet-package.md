@@ -6,14 +6,17 @@ and categorical variables. In the multilayer setting, layers may
 comprise different types and numbers of variables, and users can
 explicitly impose a predefined multilayer topology to constrain the
 estimation of inter and intralayer connections. The package implements
-bootstrap procedures to derive confidence intervals for edge weights and
+bootstrap procedures to derive quantile regions for edge weights and
 node-level centrality and bridge metrics, and provides tools to assess
 the stability of node community membership. In addition, subject-level
 community scores can be computed to summarize the latent dimensions
-identified through network clustering, facilitating downstream
-statistical analyses.
+identified through network clustering.
 
 ## References
+
+De Martino, M., Triolo, F., Perigord, A., Ornago, A. M., Vetrano, D. L.,
+Gregorio, C. (2026). MixMashNet: An R Package for Single and Multilayer
+Networks. <https://arxiv.org/abs/2602.05716>
 
 Christensen, A. P., & Golino, H. (2021). Estimating the Stability of
 Psychological Dimensions via Bootstrap Exploratory Graph Analysis: A

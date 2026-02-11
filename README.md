@@ -18,7 +18,7 @@ With MixMashNet you can:
   networks**  
 - compute **centrality** and **bridge centrality** indices  
 - assess **community stability** via non-parametric bootstrap  
-- obtain **confidence intervals** for node metrics and edge weights  
+- obtain **quantile regions** for node metrics and edge weights  
 - visualize and explore the resulting networks interactively
 
 In short: a bit of *mix*, a bit of *mash*, and you’re ready to build
@@ -110,7 +110,7 @@ fit1 <- mixMN(
   cluster_method     = "infomap",
   covariates         = c("age", "sex", "re")
 )
-#> Total computation time: 20.2 seconds (~ 0.34 minutes).
+#> Total computation time: 20.3 seconds (~ 0.34 minutes).
 ```
 
 Plot item stability:
@@ -144,7 +144,7 @@ fit2 <- mixMN(
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
-#> Total computation time: 7.7 seconds (~ 0.13 minutes).
+#> Total computation time: 7.9 seconds (~ 0.13 minutes).
 ```
 
 Recompute stability:
@@ -169,8 +169,7 @@ plot(fit2)
 
 ### Edge weights
 
-We can compute the edge weights with their 95% confidence intervals.  
-Confidence intervals that include zero are shown in grey.
+We can compute the edge weights with their 95% quantile regions.
 
 ``` r
 plot(fit2, statistics = "edges")
@@ -181,9 +180,8 @@ plot(fit2, statistics = "edges")
 ### General centrality indices
 
 We can compute standard node centrality indices (strength, expected
-influence, closeness, and betweenness) together with their 95%
-confidence intervals. Confidence intervals that include zero are
-highlighted in grey.
+influence, closeness, and betweenness) together with their 95% quantile
+regions.
 
 ``` r
 plot(fit2,
@@ -198,7 +196,7 @@ plot(fit2,
 Bridge centrality indices quantify the role of each node as a connector
 between different communities. Here we display bridge strength, bridge
 expected influence (EI1 and EI2), bridge closeness, and bridge
-betweenness, with their 95% confidence intervals.
+betweenness, with their 95% quantile regions.
 
 ``` r
 plot(

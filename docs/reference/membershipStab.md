@@ -72,7 +72,3 @@ Christensen, A. P., & Golino, H. (2021). Estimating the Stability of
 Psychological Dimensions via Bootstrap Exploratory Graph Analysis: A
 Monte Carlo Simulation and Tutorial. *Psych*, 3(3), 479–500.
 [doi:10.3390/psych3030032](https://doi.org/10.3390/psych3030032)
-
-## See also
-
-[`plot.mixmashnet`](plot.mixmashnet.md)

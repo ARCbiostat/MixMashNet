@@ -7,11 +7,12 @@ and [`multimixMN()`](multimixMN.md). Depending on `what`, it can:
   multilayer);
 
 - `what = "intra"`: plot intralayer node/edge statistics with bootstrap
-  CIs at the level stored in the object (centrality and bridge metrics);
+  quantile regions at the level stored in the object (centrality and
+  bridge metrics);
 
 - `what = "inter"`: plot interlayer node metrics or interlayer edge
-  weights with bootstrap CIs at the level stored in the object
-  (multilayer only), and the chosen `statistics`;
+  weights with bootstrap quantile regions at the level stored in the
+  object (multilayer only), and the chosen `statistics`;
 
 - `what = "stability"`: plot node stability within communities based on
   bootstrap community assignments.

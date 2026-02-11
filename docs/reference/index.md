@@ -25,10 +25,10 @@
 
 - [`mixMN()`](mixMN.md) : Estimate single layer MGM network with
   bootstrap centrality, bridge metrics, clustering, and (optionally)
-  community scores with CIs
+  community score loadings
 
 - [`multimixMN()`](multimixMN.md) : Multilayer MGM with bootstrap,
-  intra/interlayer metrics, and CIs
+  intra/interlayer metrics, and quantile regions
 
 - [`nhanes`](nhanes.md) : NHANES dataset
 

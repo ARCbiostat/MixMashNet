@@ -25,7 +25,7 @@ With MixMashNet you can:
 - estimate **single-layer networks** or more complex **multilayer networks**  
 - compute **centrality** and **bridge centrality** indices  
 - assess **community stability** via non-parametric bootstrap  
-- obtain **confidence intervals** for node metrics and edge weights  
+- obtain **quantile regions** for node metrics and edge weights  
 - visualize and explore the resulting networks interactively  
 
 In short: a bit of *mix*, a bit of *mash*, and you’re ready to build your network!
@@ -161,8 +161,7 @@ plot(fit2)
 
 ### Edge weights 
 
-We can compute the edge weights with their 95% confidence intervals.  
-Confidence intervals that include zero are shown in grey.  
+We can compute the edge weights with their 95% quantile regions.  
 
 ```{r}
 plot(fit2, statistics = "edges")
@@ -170,8 +169,7 @@ plot(fit2, statistics = "edges")
 
 ### General centrality indices
 
-We can compute standard node centrality indices (strength, expected influence, closeness, and betweenness) together with their 95% confidence intervals.
-Confidence intervals that include zero are highlighted in grey.
+We can compute standard node centrality indices (strength, expected influence, closeness, and betweenness) together with their 95% quantile regions.
 
 ```{r}
 plot(fit2,
@@ -182,7 +180,7 @@ plot(fit2,
 ### Bridge centrality indices
 
 Bridge centrality indices quantify the role of each node as a connector between different communities.
-Here we display bridge strength, bridge expected influence (EI1 and EI2), bridge closeness, and bridge betweenness, with their 95% confidence intervals.
+Here we display bridge strength, bridge expected influence (EI1 and EI2), bridge closeness, and bridge betweenness, with their 95% quantile regions.
 
 ```{r}
 plot(

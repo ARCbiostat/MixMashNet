@@ -17,12 +17,12 @@ within and across multiple layers.
 
 MixMashNet provides tools for:
 
-- estimation of homogeneous and heterogeneous MGM networks;
+- estimation of MGM networks;
 - specification and estimation of multilayer network structures;
-- bootstrap-based confidence intervals for edges and node-level indices;
+- bootstrap-based stability for edges and node-level indices;
 - computation of centrality and bridge metrics;
 - assessment of membership stability and community scores;
-- visualisation of networks and associated metrics, including interactive
+- visualization of networks and associated metrics, including interactive
   exploration via **Shiny** applications.
 
 ---

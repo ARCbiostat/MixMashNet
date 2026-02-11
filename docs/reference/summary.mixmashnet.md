@@ -1,8 +1,8 @@
 # Summarize MixMashNet fits (single and multilayer) in long format
 
-Summarizes fitted MixMashNet objects (single and multilayer) in long
-format. The summary includes the original estimates and, when available,
-bootstrap means, standard errors, and confidence intervals.
+Summarizes fitted MixMashNet objects (single and multilayer). The
+summary includes the original estimates and, when available, bootstrap
+means, standard errors, and quantile regions.
 
 ## Usage
 
@@ -79,8 +79,8 @@ summary(
 
 A list (class `"summary.mixmashnet"`) with up to four data frames
 (`$index`, `$edges`, `$interlayer_index`, `$interlayer_edges`) and the
-confidence level used to compute the bootstrap confidence intervals
-(`$conf_level`).
+quantile region used to compute the bootstrap quantile regions
+(`$quantile_level`).
 
 Depending on `what` and `statistics`, some of these elements may be
 `NULL`.

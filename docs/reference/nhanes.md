@@ -116,8 +116,8 @@ A data frame with 2759 rows and 29 variables:
 
 - Work:
 
-  Employment status (1–4: working; employed but absent; seeking work;
-  not working).
+  Employment status with 1=working, 2=employed but absent, 3=seeking
+  work, 4=not working.
 
 - MonInc:
 

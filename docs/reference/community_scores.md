@@ -5,15 +5,10 @@ as weighted sums of the variables belonging to each detected community,
 where weights correspond to the standardized community loadings
 estimated via
 [`EGAnet::net.loads`](https://r-ega.net/reference/net.loads.html) and
-stored in the fitted `mixMN_fit` object.
-
-By default, the function returns z-standardized community scores.
-
-Scores are computed using the dataset provided via the `data` argument.
-If `data = NULL`, the original dataset used to fit the model
-(`fit$model$data`) is used by default.
-
-Optionally, percentile bootstrap confidence intervals for the community
+stored in the fitted `mixMN_fit` object. Scores are computed using the
+dataset provided via the `data` argument. If `data = NULL`, the original
+dataset used to fit the model (`fit$model$data`) is used by default.
+Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 `fit$community_loadings$boot`.
 
@@ -25,8 +20,8 @@ community_scores(
   data = NULL,
   layer = NULL,
   scale = TRUE,
-  conf_level = 0.95,
-  return_ci = FALSE,
+  quantile_level = 0.95,
+  return_quantile_region = FALSE,
   na_action = c("stop", "omit")
 )
 ```
@@ -55,15 +50,15 @@ community_scores(
   Logical; if `TRUE` (default), z-standardize variables used for
   scoring, using the mean/SD computed from the dataset used for scoring.
 
-- conf_level:
+- quantile_level:
 
-  Optional numeric in (0,1), e.g. 0.95 or 0.99. If provided, percentile
-  bootstrap confidence intervals are computed for community scores
-  (requires `fit$community_loadings$boot`).
+  Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
+  percentile bootstrap quantile regions are computed for community
+  scores (requires `fit$community_loadings$boot`).
 
-- return_ci:
+- return_quantile_region:
 
-  Logical; if `TRUE`, return CIs.
+  Logical; if `TRUE`, return quantile regions.
 
 - na_action:
 
@@ -83,7 +78,7 @@ A list with class `c("mixmashnet","community_scores")` containing:
 
 - `settings`:
 
-  List with `scale`, `conf_level`, and `na_action`.
+  List with `scale`, `quantile_level`, and `na_action`.
 
 - `ids`:
 
@@ -97,10 +92,10 @@ A list with class `c("mixmashnet","community_scores")` containing:
 
   Numeric matrix of scores (n × K).
 
-- `ci`:
+- `quantile_region`:
 
   If requested and available, a list with `lower` and `upper` matrices
-  (n × K) for percentile bootstrap CIs; otherwise `NULL`.
+  (n × K) for percentile bootstrap quantile regions; otherwise `NULL`.
 
 - `details`:
 

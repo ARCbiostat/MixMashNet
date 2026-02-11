@@ -19,7 +19,9 @@ and [`multimixMN()`](multimixMN.md). The method reports:
 - covariates used for adjustment and nodes excluded from the graph
   and/or clustering;
 
-- main settings for community detection and bootstrap.
+- main settings for community detection and bootstrap;
+
+- data info.
 
 ## Usage
 
@@ -32,8 +34,8 @@ print(x, ...)
 
 - x:
 
-  An object of class `mixmashnet`, typically returned by
-  [`mixMN()`](mixMN.md) or [`multimixMN()`](multimixMN.md).
+  An object of class `mixmashnet`, returned by [`mixMN()`](mixMN.md) or
+  [`multimixMN()`](multimixMN.md).
 
 - ...:
 

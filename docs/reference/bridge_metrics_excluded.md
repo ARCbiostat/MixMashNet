@@ -16,20 +16,19 @@ bridge_metrics_excluded(g, membership)
 
 - g:
 
-  An `igraph` graph. If edge attribute `weight` is missing, unweighted
-  adjacency (1 for edges, 0 otherwise) is used.
+  An igraph object with edge attribute `weight`.
 
 - membership:
 
-  A named vector/factor of community labels for a subset of nodes; names
-  must match `V(g)$name`. Nodes not present here are treated as
+  Named vector/factor of community labels for a subset of nodes (names
+  must match `V(g)$name`). Nodes not present here are treated as
   excluded.
 
 ## Value
 
-A data.frame with columns: node, bridge_strength, bridge_closeness,
-bridge_betweenness, bridge_expected_influence1,
-bridge_expected_influence2, cluster.
+A data.frame with columns: `node`, `cluster`, `bridge_strength`,
+`bridge_closeness`, `bridge_betweenness`, `bridge_expected_influence1`,
+`bridge_expected_influence2`.
 
 ## Details
 
