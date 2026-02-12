@@ -57,8 +57,10 @@
 #' @param cluster_method Community detection algorithm used on the network:
 #'   \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
-#' @param compute_loadings Logical; if \code{TRUE} (default),
-#'   compute network loadings (EGAnet net.loads) for communities.
+#' @param compute_loadings Logical; if \code{TRUE} (default), compute community loadings
+#'   (\code{EGAnet::net.loads}). Only supported for \code{"g"}, \code{"p"}, and binary
+#'   \code{"c"} nodes; otherwise loadings are skipped and the reason is
+#'   stored in \code{community_loadings$reason}.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Valid options are:
 #'    \code{"general_index"} (centrality indices),
@@ -98,7 +100,7 @@
 #'     \code{nodes} (character vector of all node names),
 #'     \code{n} (number of observations),
 #'     \code{p} (number of variables), and
-#'     \code{data}.
+#'     \code{data} (if \code{save_data = TRUE}).
 #'   }
 #'   \item{\code{graph}}{
 #'     List describing the graph:
@@ -154,12 +156,19 @@
 #'     List containing community-loading information (based on
 #'     \code{EGAnet::net.loads}) for later community-score computation on new
 #'     data:
-#'     \code{nodes} (nodes used for loadings),
+#'     \code{nodes}(nodes used for loadings),
 #'     \code{wc} (integer community labels aligned with \code{nodes}),
-#'     \code{true} (matrix of standardized loadings, nodes x communities),
-#'     and \code{boot} (list of bootstrap loading matrices, one per replication,
-#'     or \code{NULL} if not bootstrapped).
-#'   }
+#'     \code{true} (matrix of standardized loadings, nodes x communities,
+#'     or \code{NULL} if loadings were not computed.),
+#'     \code{boot} (list of bootstrap loading matrices, one per replication,
+#'     or \code{NULL} if not bootstrapped),
+#'     \code{available} (logical indicating whether loadings were computed),
+#'     \code{reason} (character string explaining why loadings were not computed,
+#'         or \code{NULL} if \code{available = TRUE}),
+#'     \code{non_scorable_nodes} (character vector of nodes in the community
+#'         subgraph that prevented loadings from being computed (e.g., categorical variables
+#'         with >2 levels), otherwise empty).
+#'     }
 #'   }
 #'
 #' @details
@@ -420,8 +429,39 @@ mixMN <- function(
   wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
   wc_comm_int <- unname(wc_map[as.integer(wc_comm)])
 
-  if (isTRUE(compute_loadings) && length(nodes_comm) > 1) {
+  # ---- Loadings eligibility (based on inferred MGM type/level) ----
+  type_vec  <- stats::setNames(type,  all_nodes)
+  level_vec <- stats::setNames(level, all_nodes)
 
+  is_scorable_node <- function(nm) {
+    tt <- type_vec[[nm]]
+    ll <- level_vec[[nm]]
+    (tt %in% c("g","p")) || (tt == "c" && !is.na(ll) && ll == 2L)
+  }
+
+  loadings_available <- FALSE
+  loadings_reason <- NULL
+  non_scorable_nodes <- character(0)
+
+  if (isTRUE(compute_loadings) && length(nodes_comm) > 1) {
+    ok_nodes <- vapply(nodes_comm, is_scorable_node, logical(1))
+
+    if (!all(ok_nodes)) {
+      loadings_available <- FALSE
+      non_scorable_nodes <- nodes_comm[!ok_nodes]
+      loadings_reason <- paste0(
+        "Loadings not computed: categorical variables with >2 levels found (MGM type 'c' with level>2). ",
+        "Community scores are only supported for 'g', 'p', and binary 'c' (level==2)."
+      )
+
+      community_loadings_true <- NULL
+      compute_loadings <- FALSE
+    } else {
+      loadings_available <- TRUE
+    }
+  }
+
+  if (isTRUE(loadings_available) && length(nodes_comm) > 1) {
     loads_obj <- tryCatch(
       .quiet_net_loads(
         A = A_comm,
@@ -436,7 +476,8 @@ mixMN <- function(
       community_loadings_true <- loads_obj$std
       community_loadings_true <- community_loadings_true[nodes_comm, , drop = FALSE]
     } else {
-      community_loadings_true <- matrix(NA_real_, nrow = length(nodes_comm), ncol = length(unique(wc_comm_int)),
+      community_loadings_true <- matrix(NA_real_, nrow = length(nodes_comm),
+                                        ncol = length(unique(wc_comm_int)),
                                         dimnames = list(nodes_comm, paste0("C", seq_len(length(unique(wc_comm_int))))))
     }
   }
@@ -1085,7 +1126,10 @@ mixMN <- function(
       nodes = nodes_comm,
       wc    = wc_comm_int,
       true  = community_loadings_true,
-      boot  = community_loadings_boot
+      boot  = community_loadings_boot,
+      available = isTRUE(loadings_available),
+      reason = loadings_reason,
+      non_scorable_nodes = non_scorable_nodes
     )
   )
 

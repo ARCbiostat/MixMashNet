@@ -9,7 +9,7 @@ community_scores(
   data = NULL,
   layer = NULL,
   scale = TRUE,
-  quantile_level = 0.95,
+  quantile_level = NULL,
   return_quantile_region = FALSE,
   na_action = c("stop", "omit")
 )
@@ -18,7 +18,7 @@ community_scores(
 \item{fit}{A fitted object of class \code{c("mixmashnet","mixMN_fit", "multimixMN_fit")}
 returned by \code{mixMN()} or \code{multimixMN()}.}
 
-\item{data}{Optional matrix/data.frame with variables in columns. If
+\item{data}{Optional data.frame with variables in columns. If
 \code{NULL}, uses \code{fit$model$data}. Errors if both are \code{NULL}.}
 
 \item{layer}{Optional. If fit is a multimixMN_fit, specify which layer to score (name or index).
@@ -68,6 +68,10 @@ If \code{data = NULL}, the original dataset used to fit the model
 Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 \code{fit$community_loadings$boot}.
+Community scores are only available if community loadings were computed
+in the fitted model, which requires that all variables in the community
+subgraph are of MGM type \code{"g"} or \code{"p"}, or binary categorical
+(\code{type == "c"} with \code{level == 2}).
 }
 \details{
 The function requires that \code{fit$community_loadings$true} exists and that

@@ -1,4 +1,3 @@
-meta <- packageDescription("MixMashNet")
 year <- sub("-.*", "", meta$Date)
 vers <- sprintf("R package version: %s", meta$Version)
 

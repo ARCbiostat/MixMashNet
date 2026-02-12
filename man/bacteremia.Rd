@@ -31,7 +31,7 @@ data(bacteremia)
 \description{
 Example dataset used in MixMashNet examples. This dataset contains 7240
 patients with clinical suspicion of bacteremia who underwent blood culture testing
-at the Vienna General Hospital
+at the Vienna General Hospital.
 }
 \references{
 Ratzinger, F., Dedeyan, M., Rammerstorfer, M., Perkmann, T., Burgmann, H.,

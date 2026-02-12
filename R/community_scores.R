@@ -11,10 +11,14 @@
 #' Optionally, percentile bootstrap quantile regions for the community
 #' scores can be computed if bootstrap community loadings are available in
 #' \code{fit$community_loadings$boot}.
+#' Community scores are only available if community loadings were computed
+#' in the fitted model, which requires that all variables in the community
+#' subgraph are of MGM type \code{"g"} or \code{"p"}, or binary categorical
+#' (\code{type == "c"} with \code{level == 2}).
 #'
 #' @param fit A fitted object of class \code{c("mixmashnet","mixMN_fit", "multimixMN_fit")}
 #'   returned by \code{mixMN()} or \code{multimixMN()}.
-#' @param data Optional matrix/data.frame with variables in columns. If
+#' @param data Optional data.frame with variables in columns. If
 #'   \code{NULL}, uses \code{fit$model$data}. Errors if both are \code{NULL}.
 #' @param layer Optional. If fit is a multimixMN_fit, specify which layer to score (name or index).
 #'   If NULL, scores are computed for all layers and returned as a named list.
@@ -64,14 +68,18 @@ community_scores <- function(
     data = NULL,
     layer = NULL,
     scale = TRUE,
-    quantile_level = 0.95,
+    quantile_level = NULL,
     return_quantile_region = FALSE,
     na_action = c("stop", "omit")
 ) {
   na_action <- match.arg(na_action)
 
-  if (!missing(quantile_level)) {
+  if (!is.null(quantile_level)) {
     return_quantile_region <- TRUE
+  }
+
+  if (isTRUE(return_quantile_region) && is.null(quantile_level)) {
+    quantile_level <- 0.95
   }
 
   # ---- MULTI: compute per layer ----
@@ -136,9 +144,24 @@ community_scores <- function(
   }
 
   # ---- loadings ----
-  L_true <- fit$community_loadings$true
-  nodes  <- fit$community_loadings$nodes
-  wc     <- fit$community_loadings$wc
+  cl <- fit$community_loadings
+  if (is.null(cl) || !isTRUE(cl$available)) {
+    msg <- if (!is.null(cl$reason)) cl$reason else
+      "Community scores are not available for this fit (community loadings were not computed)."
+    if (!is.null(cl$non_scorable_nodes) && length(cl$non_scorable_nodes) > 0) {
+      msg <- paste0(
+        msg,
+        " Non-scorable nodes: ",
+        paste(utils::head(cl$non_scorable_nodes, 10), collapse = ", "),
+        if (length(cl$non_scorable_nodes) > 10) " ..." else ""
+      )
+    }
+    stop(msg)
+  }
+
+  L_true <- cl$true
+  nodes  <- cl$nodes
+  wc     <- cl$wc
 
   if (is.null(L_true) || is.null(nodes) || length(nodes) == 0) {
     stop("No community loadings found in `fit$community_loadings`. Did you run mixMN(compute_loadings = TRUE)?")
@@ -197,7 +220,39 @@ community_scores <- function(
     stop("`data` is missing required variables: ", paste(missing_vars, collapse = ", "))
   }
 
-  X <- as.matrix(data[, nodes, drop = FALSE])
+  # ---- build numeric X (robust to logical / binary factors) ----
+  bin_map <- fit$data_info$binary_recode_map
+  if (is.null(bin_map)) bin_map <- list()
+
+  dfX <- data[, nodes, drop = FALSE]
+
+  X <- sapply(nodes, function(nm) {
+    v <- dfX[[nm]]
+
+    if (is.numeric(v))  return(v)
+    if (is.integer(v))  return(as.numeric(v))
+    if (is.logical(v))  return(as.numeric(v))  # FALSE/TRUE -> 0/1
+
+    if (is.factor(v) || is.ordered(v)) {
+      lv <- levels(v)
+
+      if (length(lv) == 2L) {
+        m <- bin_map[[nm]]
+        if (!is.null(m)) {
+          return(as.numeric(m[as.character(v)]))
+        }
+        return(as.numeric(as.character(v) == lv[2L]))
+      }
+
+      stop("Cannot compute community scores: non-binary categorical variable '", nm, "'.")
+    }
+
+    stop("Unsupported variable class for scoring in '", nm, "': ", paste(class(v), collapse = "/"))
+  })
+
+  X <- as.matrix(X)
+  colnames(X) <- nodes
+  rownames(X) <- ids
 
   # ---- NA handling ----
   if (na_action == "stop" && anyNA(X)) {

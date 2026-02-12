@@ -105,8 +105,10 @@ reproducibility of bootstrap replications.}
 \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
-\item{compute_loadings}{Logical; if \code{TRUE} (default),
-compute network loadings (EGAnet net.loads) for communities.}
+\item{compute_loadings}{Logical; if \code{TRUE} (default), compute community loadings
+(\code{EGAnet::net.loads}). Only supported for \code{"g"}, \code{"p"}, and binary
+\code{"c"} nodes; otherwise loadings are skipped and the reason is
+stored in \code{community_loadings$reason}.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
 Valid options are:
@@ -149,7 +151,7 @@ the following top-level components:
     \code{nodes} (character vector of all node names),
     \code{n} (number of observations),
     \code{p} (number of variables), and
-    \code{data}.
+    \code{data} (if \code{save_data = TRUE}).
   }
   \item{\code{graph}}{
     List describing the graph:
@@ -205,12 +207,19 @@ the following top-level components:
     List containing community-loading information (based on
     \code{EGAnet::net.loads}) for later community-score computation on new
     data:
-    \code{nodes} (nodes used for loadings),
+    \code{nodes}(nodes used for loadings),
     \code{wc} (integer community labels aligned with \code{nodes}),
-    \code{true} (matrix of standardized loadings, nodes x communities),
-    and \code{boot} (list of bootstrap loading matrices, one per replication,
-    or \code{NULL} if not bootstrapped).
-  }
+    \code{true} (matrix of standardized loadings, nodes x communities,
+    or \code{NULL} if loadings were not computed.),
+    \code{boot} (list of bootstrap loading matrices, one per replication,
+    or \code{NULL} if not bootstrapped),
+    \code{available} (logical indicating whether loadings were computed),
+    \code{reason} (character string explaining why loadings were not computed,
+        or \code{NULL} if \code{available = TRUE}),
+    \code{non_scorable_nodes} (character vector of nodes in the community
+        subgraph that prevented loadings from being computed (e.g., categorical variables
+        with >2 levels), otherwise empty).
+    }
   }
 }
 \description{

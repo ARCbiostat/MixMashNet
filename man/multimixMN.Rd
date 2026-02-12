@@ -119,8 +119,10 @@ metrics and related summaries.}
 layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
-\item{compute_loadings}{Logical; if \code{TRUE} (default),
-compute network loadings (EGAnet net.loads) for communities.}
+\item{compute_loadings}{Logical; if \code{TRUE} (default), compute community loadings
+(\code{EGAnet::net.loads}). Only supported for \code{"g"}, \code{"p"}, and binary
+\code{"c"} nodes; otherwise loadings are skipped and the reason is
+stored in \code{community_loadings$reason}.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
 Valid options are:
@@ -165,7 +167,7 @@ list contains at least the following components:
     \code{nodes} (character vector of all node names),
     \code{n} (number of observations),
     \code{p} (number of variables), and
-    \code{data}.
+    \code{data} (if \code{save_data = TRUE}))
   }
   \item{\code{layers}}{
    List describing the multilayer structure

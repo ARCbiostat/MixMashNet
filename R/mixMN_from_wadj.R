@@ -437,10 +437,13 @@ mixMN_from_wadj <- function(
     ),
 
     community_loadings = list(
-      nodes = nodes_comm,
-      wc    = wc_comm_int,
-      true  = community_loadings_true,
-      boot  = NULL
+      nodes = character(0),
+      wc    = integer(0),
+      true  = NULL,
+      boot  = NULL,
+      available = FALSE,
+      reason = "Loadings are computed at higher level (multimixMN) when requested.",
+      non_scorable_nodes = character(0)
     )
   )
 

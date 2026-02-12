@@ -3,7 +3,7 @@
 #' @description
 #' Example dataset used in MixMashNet examples. This dataset contains 7240
 #' patients with clinical suspicion of bacteremia who underwent blood culture testing
-#' at the Vienna General Hospital
+#' at the Vienna General Hospital.
 #'
 #' @docType data
 #' @name bacteremia

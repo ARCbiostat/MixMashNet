@@ -1,3 +1,892 @@
+.mgm_fun <- function(fname) {
+  if (!requireNamespace("mgm", quietly = TRUE)) {
+    stop("Package 'mgm' is required but not installed.")
+  }
+  get(fname, envir = asNamespace("mgm"), inherits = FALSE)
+}
+
+.layout_multilayer_fr <- function(g, layer_attr = "layer", radius_layer = 4) {
+  stopifnot(igraph::is_igraph(g))
+
+  layer_raw <- igraph::vertex_attr(g, layer_attr)
+  if (is.null(layer_raw)) stop("Vertex attribute '", layer_attr, "' not found.")
+  layer <- factor(layer_raw)
+
+  L <- nlevels(layer)
+  n <- igraph::vcount(g)
+  coords <- matrix(NA_real_, nrow = n, ncol = 2)
+
+  # 1) layout FR within each layer (intra-layer edges only)
+  for (i in seq_len(L)) {
+    idx <- which(layer == levels(layer)[i])
+    if (length(idx) == 0L) next
+
+    subg <- igraph::induced_subgraph(g, vids = idx)
+
+    if (igraph::ecount(subg) > 0) {
+      w <- igraph::E(subg)$weight
+      w <- if (is.null(w)) rep(1, igraph::ecount(subg)) else abs(w)
+      w[is.na(w) | w == 0] <- 1
+      xy <- igraph::layout_with_fr(subg, weights = w, niter = 300)
+    } else {
+      k <- length(idx)
+      ang <- seq(0, 2*pi, length.out = k + 1L)[-1L]
+      xy <- cbind(cos(ang), sin(ang))
+    }
+
+    if (nrow(xy) == 1L) {
+      xy <- matrix(c(0, 0), nrow = 1)
+    } else {
+      xy <- unclass(scale(xy))
+    }
+
+    coords[idx, ] <- xy
+  }
+
+  # 2) place layer centroids on a larger circle
+  angles_layer <- seq(0, 2*pi, length.out = L + 1L)[-1L]
+
+  for (i in seq_len(L)) {
+    idx <- which(layer == levels(layer)[i])
+    if (length(idx) == 0L) next
+    if (anyNA(coords[idx, ])) next
+
+    center_now <- colMeans(coords[idx, , drop = FALSE])
+    target <- c(radius_layer * cos(angles_layer[i]),
+                radius_layer * sin(angles_layer[i]))
+    coords[idx, ] <- sweep(coords[idx, , drop = FALSE], 2, target - center_now, "+")
+  }
+
+  coords
+}
+
+mgm_masked <- function(data, type, level,
+                       regularize,
+                       lambdaSeq, lambdaSel, lambdaFolds, lambdaGam,
+                       alphaSeq, alphaSel, alphaFolds, alphaGam,
+                       k,
+                       moderators,
+                       ruleReg,
+                       weights,
+                       threshold,
+                       method,
+                       binarySign,
+                       scale,
+                       verbatim,
+                       pbar,
+                       warnings,
+                       saveModels,
+                       saveData,
+                       overparameterize,
+                       thresholdCat,
+                       signInfo,
+                       mask_list = NULL,
+                       ...) {
+
+  if (!("matrix" %in% class(data))) stop("Please provide data as matrix")
+  if (any(is.na(data))) stop("No missing values permitted.")
+
+  p <- ncol(data); n <- nrow(data)
+  colnames(data)[1:p] <- paste("V", 1:p, '.', sep = "")
+
+  args <- list(...)
+  if (missing(regularize))        regularize <- TRUE
+  if (missing(lambdaSeq))         lambdaSeq <- NULL
+  if (missing(lambdaSel))         lambdaSel <- "CV"
+  if (missing(lambdaFolds))       lambdaFolds <- 10
+  if (missing(lambdaGam))         lambdaGam <- .25
+  if (missing(alphaSeq))          alphaSeq <- 1
+  if (missing(alphaSel))          alphaSel <- "CV"
+  if (missing(alphaFolds))        alphaFolds <- 10
+  if (missing(alphaGam))          alphaGam <- .25
+  if (missing(k))                 k <- 2
+  if (missing(moderators))        moderators <- NULL
+  if (missing(ruleReg))           ruleReg <- "AND"
+  if (missing(weights))           weights <- rep(1, n)
+  if (missing(threshold))         threshold <- "LW"
+  if (missing(method))            method <- "glm"
+  if (missing(binarySign))        binarySign <- FALSE
+  if (missing(scale))             scale <- TRUE
+  if (missing(verbatim))          verbatim <- FALSE
+  if (missing(pbar))              pbar <- TRUE
+  if (missing(warnings))          warnings <- TRUE
+  if (missing(saveModels))        saveModels <- TRUE
+  if (missing(saveData))          saveData <- FALSE
+  if (missing(overparameterize))  overparameterize <- FALSE
+  if (missing(signInfo))          signInfo <- TRUE
+  if (missing(thresholdCat))      thresholdCat <- TRUE
+
+  if (isTRUE(regularize == FALSE)) {
+    lambdaSel <- "EBIC"
+    lambdaSeq <- 0
+    threshold <- "none"
+  }
+
+  if (!is.null(mask_list)) {
+    if (!is.list(mask_list) || length(mask_list) != p)
+      stop("mask_list must be a list of length p; each element is integer indices allowed for that target")
+  }
+
+  oldw <- getOption("warn")
+  if (!warnings) options(warn = -1)
+
+  # REQUIREMENTS (no :::)
+  .mgm_fun("glmnetRequirements")(data = data, type = type, weights = weights)
+
+  d <- k - 1
+  emp_lev <- rep(1, p)
+  ind_cat_all <- which(type == "c")
+  if (length(ind_cat_all) > 0) {
+    for (i in seq_along(ind_cat_all)) {
+      emp_lev[ind_cat_all][i] <- length(unique(data[, ind_cat_all[i]]))
+    }
+  }
+  if (missing(level)) level <- emp_lev
+
+  if (!missing(weights)) weights <- weights / max(weights)
+  nadj <- sum(weights)
+
+  ind_Gauss <- which(type == "g")
+  if (scale && length(ind_Gauss) > 0) {
+    for (i in ind_Gauss) data[, i] <- scale(data[, i])
+  }
+
+  unique_cats <- vector("list", length = p)
+  for (i in seq_len(p)) if (type[i] == "c") unique_cats[[i]] <- unique(data[, i])
+
+  data_df <- as.data.frame(data)
+  for (i in which(type == "c")) data_df[, i] <- as.factor(data_df[, i])
+
+  mgmobj <- list(
+    call = NULL,
+    pairwise = list(wadj = NULL, signs = NULL, edgecolor = NULL,
+                    wadjNodewise = NULL, signsNodewise = NULL, edgecolorNodewise = NULL),
+    interactions = list(indicator = NULL, weightsAgg = NULL, weights = NULL, signs = NULL),
+    intercepts = NULL,
+    nodemodels = list()
+  )
+
+  mgmobj$call <- list(
+    data = if (isTRUE(saveData)) data_df else NULL,
+    type = type,
+    level = level,
+    levelNames = NULL,
+    regularize = regularize,
+    lambdaSeq = lambdaSeq,
+    lambdaSel = lambdaSel,
+    lambdaFolds = lambdaFolds,
+    lambdaGam = lambdaGam,
+    alphaSeq = alphaSeq,
+    alphaSel = alphaSel,
+    alphaFolds = alphaFolds,
+    alphaGam = alphaGam,
+    k = k,
+    moderators = moderators,
+    ruleReg = ruleReg,
+    weights = weights,
+    threshold = threshold,
+    method = method,
+    binarySign = binarySign,
+    scale = scale,
+    verbatim = verbatim,
+    pbar = pbar,
+    warnings = warnings,
+    saveModels = saveModels,
+    saveData = saveData,
+    overparameterize = overparameterize,
+    thresholdCat = thresholdCat,
+    signInfo = signInfo,
+    npar = NULL,
+    n = nrow(data_df),
+    ind_cat = which(type == "c"),
+    ind_binary = {
+      indc <- which(type == "c")
+      if (length(indc) == 0) logical(0) else {
+        x <- logical(length(indc))
+        for (i in seq_along(indc)) x[i] <- length(unique(data_df[, indc[i]])) == 2
+        indc[x]
+      }
+    },
+    unique_cats = {
+      uc <- vector("list", length = ncol(data_df))
+      for (i in seq_len(ncol(data_df))) if (type[i] == "c") uc[[i]] <- unique(data_df[, i])
+      uc
+    }
+  )
+
+  if (isTRUE(pbar)) pb <- txtProgressBar(min = 0, max = p, initial = 0, char = "-", style = 3)
+  npar_standard <- rep(NA_integer_, p)
+
+  .vars_in_term <- function(term) {
+    parts <- unlist(strsplit(term, ":", fixed = TRUE))
+    as.integer(sub("\\..*$", "", sub("^V", "", parts)))
+  }
+  .apply_mask <- function(X, v, allowed_preds_v) {
+    allowed <- sort(unique(c(v, allowed_preds_v)))
+    keep <- vapply(colnames(X), function(tt) {
+      ids <- .vars_in_term(tt)
+      all(ids %in% allowed)
+    }, logical(1))
+    X[, keep, drop = FALSE]
+  }
+
+  for (v in 1:p) {
+
+    # Model matrix (no :::)
+    X_standard <- X <- .mgm_fun("ModelMatrix_standard")(
+      data = data_df, type = type, d = d, v = v, moderators = moderators
+    )
+
+    if (isTRUE(overparameterize)) {
+      X <- .mgm_fun("ModelMatrix")(
+        data = data_df, type = type, level = level, labels = colnames(data_df),
+        d = d, moderators = moderators, v = v
+      )
+      X_standard <- X
+    }
+
+    if (!is.null(mask_list)) {
+      X_standard <- .apply_mask(X_standard, v = v, allowed_preds_v = mask_list[[v]])
+      X <- X_standard
+    }
+    npar_standard[v] <- ncol(X_standard)
+
+    if (ncol(X) == 0) {
+      mgmobj$nodemodels[[v]] <- list(
+        fitobj = NULL, lambda = NA_real_, EBIC = NA_real_,
+        parlist = NULL, modeltype = NULL
+      )
+      if (isTRUE(pbar)) setTxtProgressBar(pb, v)
+      next
+    }
+
+    if (scale && any(type == "g")) {
+      cn <- colnames(X)
+      l_ints_split <- strsplit(cn, ":")
+      ind_allc <- unlist(lapply(l_ints_split, function(x) {
+        x2 <- sub("V", "", x)
+        vars <- as.numeric(unlist(lapply(strsplit(x2, "[.]"), function(y) y[1])))
+        all(type[vars] == "g")
+      }))
+      if (sum(ind_allc) > 0) {
+        X[, ind_allc] <- apply(matrix(X[, ind_allc], ncol = sum(ind_allc)), 2, scale)
+      }
+    }
+
+    y <- as.numeric(data_df[, v])
+    n_alpha <- length(alphaSeq)
+
+    if (alphaSel == "CV") {
+      ind_cv <- sample(1:alphaFolds, size = n, replace = TRUE)
+      v_mean_OOS_deviance <- rep(NA_real_, n_alpha)
+
+      if (n_alpha > 1) {
+        for (a in 1:n_alpha) {
+          v_OOS_deviance <- rep(NA_real_, alphaFolds)
+          for (fold in 1:alphaFolds) {
+            train_X <- X[ind_cv != fold, , drop = FALSE]
+            train_y <- y[ind_cv != fold]
+            test_X  <- X[ind_cv == fold, , drop = FALSE]
+            test_y  <- y[ind_cv == fold]
+            n_train <- nrow(train_X); nadj_train <- sum(weights[ind_cv != fold])
+
+            fit_fold <- .mgm_fun("nodeEst")(
+              y = train_y, X = train_X,
+              lambdaSeq = lambdaSeq, lambdaSel = lambdaSel,
+              lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
+              alpha = alphaSeq[a], weights = weights[ind_cv != fold],
+              n = n_train, nadj = nadj_train, v = v, type = type,
+              level = level, emp_lev = emp_lev,
+              overparameterize = overparameterize, thresholdCat = thresholdCat
+            )
+
+            LL_model <- .mgm_fun("calcLL")(
+              X = test_X, y = test_y, fit = fit_fold$fitobj, type = type, level = level,
+              v = v, weights = weights[ind_cv == fold], lambda = fit_fold$lambda, LLtype = "model"
+            )
+            LL_sat <- .mgm_fun("calcLL")(
+              X = test_X, y = test_y, fit = fit_fold$fitobj, type = type, level = level,
+              v = v, weights = weights[ind_cv == fold], lambda = fit_fold$lambda, LLtype = "saturated"
+            )
+            v_OOS_deviance[fold] <- 2 * (LL_sat - LL_model)
+          }
+          v_mean_OOS_deviance[a] <- mean(v_OOS_deviance)
+        }
+        alpha_select <- alphaSeq[which.min(v_mean_OOS_deviance)]
+      } else {
+        alpha_select <- alphaSeq
+      }
+
+      model <- .mgm_fun("nodeEst")(
+        y = y, X = X,
+        lambdaSeq = lambdaSeq, lambdaSel = lambdaSel,
+        lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
+        alpha = alpha_select, weights = weights,
+        n = n, nadj = nadj, v = v, type = type, level = level,
+        emp_lev = emp_lev, overparameterize = overparameterize, thresholdCat = thresholdCat
+      )
+      mgmobj$nodemodels[[v]] <- model
+    }
+
+    if (alphaSel == "EBIC") {
+      l_alphaModels <- vector("list", n_alpha)
+      EBIC_Seq <- rep(NA_real_, n_alpha)
+      for (a in 1:n_alpha) {
+        fit_a <- .mgm_fun("nodeEst")(
+          y = y, X = X,
+          lambdaSeq = lambdaSeq, lambdaSel = lambdaSel,
+          lambdaFolds = lambdaFolds, lambdaGam = lambdaGam,
+          alpha = alphaSeq[a], weights = weights,
+          n = n, nadj = nadj, v = v, type = type, level = level,
+          emp_lev = emp_lev, overparameterize = overparameterize, thresholdCat = thresholdCat
+        )
+        l_alphaModels[[a]] <- fit_a
+        EBIC_Seq[a] <- fit_a$EBIC
+      }
+      ind_min <- which.min(EBIC_Seq)
+      mgmobj$nodemodels[[v]] <- l_alphaModels[[ind_min]]
+    }
+
+    if (isTRUE(pbar)) setTxtProgressBar(pb, v)
+  }
+
+  mgmobj$call$npar <- npar_standard
+
+  levelNames <- vector("list", length = p)
+  for (i in 1:p) {
+    if (type[i] == "c") levelNames[[i]] <- sort(as.numeric(as.character(unique(data_df[, i])))) else levelNames[[i]] <- NA
+  }
+  mgmobj$call$levelNames <- levelNames
+
+  mgmobj <- Reg2Graph_safe(mgmobj = mgmobj)
+  if (!saveModels) mgmobj$nodemodels <- NULL
+  if (!warnings) options(warn = oldw)
+
+  class(mgmobj) <- c("mgm", "core")
+  return(mgmobj)
+}
+
+Reg2Graph_safe <- function(mgmobj, thresholding = TRUE) {
+
+  # Prefer mgm's internal helpers if present; otherwise use safe fallbacks
+  .FlagSymmetricFast <- function(x) {
+    if (requireNamespace("mgm", quietly = TRUE) &&
+        exists("FlagSymmetricFast", envir = asNamespace("mgm"), inherits = FALSE)) {
+      return(.mgm_fun("FlagSymmetricFast")(x))
+    } else {
+      # Fallback: permutation-invariant row id (sort indices inside each row)
+      keys <- apply(as.matrix(x), 1, function(r) paste(sort(as.numeric(r)), collapse = "_"))
+      return(as.numeric(factor(keys)))
+    }
+  }
+
+  .getSign_safe <- function(l_w_ind, l_w_par, type, set_signdefined, overparameterize, ord) {
+    if (requireNamespace("mgm", quietly = TRUE) &&
+        exists("getSign", envir = asNamespace("mgm"), inherits = FALSE)) {
+      return(.mgm_fun("getSign")(l_w_ind, l_w_par, type, set_signdefined, overparameterize, ord))
+    } else {
+      # Conservative default when sign computation is unavailable
+      return(list(voteSign = 0))
+    }
+  }
+
+  # --- local helpers --------------------------------------------------------
+  # stringr::str_count-compatible helper without adding a dependency
+  if (!exists("str_count", mode = "function")) {
+    str_count <- function(x, pattern) {
+      sapply(regmatches(x, gregexpr(pattern, x, fixed = TRUE)), length)
+    }
+  }
+  .safe_rbind <- function(lst) {
+    lst <- Filter(function(el) !is.null(el) && length(el) > 0, lst)
+    if (!length(lst)) return(matrix(numeric(0), nrow = 0))
+    do.call(rbind, lst)
+  }
+  .safe_concat <- function(lst) {
+    lst <- Filter(function(el) !is.null(el), lst)
+    if (!length(lst)) return(list())
+    do.call(c, lst)
+  }
+  .all_nonfinite <- function(x) {
+    length(x) == 0L || all(!is.finite(x))
+  }
+
+  # ----- Basic info from model object ------
+  p <- length(mgmobj$call$type)
+  n <- mgmobj$call$n
+  moderators <- mgmobj$call$moderators
+  d <- mgmobj$call$k - 1
+  if (!is.null(moderators)) d <- 2
+  type <- mgmobj$call$type
+  level <- mgmobj$call$level
+  threshold <- mgmobj$call$threshold
+  npar_standard <- mgmobj$call$npar
+  binarySign <- mgmobj$call$binarySign
+  ruleReg <- mgmobj$call$ruleReg
+  overparameterize <- mgmobj$call$overparameterize
+  ind_cat <- mgmobj$call$ind_cat
+  ind_binary <- mgmobj$call$ind_binary
+
+  # Determine moderation specification (if applicable)
+  if (d < 2) {
+    mSpec <- NULL
+  } else {
+    if (any(class(moderators) %in% c("integer","numeric"))) mSpec <- "vector"
+    if (any(class(moderators) %in% "matrix")) mSpec <- "matrix"
+    if (mgmobj$call$k > 2) mSpec <- "fullk"
+  }
+
+  # ----------------------------------------------------------------------------
+  # -------------------- Fill glmnet output into list-structure ----------------
+  # ----------------------------------------------------------------------------
+
+  Pars_ind <- list()
+  Pars_values <- list()
+  mgmobj$intercepts <- vector('list', length = p)
+  v_d_v <- rep(NA, p)
+
+  for (v in 1:p) {
+
+    model_obj <- mgmobj$nodemodels[[v]]$model
+    predictor_set <- (1:p)[-v]
+
+    if (!is.null(moderators)) {
+      if (mSpec == "vector") ind_m <- TRUE
+      if (mSpec == "matrix") {
+        m_ind_m <- apply(moderators, 1, function(x) v %in% x)
+        ind_m <- any(m_ind_m)
+      }
+      d_v <- if (ind_m) 2 else 1
+    } else {
+      ind_m <- FALSE
+      d_v <- 1
+    }
+    if (mgmobj$call$k > 2) { d_v <- d; ind_m <- TRUE }
+
+    v_Pars_ind <- vector('list', length = d_v)
+
+    if (!ind_m) {
+      v_Pars_ind[[1]] <- t(combn(predictor_set, 1))
+    } else {
+      if (mSpec == "vector") {
+        if (v %in% moderators) {
+          ind_mods <- t(combn((1:p)[-v], 2))
+        } else {
+          ind_mods <- expand.grid((1:p)[-v], moderators[moderators != v])
+        }
+        ind_mods <- ind_mods[!apply(ind_mods, 1, function(x) x[1] == x[2]), ]
+        v_Pars_ind[[1]] <- matrix(predictor_set, ncol = 1)
+        v_Pars_ind[[2]] <- ind_mods
+      }
+      if (mSpec == "matrix") {
+        ind_v_inMod <- as.logical(apply(moderators, 1, function(x) v %in% x))
+        ind_mods <- t(apply(matrix(moderators[ind_v_inMod], ncol = 3), 1, function(x) x[x != v]))
+        v_Pars_ind[[1]] <- matrix(predictor_set, ncol = 1)
+        v_Pars_ind[[2]] <- ind_mods
+      }
+      if (mSpec == "fullk") {
+        for (ord in 1:d_v) v_Pars_ind[[ord]] <- t(combn(predictor_set, ord))
+      }
+    }
+    for (ord in 1:d_v) v_Pars_ind[[ord]] <- matrix(as.matrix(v_Pars_ind[[ord]]), ncol = ord)
+    no_interactions <- unlist(lapply(v_Pars_ind, nrow))
+
+    v_Pars_values <- vector('list', length = d_v)
+    for (ord in 1:d_v) v_Pars_values[[ord]] <- vector('list', length = no_interactions[ord])
+
+    # ------ Fill (B) with parameter estimates ------
+    if (type[v] == 'c') {
+      n_cat <- level[v]
+      for (cat in 1:n_cat) {
+        model_obj_i <- as.numeric(model_obj[[cat]])
+        interaction_names <- rownames(model_obj[[cat]])[-1]
+        interaction_order <- str_count(interaction_names, ":") + 1
+        mgmobj$intercepts[[v]][[cat]] <- model_obj_i[1]
+
+        if (thresholding) {
+          model_obj_i_ni <- model_obj_i[-1]
+          if (threshold == 'LW') tau <- sqrt(d_v) * sqrt(sum(model_obj_i_ni^2)) * sqrt(log(npar_standard[v]) / n)
+          if (threshold == 'HW') tau <- d_v * sqrt(log(npar_standard[v]) / n)
+          if (threshold == 'none') tau <- 0
+          model_obj_i[abs(model_obj_i) < tau] <- 0
+          mgmobj$nodemodels[[v]]$tau <- tau
+        }
+
+        for (ord in 1:d_v) {
+          part_ord <- model_obj_i[-1][ord == interaction_order]
+          gotThemall <- rep(TRUE, length(part_ord))
+          int_names_ord <- interaction_names[ord == interaction_order]
+          if (no_interactions[ord] != nrow(v_Pars_ind[[ord]])) stop('Internal Error: parameter extraction type 1')
+
+          find_int_dummy <- matrix(NA, nrow = length(int_names_ord), ncol = ord)
+          for (t in 1:no_interactions[ord]) {
+            for (cc in 1:ord) find_int_dummy[, cc] <- grepl(pattern = paste0('V', v_Pars_ind[[ord]][t, cc], '.'),
+                                                            x = int_names_ord, fixed = TRUE)
+            select_int <- rowSums(find_int_dummy) == ord
+            parmat <- matrix(part_ord[select_int], ncol = 1)
+            rownames(parmat) <- int_names_ord[select_int]
+            v_Pars_values[[ord]][[t]][[cat]] <- parmat
+            gotThemall[select_int == TRUE] <- FALSE
+          }
+          if (sum(gotThemall) > 0) stop('Internal Error: parameter extraction type 2')
+        }
+      }
+
+    } else { # Continuous
+      model_obj_i <- as.numeric(model_obj)
+      interaction_names <- rownames(model_obj)[-1]
+      interaction_order <- str_count(interaction_names, ":") + 1
+      mgmobj$intercepts[[v]] <- model_obj_i[1]
+
+      if (thresholding) {
+        model_obj_i_ni <- model_obj_i[-1]
+        if (threshold == 'LW') tau <- sqrt(d_v) * sqrt(sum(model_obj_i_ni^2)) * sqrt(log(npar_standard[v]) / n)
+        if (threshold == 'HW') tau <- d_v * sqrt(log(npar_standard[v]) / n)
+        if (threshold == 'none') tau <- 0
+        model_obj_i[abs(model_obj_i) < tau] <- 0
+        mgmobj$nodemodels[[v]]$tau <- tau
+      }
+
+      for (ord in 1:d_v) {
+        if (no_interactions[ord] > 0) {
+          part_ord <- model_obj_i[-1][ord == interaction_order]
+          gotThemall <- rep(TRUE, length(part_ord))
+          int_names_ord <- interaction_names[ord == interaction_order]
+          if (no_interactions[ord] != nrow(v_Pars_ind[[ord]])) stop('Internal Error: parameter extraction 1')
+
+          find_int_dummy <- matrix(NA, nrow = length(int_names_ord), ncol = ord)
+          for (t in 1:no_interactions[ord]) {
+            for (cc in 1:ord) find_int_dummy[, cc] <- grepl(pattern = paste0('V', v_Pars_ind[[ord]][t, cc], '.'),
+                                                            x = int_names_ord, fixed = TRUE)
+            select_int <- rowSums(find_int_dummy) == ord
+            parmat <- matrix(part_ord[select_int], ncol = 1)
+            rownames(parmat) <- int_names_ord[select_int]
+            v_Pars_values[[ord]][[t]] <- parmat
+            gotThemall[select_int == TRUE] <- FALSE
+          }
+          if (sum(gotThemall) > 0) stop('Internal Error: parameter extraction 2')
+        }
+      }
+    }
+
+    Pars_ind[[v]] <- v_Pars_ind
+    Pars_values[[v]] <- v_Pars_values
+    v_d_v[v] <- d_v
+  }
+
+  # ----------------------------------------------------------------------------
+  # -------------------- Postprocess into (Factor) Graph -----------------------
+  # ----------------------------------------------------------------------------
+
+  Pars_ind_flip <- vector('list', length = d)
+  dummy_list_flip <- vector('list', length = p)
+  Pars_ind_flip <- lapply(Pars_ind_flip, function(x) dummy_list_flip)
+
+  Pars_values_flip <- vector('list', length = d)
+  Pars_values_flip <- lapply(Pars_values_flip, function(x) dummy_list_flip)
+
+  for (v in 1:p) for (ord in 1:v_d_v[v]) {
+    Pars_ind_part <- Pars_ind[[v]][[ord]]
+    colnames(Pars_ind_part) <- NULL
+    if (!is.null(Pars_ind_part)) {
+      Pars_ind_part <- as.matrix(Pars_ind_part)
+      Pars_ind[[v]][[ord]] <- cbind(rep(v, nrow(Pars_ind_part)), Pars_ind_part)
+      Pars_ind_flip[[ord]][[v]] <- Pars_ind[[v]][[ord]]
+      Pars_values_flip[[ord]][[v]] <- Pars_values[[v]][[ord]]
+    } else {
+      Pars_ind_flip[[ord]][[v]] <- NULL
+      Pars_values_flip[[ord]][[v]] <- NULL
+    }
+  }
+
+  # SAFE collapse
+  Pars_ind_flip_red    <- lapply(Pars_ind_flip,    .safe_rbind)
+  Pars_values_flip_red <- lapply(Pars_values_flip, .safe_concat)
+
+  n_terms_d <- rep(NA, d)
+  if (!is.null(moderators)) {
+    n_terms_d[1] <- choose(p, 1+1)
+    if (mSpec == "vector") {
+      mod_terms <- expand.grid((1:p), (1:p), moderators)
+      id_uni <- .FlagSymmetricFast(mod_terms)
+      mod_terms2 <- mod_terms[!duplicated(id_uni), ]
+      ind_diff <- as.numeric(apply(mod_terms2, 1, function(x) !any(duplicated(x))))
+      mod_terms3 <- mod_terms2[ind_diff == 1, ]
+    }
+    if (mSpec == "matrix") {
+      mod_terms3 <- mgmobj$call$moderators
+    }
+    n_terms_d[2] <- nrow(mod_terms3)
+  } else {
+    for (ord in 1:d) n_terms_d[ord] <- choose(p, ord+1)
+  }
+
+  l_factors <- lapply(1:d, function(ord) matrix(NA, nrow = n_terms_d[ord], ncol = ord+1))
+  l_factor_par <- lapply(1:d, function(ord) vector('list', length = n_terms_d[ord]))
+  l_sign_par <- lapply(1:d, function(ord) rep(NA, n_terms_d[ord]))
+  l_factor_par_full <- l_factor_par_AggNodewise <- l_factor_par_SignNodewise <- l_factor_par
+
+  if (binarySign) set_signdefined <- c(which(type == 'p'), which(type == 'g'), ind_cat[ind_binary])
+  else           set_signdefined <- c(which(type == 'p'), which(type == 'g'))
+
+  # Loop over order (ord = 1 for pairwise)
+  for (ord in 1:d) {
+
+    set_int_ord <- Pars_ind_flip_red[[ord]]
+    if (is.null(set_int_ord) || length(set_int_ord) == 0) next
+    row.names(set_int_ord) <- NULL
+
+    ids <- .FlagSymmetricFast(x = set_int_ord)
+    unique_set_int_ord <- cbind(set_int_ord, ids)[!duplicated(ids), ]
+    unique_set_int_ord <- matrix(unique_set_int_ord, ncol = ord+1+1)
+    n_unique <- if (length(unique_set_int_ord)) nrow(unique_set_int_ord) else 0
+    if (n_unique == 0) next
+
+    for (i in 1:n_unique) {
+
+      l_w_ind <- lapply(1:(ord+1), function(j) set_int_ord[which(ids == i)[j], ])
+      l_w_par <- lapply(1:(ord+1), function(j) Pars_values_flip_red[[ord]][[which(ids == i)[j]]])
+
+      # Map regression -> edge parameter (mean of |beta|) with guards
+      m_par_seq <- vapply(l_w_par, function(x) {
+        x <- abs(unlist(x))
+        if (.all_nonfinite(x)) return(NA_real_)
+        mean(x, na.rm = TRUE)
+      }, numeric(1))
+
+      m_sign_seq <- vapply(l_w_par, function(x) {
+        x <- unlist(x)
+        if (length(x) > 1) 0 else if (length(x) == 1) sign(x) else NA_real_
+      }, numeric(1))
+
+      valid <- is.finite(m_par_seq)
+      if (!any(valid)) {
+        parcompr <- 0
+        int_sign <- NA
+      } else {
+        m_par_mean <- mean(m_par_seq[valid], na.rm = TRUE)
+        if (ruleReg == 'AND') parcompr <- m_par_mean * !(0 %in% m_par_seq[valid])
+        if (ruleReg == 'OR')  parcompr <- m_par_mean
+
+        if (!isTRUE(all.equal(m_par_mean, 0))) {
+          pair <- l_w_ind[[1]]
+          if (sum(!(pair %in% set_signdefined)) == 0) {
+            sign_object <- .getSign_safe(
+              l_w_ind, l_w_par, type, set_signdefined, overparameterize, ord
+            )
+            int_sign <- sign_object$voteSign
+          } else {
+            int_sign <- 0
+          }
+        } else {
+          int_sign <- NA
+        }
+      }
+
+      l_sign_par[[ord]][i] <- int_sign
+      l_factors[[ord]][i, ] <- l_w_ind[[1]]
+
+      for (i_ord in 1:(ord+1)) {
+        l_factor_par_AggNodewise[[ord]][[i]][[i_ord]]  <- m_par_seq[i_ord]
+        l_factor_par_SignNodewise[[ord]][[i]][[i_ord]] <- m_sign_seq[i_ord]
+      }
+
+      l_factor_par[[ord]][[i]]      <- parcompr
+      l_factor_par_full[[ord]][[i]] <- l_w_par
+    }
+  }
+
+  # -------------------- Weighted Adjacency (pairwise) -------------------
+
+  l_factors_nz <- l_factors
+  l_factor_par_nz <- l_factor_par
+  l_factor_par_full_nz <- l_factor_par_full
+  l_sign_par_nz <- l_sign_par
+
+  for (ord in 1:d) {
+    zero_indicator <- which(unlist(lapply(l_factor_par[[ord]], function(x) isTRUE(all.equal(x, 0)) )))
+    if (length(zero_indicator) == 0) {
+      l_factors_nz[[ord]] <- l_factors[[ord]]
+      l_sign_par_nz[[ord]] <- l_sign_par[[ord]]
+    } else {
+      l_factors_nz[[ord]] <- l_factors[[ord]][-zero_indicator, , drop = FALSE]
+      l_sign_par_nz[[ord]] <- l_sign_par[[ord]][-zero_indicator]
+    }
+    l_factor_par_nz[[ord]] <- l_factor_par_full_nz[[ord]] <- list()
+    counter <- 1
+    for (k in seq_along(l_factor_par[[ord]])) {
+      if (!(k %in% zero_indicator)) {
+        l_factor_par_nz[[ord]][[counter]]      <- l_factor_par[[ord]][[k]]
+        l_factor_par_full_nz[[ord]][[counter]] <- l_factor_par_full[[ord]][[k]]
+        counter <- counter + 1
+      }
+    }
+  }
+
+  mgmobj$interactions$indicator   <- l_factors_nz
+  mgmobj$interactions$weightsAgg  <- l_factor_par_nz
+  mgmobj$interactions$weights     <- l_factor_par_full_nz
+  mgmobj$interactions$signs       <- l_sign_par_nz
+
+  # ---------- p x p Matrix (pairwise) ----------
+  m_signs <- matrix(NA, p, p)
+  wadj <- matrix(0, p, p)
+
+  edges_mat <- l_factors_nz[[1]]
+  n_edges <- if (is.null(edges_mat) || length(edges_mat) == 0) 0 else nrow(as.matrix(edges_mat))
+
+  if (n_edges > 0) {
+    edges <- matrix(edges_mat, ncol = 2)
+    for (i in 1:n_edges) {
+      wadj[edges[i,1], edges[i,2]] <- wadj[edges[i,2], edges[i,1]] <- l_factor_par_nz[[1]][[i]]
+      m_signs[edges[i,1], edges[i,2]] <- m_signs[edges[i,2], edges[i,1]] <- l_sign_par_nz[[1]][[i]]
+    }
+  }
+
+  sign_colors <- matrix('darkgrey', p, p)
+  sign_colors[m_signs == 1] <- 'darkgreen'
+  sign_colors[m_signs == -1] <- 'red'
+
+  sign_colors_cb <- matrix('darkgrey', p, p)
+  sign_colors_cb[m_signs == 1] <- 'darkblue'
+  sign_colors_cb[m_signs == -1] <- 'red'
+
+  sign_ltys <- matrix(1, p, p)
+  sign_ltys[m_signs == -1] <- 2
+
+  mgmobj$pairwise$wadj        <- wadj
+  mgmobj$pairwise$signs       <- m_signs
+  mgmobj$pairwise$edgecolor   <- sign_colors
+  mgmobj$pairwise$edgecolor_cb<- sign_colors_cb
+  mgmobj$pairwise$edge_lty    <- sign_ltys
+
+  # ---------- p x p Nodewise Matrix ----------
+  m_wadj <- m_signs_dir <- matrix(0, p, p)
+
+  ord <- 1
+  set_int_ord <- Pars_ind_flip_red[[ord]]
+  if (!is.null(set_int_ord) && length(set_int_ord) > 0) {
+    row.names(set_int_ord) <- NULL
+    ids <- .FlagSymmetricFast(x = set_int_ord)
+    unique_set_int_ord <- cbind(set_int_ord, ids)[!duplicated(ids), ]
+    unique_set_int_ord <- matrix(unique_set_int_ord, ncol = ord+1+1)
+    n_edges <- if (length(unique_set_int_ord)) nrow(unique_set_int_ord) else 0
+
+    if (n_edges > 0) {
+      ED <- unique_set_int_ord
+      for (i in 1:n_edges) {
+        m_wadj[ED[i,1], ED[i,2]] <- l_factor_par_AggNodewise[[1]][[i]][[2]]
+        m_wadj[ED[i,2], ED[i,1]] <- l_factor_par_AggNodewise[[1]][[i]][[1]]
+        m_signs_dir[ED[i,1], ED[i,2]] <- l_factor_par_SignNodewise[[1]][[i]][[2]]
+        m_signs_dir[ED[i,2], ED[i,1]] <- l_factor_par_SignNodewise[[1]][[i]][[1]]
+      }
+    }
+  }
+
+  sign_colors <- matrix('darkgrey', p, p)
+  sign_colors[m_signs_dir == 1] <- 'darkgreen'
+  sign_colors[m_signs_dir == -1] <- 'red'
+
+  sign_colors_cb <- matrix('darkgrey', p, p)
+  sign_colors_cb[m_signs_dir == 1] <- 'darkblue'
+  sign_colors_cb[m_signs_dir == -1] <- 'red'
+
+  sign_ltys <- matrix(1, p, p)
+  sign_ltys[m_signs_dir == -1] <- 2
+
+  mgmobj$pairwise$wadjNodewise         <- m_wadj
+  mgmobj$pairwise$signsNodewise        <- m_signs_dir
+  mgmobj$pairwise$edgecolorNodewise    <- sign_colors
+  mgmobj$pairwise$edgecolor_cbNodewise <- sign_colors_cb
+  mgmobj$pairwise$edge_ltyNodewise     <- sign_ltys
+
+  return(mgmobj)
+}
+
+.mixmashnet_palettes <- list(
+
+  palette1 = c(
+    "#38E5F4", "#A3AF0E", "#E9192D", "#7D4DB6", "#D95D7D",
+    "#DFA357", "#43B883", "#2792ED", "#D448E8", "#ED6145",
+    "#C52059", "#830860", "#631EBE", "#3194B9", "#E91898",
+    "#D09537", "#F770A8", "#D67BF6", "#949FFD", "#52DB9E"
+  ),
+
+  palette2 = c(
+    "#C068F0", "#4658B7", "#D86A70", "#BA378A", "#9ACC57",
+    "#D740AB", "#FA8E4B", "#656E27", "#288DA1", "#459957",
+    "#FBB0B2", "#AD8324", "#225C5E", "#CB5339", "#1F6F7A",
+    "#34BDF3", "#5586EA", "#744ABF", "#E4539B", "#924513"
+  ),
+
+  palette3 = c(
+    "#D0816A", "#4D3F1E", "#527245", "#5E9F98", "#9AC2DC",
+    "#91C485", "#265350", "#46789A", "#9A93CD", "#DEBAD2",
+    "#163144", "#564789", "#A8618E", "#D29489", "#E2CFAF",
+    "#542441", "#884A3C", "#9C8351", "#9DBC89", "#C1E6E0"
+  ),
+
+  palette4 = c(
+    "#5F00F1", "#0073A1", "#008A7F", "#4F9A00", "#B68900",
+    "#FF6640", "#E63946", "#C0A8FF", "#95CDFF", "#00F2F4",
+    "#98FFA0", "#FFF1BA", "#8B007B", "#870015", "#503300",
+    "#263400", "#002A21", "#001A23", "#112E45", "#3A5157"
+  ),
+
+  palette5 = c(
+    "#798100", "#A58E00", "#D59600", "#FF9F4C", "#FFBDAA",
+    "#008A94", "#00A595", "#00C182", "#54DB00", "#C6DF00",
+    "#8941FF", "#6D7FFF", "#61A5FF", "#6EC2FF", "#91DAFF",
+    "#E3002F", "#FF1F69", "#FF659B", "#FF91BC", "#FFB6D6"
+  ),
+
+  palette6 = c(
+    "#9976AE", "#7E566B", "#987878", "#4B526D", "#9EB08B",
+    "#996585", "#CB8E6C", "#585C43", "#4E7781", "#5D7F62",
+    "#D9A8A8", "#8C7852", "#354748", "#916257", "#3E5F68",
+    "#6AA7C5", "#647BA7", "#5B5373", "#A37085", "#694634"
+  ),
+
+  palette7 = c(
+    "#5A0339", "#B21554", "#FA8283", "#A73916", "#5AEDF6",
+    "#6DE251", "#E3A426", "#66560C", "#828516", "#8BBC29",
+    "#093C2E", "#11645C", "#189096", "#EC692F", "#9F1199",
+    "#082D65", "#3E3AC9", "#855AF4", "#C489FA", "#F2C1F7"
+  ),
+
+  palette8 = c(
+    "#660031", "#006A67", "#559900", "#AEB900", "#E0E500",
+    "#BD8500", "#A93E00", "#FF2A4F", "#FF94AD", "#FFDAE6",
+    "#005543", "#00854D", "#00B913", "#8CE000", "#404C00",
+    "#0046B7", "#007ECD", "#00B2ED", "#59E4FF", "#00C5BE"
+  ),
+
+  palette9 = c(
+    "#3A006C", "#7B00A0", "#C800BE", "#FF5BBE", "#A20040",
+    "#EA0048", "#FFCDC2", "#933F00", "#BC6F00", "#E1A100",
+    "#FED800", "#8D9000", "#B5F300", "#00D7B2", "#79FFF7",
+    "#006176", "#0078AA", "#389BFF", "#ABC2FF", "#EFEFFF"
+  ),
+
+  palette10 = c(
+    "#87ACC1", "#8770A0", "#754447", "#9F6A82", "#26331D",
+    "#575635", "#8E7955", "#C29D87", "#44222E", "#5C462D",
+    "#41271B", "#57704F", "#19323B", "#B99ABB", "#355C5D",
+    "#5B8777", "#92B08F", "#392543", "#514D7C", "#647DA5"
+  )
+)
+
+
+#' @keywords internal
+#' @noRd
+.get_layer_palette <- function(i, palette_bank = .mixmashnet_palettes) {
+  k <- length(palette_bank)
+  if (k < 1L) stop(".get_layer_palette(): empty palette bank.", call. = FALSE)
+  palette_bank[[ ((i - 1L) %% k) + 1L ]]
+}
+
+
+
 #' Multilayer MGM with bootstrap, intra/interlayer metrics, and quantile regions
 #'
 #' @description
@@ -69,8 +958,10 @@
 #' @param cluster_method Community detection algorithm applied within each
 #'   layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
-#' @param compute_loadings Logical; if \code{TRUE} (default),
-#'   compute network loadings (EGAnet net.loads) for communities.
+#' @param compute_loadings Logical; if \code{TRUE} (default), compute community loadings
+#'   (\code{EGAnet::net.loads}). Only supported for \code{"g"}, \code{"p"}, and binary
+#'   \code{"c"} nodes; otherwise loadings are skipped and the reason is
+#'   stored in \code{community_loadings$reason}.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Valid options are:
 #'   \code{"general_index"} (intralayer centrality indices),
@@ -112,7 +1003,7 @@
 #'     \code{nodes} (character vector of all node names),
 #'     \code{n} (number of observations),
 #'     \code{p} (number of variables), and
-#'     \code{data}.
+#'     \code{data} (if \code{save_data = TRUE}))
 #'   }
 #'   \item{\code{layers}}{
 #'    List describing the multilayer structure
@@ -191,11 +1082,22 @@ multimixMN <- function(
   cluster_method <- match.arg(cluster_method)
   if (!is.null(seed_model)) set.seed(seed_model)
 
+  all_nodes <- colnames(data); p <- ncol(data)
+
   spec <- infer_mgm_spec(data, recode_binary = TRUE)
 
   type     <- spec$type
   level    <- spec$level
   data_mgm <- spec$data_mgm
+
+  type_vec  <- stats::setNames(type,  all_nodes)
+  level_vec <- stats::setNames(level, all_nodes)
+
+  is_scorable_node <- function(nm) {
+    tt <- type_vec[[nm]]
+    ll <- level_vec[[nm]]
+    (tt %in% c("g","p")) || (tt == "c" && !is.na(ll) && ll == 2L)
+  }
 
   var_interpretation <- spec$data_info
   binary_recode_map  <- spec$binary_recode_map
@@ -236,8 +1138,6 @@ multimixMN <- function(
     do_community_boot     <- "community"        %in% boot_what
     do_loadings_boot      <- isTRUE(compute_loadings) && ("loadings" %in% boot_what)
   }
-
-  all_nodes <- colnames(data); p <- ncol(data)
 
   if (is.null(covariates)) covariates <- character(0)
   covariates <- unique(covariates)
@@ -463,6 +1363,10 @@ multimixMN <- function(
       boot_what     = boot_what,
       palette_layer = pal_L
     )
+    fitL$data_info <- list(
+      mgm_type_level    = var_interpretation,
+      binary_recode_map = binary_recode_map
+    )
 
     membL <- fitL$communities$groups
     if (is.factor(membL)) {
@@ -475,16 +1379,41 @@ multimixMN <- function(
       nodes = character(0),
       wc    = integer(0),
       true  = NULL,
-      boot  = NULL
+      boot  = NULL,
+      available = FALSE,
+      reason = NULL,
+      non_scorable_nodes = character(0)
     )
 
     if (isTRUE(compute_loadings)) {
 
       groups_L <- fitL$communities$groups
-      nodes_comm <- names(groups_L)[!is.na(groups_L)]
-      nodes_comm <- intersect(nodes_comm, fitL$graph$keep_nodes_graph)
+      nodes_comm <- intersect(names(groups_L)[!is.na(groups_L)], fitL$graph$keep_nodes_graph)
 
-      if (length(nodes_comm) > 1) {
+      loadings_available <- FALSE
+      loadings_reason <- NULL
+      non_scorable_nodes <- character(0)
+
+      if (length(nodes_comm) <= 1) {
+        loadings_available <- FALSE
+        loadings_reason <- "Loadings not computed: need at least 2 nodes with non-missing community assignment."
+      } else {
+
+        ok_nodes <- vapply(nodes_comm, is_scorable_node, logical(1))
+
+        if (!all(ok_nodes)) {
+          loadings_available <- FALSE
+          non_scorable_nodes <- nodes_comm[!ok_nodes]
+          loadings_reason <- paste0(
+            "Loadings not computed: categorical variables with >2 levels found (MGM type 'c' with level>2). ",
+            "Community scores are only supported for 'g', 'p', and binary 'c' (level==2)."
+          )
+        } else {
+          loadings_available <- TRUE
+        }
+      }
+
+      if (isTRUE(loadings_available)) {
 
         A_comm <- sub_w[nodes_comm, nodes_comm, drop = FALSE]
 
@@ -508,15 +1437,32 @@ multimixMN <- function(
           L_true <- L_true[nodes_comm, , drop = FALSE]
         } else {
           K <- length(unique(wc_int))
-          L_true <- matrix(NA_real_, nrow = length(nodes_comm), ncol = K,
-                           dimnames = list(nodes_comm, paste0("C", seq_len(K))))
+          L_true <- matrix(
+            NA_real_, nrow = length(nodes_comm), ncol = K,
+            dimnames = list(nodes_comm, paste0("C", seq_len(K)))
+          )
         }
 
         fitL$community_loadings <- list(
           nodes = nodes_comm,
           wc    = wc_int,
           true  = L_true,
-          boot  = NULL
+          boot  = NULL,
+          available = TRUE,
+          reason = NULL,
+          non_scorable_nodes = character(0)
+        )
+
+      } else {
+
+        fitL$community_loadings <- list(
+          nodes = character(0),
+          wc    = integer(0),
+          true  = NULL,
+          boot  = NULL,
+          available = FALSE,
+          reason = loadings_reason,
+          non_scorable_nodes = non_scorable_nodes
         )
       }
     }
@@ -583,6 +1529,7 @@ multimixMN <- function(
 
       # loadings bootstrap (list of matrices, one per replication)
       loadings_boot = if (isTRUE(do_loadings_boot) &&
+                          isTRUE(layer_fits[[L]]$community_loadings$available) &&
                           !is.null(layer_fits[[L]]$community_loadings$true) &&
                           nrow(layer_fits[[L]]$community_loadings$true) > 0) {
         vector("list", reps)
@@ -711,10 +1658,12 @@ multimixMN <- function(
       if (isTRUE(do_loadings_boot)) {
 
         info <- layer_fits[[L]]$community_loadings
-        nodes_comm <- info$nodes
-        wc_int     <- info$wc
 
-        if (!is.null(nodes_comm) && length(nodes_comm) > 1) {
+        if (isTRUE(info$available) && !is.null(info$true) &&
+            length(info$nodes) > 1 && nrow(info$true) > 0) {
+
+          nodes_comm <- info$nodes
+          wc_int     <- info$wc
 
           A_comm_boot <- Wg[nodes_comm, nodes_comm, drop = FALSE]
 
@@ -732,14 +1681,14 @@ multimixMN <- function(
             L_boot <- loads_obj_b$std
             L_boot <- L_boot[nodes_comm, , drop = FALSE]
           } else {
-            K <- if (!is.null(info$true)) ncol(info$true) else length(unique(wc_int))
+            K <- ncol(info$true)
             L_boot <- matrix(
               NA_real_,
               nrow = length(nodes_comm),
               ncol = K,
               dimnames = list(
                 nodes_comm,
-                if (!is.null(info$true) && !is.null(colnames(info$true))) colnames(info$true) else paste0("C", seq_len(K))
+                if (!is.null(colnames(info$true))) colnames(info$true) else paste0("C", seq_len(K))
               )
             )
           }
@@ -991,7 +1940,11 @@ multimixMN <- function(
         pl <- boot_res[[bi]]$per_layer[[L]]; if (is.null(pl)) next
 
         if (!is.null(layer_boot[[L]]$loadings_boot)) {
-          layer_boot[[L]]$loadings_boot[[bi]] <- pl$loadings_boot
+          if (is.null(pl$loadings_boot)) {
+            layer_boot[[L]]$loadings_boot[[bi]] <- layer_fits[[L]]$community_loadings$true * NA_real_
+          } else {
+            layer_boot[[L]]$loadings_boot[[bi]] <- pl$loadings_boot
+          }
         }
 
         nodes_g <- layer_nodes_graph[[L]]
