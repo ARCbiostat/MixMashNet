@@ -1,0 +1,9 @@
+# MixMashNet 0.3.0
+
+## Major updates
+* Simplified the interface of `mixMN()` and `multimixMN()` by removing the `type` and `level` arguments. Variable types are now inferred automatically.
+* Community score computation is now restricted to gaussian, poisson and binary categorical variables.
+
+# MixMashNet 0.1.0
+
+* Development version.

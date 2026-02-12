@@ -1,6 +1,6 @@
 Package: MixMashNet
 Title: Tools for Multilayer and Single Layer Network Modeling
-Version: 0.1.0
+Version: 0.3.0
 Authors@R: c(person("Maria", "De Martino", email = "maria.demartino@uniud.it", role = c("aut","cre")),
          person("Caterina", "Gregorio", email = "caterina.gregorio@ki.se", role = "aut"),
          person("Adrien", "Perigord", email = "adrien.perigord@ki.se", role = "ctb"))
