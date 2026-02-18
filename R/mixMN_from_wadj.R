@@ -1,115 +1,17 @@
-#' Build MixMashNet metrics from a signed weighted adjacency matrix
+#' Build a single-layer MixMashNet fit object from a signed adjacency matrix
 #'
-#' @description
-#' Low-level constructor that builds a \code{mixMN_fit} object starting from a
-#' signed weighted adjacency matrix (\code{wadj_signed}), instead of estimating
-#' the network via \code{mgm::mgm}. The function computes community detection,
-#' node-level centrality indices, and bridge metrics (including "excluded"
-#' versions), and returns an object compatible with MixMashNet downstream
-#' utilities.
+#' Internal helper called by \code{multimixMN()} to construct per-layer
+#' \code{mixMN_fit} objects starting from a signed weighted adjacency matrix.
+#' Computes community detection on the absolute-weight graph (after exclusions),
+#' centrality indices on the signed matrix, and bridge metrics (including
+#' excluded-node variants). No bootstrap is performed.
 #'
-#' No bootstrap is performed inside this function. The arguments \code{reps},
-#' \code{seed_boot}, \code{quantile_level}, and \code{boot_what} are stored in
-#' \code{$settings} for interface compatibility with \code{mixMN()} and other
-#' bootstrap-based functions, but the corresponding bootstrap slots in the output
-#' are set to \code{NULL}.
-#'
-#' @param wadj_signed Square numeric matrix (\eqn{p \times p}) with signed edge
-#'   weights (rows/columns = nodes). Typically \code{wadj * signs} from \pkg{mgm}.
-#'   Row and column names must correspond to \code{nodes}.
-#' @param nodes Character vector of node names (must match
-#'   \code{rownames(wadj_signed)} and \code{colnames(wadj_signed)}).
-#' @param quantile_level Quantile level for quantile regions (default 0.95).
-#'   Stored in \code{$settings} for consistency with \code{mixMN()}, but no quantile regions
-#'   are computed here because no bootstrap is performed.
-#' @param covariates Character vector. Nodes excluded entirely from the
-#'   graph (removed from adjacency matrix, edges and node-level metrics).
-#' @param exclude_from_cluster Character vector. Nodes excluded from community
-#'   detection (in addition to \code{covariates}). These nodes remain in
-#'   the graph and in node-level metrics, but receive \code{NA} community labels.
-#' @param cluster_method Community detection algorithm, one of
-#'   \code{c("louvain","fast_greedy","infomap","walktrap","edge_betweenness")}.
-#'   Community detection is performed on the absolute-weight graph induced by
-#'   \code{keep_nodes_cluster}.
-#' @param reps Integer (>= 0). Number of bootstrap replications. Not used inside
-#'   this function; stored in \code{$settings$reps} for downstream bootstrap
-#'   utilities.
-#' @param seed_boot Optional integer. Stored in \code{$settings} for consistency
-#'   with bootstrap utilities; not used here.
-#' @param treat_singletons_as_excluded Logical; if \code{TRUE}, singleton
-#'   communities (size 1) are treated as excluded: their membership is set to
-#'   \code{NA} in \code{$communities$groups} (used for bridge metrics).
-#' @param boot_what Character vector specifying which quantities are intended to
-#'   be bootstrapped in higher-level functions. The value is stored in
-#'   \code{$settings$boot_what} but no bootstrap is computed here. Can include
-#'   \code{"general_index"}, \code{"interlayer_index"}, \code{"bridge_index"},
-#'   \code{"excluded_index"}, \code{"community"}, \code{"loadings"}, or
-#'   \code{"none"}.
-#'
-#' @return
-#' An object of class \code{c("mixmashnet","mixMN_fit")} with the following
-#' components:
-#' \describe{
-#'   \item{\code{call}}{The matched function call.}
-#'   \item{\code{settings}}{
-#'     List echoing the main arguments, including \code{reps},
-#'     \code{cluster_method}, \code{covariates},
-#'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
-#'     \code{boot_what}, and \code{quantile_level}.
-#'   }
-#'   \item{\code{model}}{
-#'     List with \code{mgm = NULL} and \code{nodes} (character vector of all node
-#'     names). This mirrors \code{mixMN()}, but no MGM is fitted here.
-#'   }
-#'   \item{\code{graph}}{
-#'     List describing the graph:
-#'     \code{igraph} (signed \pkg{igraph} object built on \code{keep_nodes_graph},
-#'     with edge attributes \code{weight}, \code{abs_weight}, \code{sign} and
-#'     vertex attribute \code{membership}),
-#'     \code{keep_nodes_graph} (nodes retained in the graph and all node-level
-#'     metrics), and \code{keep_nodes_cluster} (nodes used for community
-#'     detection).
-#'   }
-#'   \item{\code{communities}}{
-#'     List describing community structure with:
-#'     \code{original_membership} (integer vector of community labels on
-#'     \code{keep_nodes_cluster}),
-#'     \code{groups} (factor membership used for bridge metrics; may contain
-#'     \code{NA} for excluded/singleton nodes),
-#'     \code{palette} (named vector of colors per community), and
-#'     \code{boot_memberships} (empty list).
-#'   }
-#'   \item{\code{statistics}}{
-#'     List with node- and edge-level summaries:
-#'     \code{node$true} is a data frame with one row per node in
-#'     \code{keep_nodes_graph}, containing \code{strength}, \code{ei1},
-#'     \code{closeness}, \code{betweenness}, and bridge metrics
-#'     (\code{bridge_strength}, \code{bridge_betweenness}, \code{bridge_closeness},
-#'     \code{bridge_ei1}, \code{bridge_ei2}, plus \code{*_excluded} versions).
-#'     Bootstrap slots \code{node$boot}, \code{node$quantile_region}, \code{edge$boot},
-#'     \code{edge$quantile_region} are set to \code{NULL}.
-#'   }
-#'   \item{\code{community_loadings}}{
-#'     List container for community loadings (aligned to \code{mixMN()}):
-#'     \code{nodes} (nodes used for loadings), \code{wc} (integer community labels
-#'     aligned with \code{nodes}), \code{true} (loadings matrix), and \code{boot}
-#'     (set to \code{NULL} here).
-#'   }
-#' }
-#'
-#' @details
-#' Centrality indices are computed on the signed matrix \code{wadj_signed} via
-#' \code{qgraph::centrality}. Harmonic closeness and betweenness are computed on
-#' an absolute-weight distance graph with edge length \eqn{1/|w|}. Bridge metrics
-#' are computed separately on the absolute and signed graphs using
-#' \code{bridge_metrics()} and \code{bridge_metrics_excluded()}.
-#'
-#' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap
-#' @importFrom igraph cluster_walktrap cluster_edge_betweenness
-#' @importFrom qgraph centrality
-#' @importFrom grDevices hcl
-#' @importFrom stats setNames
-#' @importFrom utils combn
+#' @param wadj_signed Signed weighted adjacency matrix (p × p).
+#' @param nodes Node names matching row/column names of \code{wadj_signed}.
+#' @param covariates Nodes removed from the graph entirely.
+#' @param exclude_from_cluster Nodes excluded from community detection but kept in metrics.
+#' @param treat_singletons_as_excluded If TRUE, singleton communities are set to NA for bridge computations.
+#' @return A \code{mixMN_fit} object (no bootstrap slots filled).
 #' @keywords internal
 #' @noRd
 mixMN_from_wadj <- function(
@@ -302,11 +204,11 @@ mixMN_from_wadj <- function(
   bridge_excl_sgn <- tryCatch({
     b <- bridge_metrics_excluded(g_bridge_signed, membership = groups)
     # normalize possible column names
-    if (!is.null(b$bridge_ei1) || !is.null(b$bridge_expected_influence1)) {
-      ei1 <- if (!is.null(b$bridge_ei1)) b$bridge_ei1 else b$bridge_expected_influence1
+    if (!is.null(b$bridge_ei1) || !is.null(b$bridge_ei1)) {
+      ei1 <- if (!is.null(b$bridge_ei1)) b$bridge_ei1 else b$bridge_ei1
     } else ei1 <- NA_real_
-    if (!is.null(b$bridge_ei2) || !is.null(b$bridge_expected_influence2)) {
-      ei2 <- if (!is.null(b$bridge_ei2)) b$bridge_ei2 else b$bridge_expected_influence2
+    if (!is.null(b$bridge_ei2) || !is.null(b$bridge_ei2)) {
+      ei2 <- if (!is.null(b$bridge_ei2)) b$bridge_ei2 else b$bridge_ei2
     } else ei2 <- NA_real_
     data.frame(node = b$node, bridge_ei1_excluded = ei1, bridge_ei2_excluded = ei2)
   }, error = function(e) {

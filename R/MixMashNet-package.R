@@ -1,4 +1,4 @@
-#' MixMashNet: Multilayer and Single Layer Network Modeling
+#' Tools for Multilayer and Single Layer Network Modeling
 #'
 #' @description
 #' Tools for estimating and analyzing single layer and multilayer networks

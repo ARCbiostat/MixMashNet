@@ -53,8 +53,4 @@ Notes:
         node as an intermediate vertex. When multiple shortest paths exist,
         each path is counted separately.
 }
-
-
-The returned object has class \code{"bridge_profiles"} and a dedicated
-\code{print()} method (\code{print.bridge_profiles}) for convenient inspection.
 }

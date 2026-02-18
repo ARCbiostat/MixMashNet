@@ -42,7 +42,7 @@ Variables may be numeric, integer, logical, or factors.
 Character and Date/POSIXt variables are not supported and must be converted
 prior to model fitting.
 Variable types are internally mapped to MGM types as follows:
-numeric variables are treated as Gaussian;
+continuous numeric (double) variables are treated as Gaussian;
 integer variables are treated as Poisson unless they take only values
 in \{0,1\}, in which case they are treated as binary categorical;
 factors and logical variables are treated as categorical.
@@ -54,10 +54,12 @@ fitting. The original input data are not modified.}
 layer (character or factor). Must cover all columns of \code{data}
 except variables listed in \code{covariates} (treated as adjustment covariates).}
 
-\item{layer_rules}{A logical or numeric square matrix with row/column names
-equal to layer names. Values \code{TRUE} or \code{1} indicate that
-cross-layer edges are allowed between the corresponding layer pair.
-Intralayer edges are always allowed.}
+\item{layer_rules}{A square matrix (L × L), where L is the number of layers.
+Row and column names must match the layer names. Entries equal to
+\code{TRUE} or \code{1} allow cross-layer edges between the corresponding
+pair of layers, while \code{FALSE} or \code{0} disallow them.
+The matrix is symmetrized internally. Diagonal entries are ignored
+(intralayer edges are always permitted).}
 
 \item{scale}{Logical; if \code{TRUE} (default) Gaussian variables
 (\code{type == "g"}) are z-standardized internally by \code{mgm()}. Use
@@ -88,16 +90,25 @@ with replacement). If \code{reps = 0}, no bootstrap is performed.}
 \code{"AND"} or \code{"OR"}.}
 
 \item{threshold}{Threshold below which edge-weights are set to zero:
-\code{"LW"}, \code{"HW"} or \code{"none"}.}
+Available options are \code{"LW"}, \code{"HW"}, or \code{"none"}.
+\code{"LW"} applies the threshold proposed by Loh & Wainwright;
+\code{"HW"} applies the threshold proposed by Haslbeck & Waldorp;
+\code{"none"} disables thresholding. Defaults to \code{"LW"}.}
 
-\item{overparameterize}{Logical; if \code{TRUE} uses the over-parameterized
-version of \code{mgm}.}
+\item{overparameterize}{Logical; controls how categorical interactions are
+parameterized in the neighborhood regressions. If \code{TRUE}, categorical
+interactions are represented using a fully over-parameterized design matrix
+(i.e., all category combinations are explicitly modeled). If \code{FALSE},
+the standard \code{glmnet} parameterization is used, where one category
+serves as reference. For continuous variables, both parameterizations are
+equivalent. The default is \code{FALSE}. The over-parameterized option may
+be advantageous when distinguishing pairwise from higher-order interactions.}
 
 \item{thresholdCat}{Logical; if \code{FALSE} thresholds of categorical
 variables are set to zero.}
 
-\item{quantile_level}{Level of the central bootstrap quantile region (default 0.95).
-Must be a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).}
+\item{quantile_level}{Level of the central bootstrap quantile region (default \code{0.95}).
+Must be a single number between 0 and 1.}
 
 \item{covariates}{Character vector. Variables used as adjustment covariates
 in model estimation.}
@@ -120,8 +131,8 @@ layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
 \item{compute_loadings}{Logical; if \code{TRUE} (default), compute community loadings
-(\code{EGAnet::net.loads}). Only supported for \code{"g"}, \code{"p"}, and binary
-\code{"c"} nodes; otherwise loadings are skipped and the reason is
+(\code{EGAnet::net.loads}). Only supported for Gaussian, Poisson, and binary
+categorical nodes; otherwise loadings are skipped and the reason is
 stored in \code{community_loadings$reason}.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
@@ -147,6 +158,12 @@ list contains at least the following components:
   \item{\code{call}}{
   The matched function call.
   }
+  \item{\code{settings}}{
+  List of main settings used in the call, including
+   \code{reps}, \code{cluster_method}, \code{covariates},
+    \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
+    \code{boot_what}).
+  }
  \item{\code{data_info}}{
     List with information derived from the input data used for model setup:
     \code{mgm_type_level} (data frame with one row per variable, reporting
@@ -154,12 +171,6 @@ list contains at least the following components:
     as used in the call to \code{mgm::mgm}),
     and \code{binary_recode_map} (named list describing the mapping from
     original binary labels to the internal \{0,1\} coding used for model fitting).
-  }
-  \item{\code{settings}}{
-  List of main settings used in the call, including
-   \code{reps}, \code{cluster_method}, \code{covariates},
-    \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
-    \code{boot_what}).
   }
   \item{\code{model}}{
     List with:

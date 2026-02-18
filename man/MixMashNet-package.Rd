@@ -4,7 +4,7 @@
 \name{MixMashNet-package}
 \alias{MixMashNet}
 \alias{MixMashNet-package}
-\title{MixMashNet: Multilayer and Single Layer Network Modeling}
+\title{Tools for Multilayer and Single Layer Network Modeling}
 \description{
 Tools for estimating and analyzing single layer and multilayer networks
 using Mixed Graphical Models (MGMs), accommodating continuous, count, and

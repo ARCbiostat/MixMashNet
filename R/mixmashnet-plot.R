@@ -22,21 +22,82 @@
 #' @param layer Optional layer name. For \code{what = "intra"} or
 #'   \code{what = "stability"} on a \code{multimixMN_fit} object, this selects
 #'   which layer-specific fit to use.
-#' @param ... Additional arguments passed to the underlying helpers:
-#'   \itemize{
-#'     \item For \code{what = "intra"}: forwarded to \code{plotCentrality()},
-#'           e.g. \code{statistics}, \code{ordering}, \code{standardize},
-#'           \code{edges_top_n}, \code{exclude_nodes}, \code{color_by_community}.
-#'     \item For \code{what = "inter"}: forwarded to \code{plotInterlayer()},
-#'           e.g. \code{statistics}, \code{pairs}, \code{edges_top_n},
-#'           \code{ordering}, \code{standardize}, \code{nodes_layer}.
-#'     \item For \code{what = "stability"}: forwarded to
-#'           \code{membershipStab_plot()}, e.g. \code{title}.
-#'     \item For \code{what = "network"}: forwarded to internal network
-#'           plotting helpers \code{.plot_network_single()} or
-#'           \code{.plot_network_multi()}, e.g. \code{color_by},
-#'           \code{edge_color_by}, \code{vertex_size}.
-#'   }
+#' @param ... Additional arguments. Supported arguments depend on \code{what}:
+#'   see the details below.
+#' @details
+#' \strong{Network plots (\code{what = "network"}):}
+#' Supported arguments (via \code{...}):
+#' \describe{
+#'   \item{\code{color_by}}{Node coloring. Single layer: \code{c("community","none")}.
+#'     Multilayer: \code{c("layer","community","none")}}.
+#'   \item{\code{edge_color_by}}{Edge coloring: \code{c("sign","none")}.}
+#'   \item{\code{edge_scale}}{Numeric scaling factor for edge widths (multiplied by \code{abs(weight)}).}
+#'   \item{\code{graphics::plot.igraph} arguments}{e.g., \code{vertex.size},
+#'     \code{vertex.label.cex}, \code{edge.width}, \code{vertex.label.color}, etc.}
+#' }
+#'
+#' \strong{Intralayer statistics (\code{what = "intra"}):}
+#' Plots node-level metrics or edge weights with bootstrap quantile regions.
+#' For multilayer objects:
+#' \itemize{
+#'   \item if \code{layer} is provided, plots that layer only;
+#'   \item if \code{layer} is \code{NULL}, plots all layers (one panel per layer).
+#' }
+#'
+#' Supported arguments (via \code{...}):
+#' \describe{
+#'   \item{\code{statistics}}{Character vector of metrics. Options include:
+#'     \code{"strength"}, \code{"expected_influence"}, \code{"closeness"}, \code{"betweenness"},
+#'     bridge metrics \code{"bridge_strength"}, \code{"bridge_ei1"}, \code{"bridge_ei2"},
+#'     \code{"bridge_closeness"}, \code{"bridge_betweenness"},
+#'     excluded bridge metrics \code{"bridge_strength_excluded"}, \code{"bridge_ei1_excluded"},
+#'     \code{"bridge_ei2_excluded"}, \code{"bridge_closeness_excluded"}, \code{"bridge_betweenness_excluded"},
+#'     and \code{"edges"}.
+#'     Note: different metric families cannot be mixed in the same call (e.g., \code{"edges"} cannot
+#'     be combined with node metrics).}
+#'   \item{\code{ordering}}{Node ordering: \code{c("value","alphabetical","community")}.}
+#'   \item{\code{standardize}}{Logical; if \code{TRUE}, z-standardize the displayed values (within each panel).}
+#'   \item{\code{exclude_nodes}}{Optional character vector of node names to remove before plotting.}
+#'   \item{\code{color_by_community}}{Logical; if \code{TRUE}, color nodes by community (when available).}
+#'   \item{\code{edges_top_n}}{Integer; when \code{statistics = "edges"}, keep the top edges by
+#'     absolute weight.}
+#'   \item{\code{title}}{Optional plot title. In multilayer mode, if not provided a layer-specific
+#'     title is added automatically.}
+#' }
+#'
+#' \strong{Interlayer summaries (\code{what = "inter"}; multilayer only):}
+#' Plots interlayer node metrics or interlayer edge weights with bootstrap quantile regions.
+#'
+#' Supported arguments (via \code{...}):
+#' \describe{
+#'   \item{\code{statistics}}{Character vector. Node metrics:
+#'     \code{c("strength","expected_influence","closeness","betweenness")}, or \code{"edges"} for
+#'     interlayer edge weights. Node metrics and \code{"edges"} cannot be combined.}
+#'   \item{\code{pairs}}{Layer pairs to show. Either \code{"*"} (all available) or a character vector
+#'     of pair keys like \code{"bio_dis"} (order-insensitive).}
+#'   \item{\code{edges_top_n}}{Integer; keep the top interlayer edges by absolute weight.}
+#'   \item{\code{ordering}}{Ordering within panels: \code{c("value","alphabetical")}.}
+#'   \item{\code{standardize}}{Logical; if \code{TRUE}, z-standardize values (node metrics by metric,
+#'     edges by pair).}
+#'   \item{\code{exclude_nodes}}{Optional character vector; removes nodes (and incident interlayer edges).}
+#'   \item{\code{nodes_layer}}{Optional layer name to restrict node metrics to nodes belonging to that layer.}
+#'   \item{\code{title}}{Optional plot title.}
+#' }
+#'
+#' \strong{Community membership stability (\code{what = "stability"}):}
+#' Plots node stability by community.
+#' For multilayer objects, \code{layer} selects a specific layer; if \code{layer} is \code{NULL},
+#' stability plots are shown for all layers.
+#'
+#' Supported arguments (via \code{...}):
+#' \describe{
+#'   \item{\code{title}}{Plot title. Default: \code{"Node Stability by Community"}.}
+#'   \item{\code{cutoff}}{Optional numeric threshold in \eqn{[0,1]} shown as a dashed vertical line.
+#'     Use \code{NULL} to hide the line. Default: 0.7.}
+#' }
+#'
+#' The quantile region level is taken from the fitted object (\code{x$settings$quantile_level});
+#' if missing or invalid, a default of 0.95 is used.
 #'
 #' @return
 #' If \code{what != "network"}, the function returns a \code{ggplot} object.

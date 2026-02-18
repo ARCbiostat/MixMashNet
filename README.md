@@ -24,6 +24,17 @@ With MixMashNet you can:
 In short: a bit of *mix*, a bit of *mash*, and you’re ready to build
 your network!
 
+To **cite** the package:
+
+**De Martino, M., Triolo, F., Perigord, A., Margherita Ornago, A.,
+Liborio Vetrano, D., and Gregorio, C., “MixMashNet: An R Package for
+Single and Multilayer Networks”, <i>arXiv e-prints</i>, Art. no.
+arXiv:2602.05716, 2026. <doi:10.48550/arXiv.2602.05716>.**
+
+Additional information and the companion **interactive visualization
+apps** can be found at the package’s website:
+<https://arcbiostat.github.io/MixMashNet/>
+
 ## Installation
 
 You can install the development version of MixMashNet from
@@ -110,7 +121,7 @@ fit1 <- mixMN(
   cluster_method     = "infomap",
   covariates         = c("age", "sex", "re")
 )
-#> Total computation time: 20.3 seconds (~ 0.34 minutes).
+#> Total computation time: 20.4 seconds (~ 0.34 minutes).
 ```
 
 Plot item stability:
@@ -144,7 +155,7 @@ fit2 <- mixMN(
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
-#> Total computation time: 7.9 seconds (~ 0.13 minutes).
+#> Total computation time: 7.8 seconds (~ 0.13 minutes).
 ```
 
 Recompute stability:

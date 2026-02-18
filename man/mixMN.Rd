@@ -41,7 +41,7 @@ Variables may be numeric, integer, logical, or factors.
 Character and Date/POSIXt variables are not supported and must be converted
 prior to model fitting.
 Variable types are internally mapped to MGM types as follows:
-numeric variables are treated as Gaussian;
+continuous numeric (double) variables are treated as Gaussian;
 integer variables are treated as Poisson unless they take only values
 in \{0,1\}, in which case they are treated as binary categorical;
 factors and logical variables are treated as categorical.
@@ -74,15 +74,24 @@ fitting. The original input data are not modified.}
 \item{ruleReg}{Rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}.}
 
 \item{threshold}{Threshold below which edge-weights are set to zero:
-\code{"LW"}, \code{"HW"} or \code{"none"}.}
+Available options are \code{"LW"}, \code{"HW"}, or \code{"none"}.
+\code{"LW"} applies the threshold proposed by Loh & Wainwright;
+\code{"HW"} applies the threshold proposed by Haslbeck & Waldorp;
+\code{"none"} disables thresholding. Defaults to \code{"LW"}.}
 
-\item{overparameterize}{Logical; if \code{TRUE} uses the over-parameterized
-version of \code{mgm}.}
+\item{overparameterize}{Logical; controls how categorical interactions are
+parameterized in the neighborhood regressions. If \code{TRUE}, categorical
+interactions are represented using a fully over-parameterized design matrix
+(i.e., all category combinations are explicitly modeled). If \code{FALSE},
+the standard \code{glmnet} parameterization is used, where one category
+serves as reference. For continuous variables, both parameterizations are
+equivalent. The default is \code{FALSE}. The over-parameterized option may
+be advantageous when distinguishing pairwise from higher-order interactions.}
 
 \item{thresholdCat}{Logical; if \code{FALSE} thresholds of categorical
 variables are set to zero.}
 
-\item{quantile_level}{Level of the central bootstrap quantile region (default 0.95).
+\item{quantile_level}{Level of the central bootstrap quantile region (default \code{0.95}).
 Must be a single number between 0 and 1.}
 
 \item{covariates}{Character vector. Variables used as adjustment covariates
@@ -106,8 +115,8 @@ reproducibility of bootstrap replications.}
 \code{"walktrap"}, or \code{"edge_betweenness"}.}
 
 \item{compute_loadings}{Logical; if \code{TRUE} (default), compute community loadings
-(\code{EGAnet::net.loads}). Only supported for \code{"g"}, \code{"p"}, and binary
-\code{"c"} nodes; otherwise loadings are skipped and the reason is
+(\code{EGAnet::net.loads}). Only supported for Gaussian, Poisson, and binary
+categorical nodes; otherwise loadings are skipped and the reason is
 stored in \code{community_loadings$reason}.}
 
 \item{boot_what}{Character vector specifying which quantities to bootstrap.
@@ -243,4 +252,9 @@ Haslbeck, J. M. B., & Waldorp, L. J. (2020).
 mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.
 \emph{Journal of Statistical Software}, 93(8).
 \doi{10.18637/jss.v093.i08}
+
+Loh, P. L., & Wainwright, M. J. (2012).
+Structure estimation for discrete graphicalmodels:
+Generalized covariance matrices and their inverses.
+\emph{NIPS}
 }

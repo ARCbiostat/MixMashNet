@@ -1,7 +1,9 @@
 #' Bridge metrics for nodes excluded from communities
 #'
 #' Computes bridge centrality measures for nodes that are not assigned to any
-#' community. For these excluded nodes, the function computes bridge strength, bridge
+#' community.
+#' This function is used internally by \code{mixMN()} and \code{multimixMN()}.
+#' For these excluded nodes, the function computes bridge strength, bridge
 #' closeness, bridge betweenness, and bridge expected influence of order one and
 #' two (EI1 and EI2), quantifying their role in connecting nodes across different
 #' communities.
@@ -9,8 +11,8 @@
 #' @param g An igraph object with edge attribute \code{weight}.
 #' @param membership Named vector/factor of community labels for a subset of nodes (names must match \code{V(g)$name}).
 #'        Nodes not present here are treated as excluded.
-#' @return A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_closeness}, \code{bridge_betweenness},
-#'         \code{bridge_expected_influence1}, \code{bridge_expected_influence2}.
+#' @return A data.frame with columns: \code{node}, \code{bridge_strength}, \code{bridge_closeness}, \code{bridge_betweenness},
+#'         \code{bridge_ei1}, \code{bridge_ei2}.
 #' @details
 #' Bridge betweenness excluded and closeness excluded are computed on the positive-weight subgraph
 #' only, with weights converted to distances as \eqn{d = 1/w}.
@@ -73,8 +75,8 @@ bridge_metrics_excluded <- function(g, membership) {
       bridge_strength = numeric(0),
       bridge_closeness = numeric(0),
       bridge_betweenness = numeric(0),
-      bridge_expected_influence1 = numeric(0),
-      bridge_expected_influence2 = numeric(0),
+      bridge_ei1 = numeric(0),
+      bridge_ei2 = numeric(0),
       cluster = character(0),
       row.names = NULL
     ))
@@ -164,12 +166,11 @@ bridge_metrics_excluded <- function(g, membership) {
   # --- 6) Assemble output for excluded nodes ----------------------------------
   out <- data.frame(
     node = outside_nodes,
-    bridge_strength              = bridge_res$`Bridge Strength`[outside_nodes],
-    bridge_closeness             = bridge_res$`Bridge Closeness`[outside_nodes],
-    bridge_betweenness           = bridge_res$`Bridge Betweenness`[outside_nodes],
-    bridge_expected_influence1   = bridge_res$`Bridge Expected Influence (1-step)`[outside_nodes],
-    bridge_expected_influence2   = bridge_res$`Bridge Expected Influence (2-step)`[outside_nodes],
-    cluster = full_membership[outside_nodes],
+    bridge_strength      = bridge_res$`Bridge Strength`[outside_nodes],
+    bridge_closeness     = bridge_res$`Bridge Closeness`[outside_nodes],
+    bridge_betweenness   = bridge_res$`Bridge Betweenness`[outside_nodes],
+    bridge_ei1           = bridge_res$`Bridge Expected Influence (1-step)`[outside_nodes],
+    bridge_ei2           = bridge_res$`Bridge Expected Influence (2-step)`[outside_nodes],
     row.names = NULL
   )
 

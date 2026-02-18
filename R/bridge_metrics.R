@@ -1,6 +1,7 @@
 #' Bridge metrics for nodes across communities
 #'
 #' Computes bridge centrality measures for nodes with an assigned community.
+#' This function is used internally by \code{mixMN()} and \code{multimixMN()}.
 #' Specifically, the function computes bridge strength as the sum of absolute
 #' edge weights connecting a node to nodes in other communities; bridge expected
 #' influence of order one (EI1) as the signed sum of direct connections to nodes
@@ -13,7 +14,7 @@
 #'
 #' @param g An igraph object with edge attribute \code{weight}.
 #' @param membership Named vector/factor of community labels for a subset of nodes (names must match \code{V(g)$name}).
-#' @return A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_ei1},
+#' @return A data.frame with columns: \code{node}, \code{community}, \code{bridge_strength}, \code{bridge_ei1},
 #'        \code{bridge_ei2}, \code{bridge_betweenness}, \code{bridge_closeness}.
 #' @details
 #' Bridge betweenness and closeness are computed on the positive-weight subgraph
@@ -171,7 +172,7 @@ bridge_metrics <- function(g, membership) {
   # --- Output ---
   data.frame(
     node = assigned_nodes,
-    cluster = assigned_communities,
+    community = assigned_communities,
     bridge_strength = bridge_strength,
     bridge_ei1 = bridge_ei1,
     bridge_ei2 = bridge_ei2,

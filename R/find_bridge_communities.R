@@ -43,10 +43,6 @@
 #'     (\code{Ci}, \code{Cj}, \code{hits}).}
 #' }
 #'
-#' @details
-#' The returned object has class \code{"bridge_profiles"} and a dedicated
-#' \code{print()} method (\code{print.bridge_profiles}) for convenient inspection.
-#'
 #' @importFrom igraph graph_from_adjacency_matrix delete_edges distances is_directed degree get.all.shortest.paths
 #' @importFrom dplyr bind_rows arrange desc
 #' @importFrom tibble tibble
@@ -297,15 +293,6 @@ find_bridge_communities <- function(fit, node) {
   out
 }
 
-#' Print method for objects of class \code{"bridge_profiles"}
-#'
-#' @param x An object of class \code{"bridge_profiles"}.
-#' @param statistic Character string indicating which bridge profile to print.
-#'   If missing, all available profiles are printed.
-#' @param digits Number of decimal digits used when printing numeric results.
-#' @param ... Further arguments passed to or from other methods (currently unused).
-#'
-#' @return The input object \code{x}, invisibly.
 #' @export
 print.bridge_profiles <- function(x,
                                   statistic = c("bridge_strength", "bridge_ei1", "bridge_ei2",

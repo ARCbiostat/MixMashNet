@@ -69,9 +69,9 @@ Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 \code{fit$community_loadings$boot}.
 Community scores are only available if community loadings were computed
-in the fitted model, which requires that all variables in the community
-subgraph are of MGM type \code{"g"} or \code{"p"}, or binary categorical
-(\code{type == "c"} with \code{level == 2}).
+in the fitted model. This requires that all variables in the community
+subgraph are of MGM type Gaussian (\code{"g"}), Poisson (\code{"p"}), or
+binary categorical (\code{"c"} with \code{level == 2}).
 }
 \details{
 The function requires that \code{fit$community_loadings$true} exists and that

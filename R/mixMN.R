@@ -15,7 +15,7 @@
 #'   Character and Date/POSIXt variables are not supported and must be converted
 #'   prior to model fitting.
 #'   Variable types are internally mapped to MGM types as follows:
-#'   numeric variables are treated as Gaussian;
+#'   continuous numeric (double) variables are treated as Gaussian;
 #'   integer variables are treated as Poisson unless they take only values
 #'   in \{0,1\}, in which case they are treated as binary categorical;
 #'   factors and logical variables are treated as categorical.
@@ -36,12 +36,21 @@
 #' @param k Integer (>= 1). Order of modeled interactions.
 #' @param ruleReg Rule to combine neighborhood estimates: \code{"AND"} or \code{"OR"}.
 #' @param threshold Threshold below which edge-weights are set to zero:
-#'   \code{"LW"}, \code{"HW"} or \code{"none"}.
-#' @param overparameterize Logical; if \code{TRUE} uses the over-parameterized
-#'   version of \code{mgm}.
+#'   Available options are \code{"LW"}, \code{"HW"}, or \code{"none"}.
+#'   \code{"LW"} applies the threshold proposed by Loh & Wainwright;
+#'   \code{"HW"} applies the threshold proposed by Haslbeck & Waldorp;
+#'   \code{"none"} disables thresholding. Defaults to \code{"LW"}.
+#' @param overparameterize Logical; controls how categorical interactions are
+#'   parameterized in the neighborhood regressions. If \code{TRUE}, categorical
+#'   interactions are represented using a fully over-parameterized design matrix
+#'   (i.e., all category combinations are explicitly modeled). If \code{FALSE},
+#'   the standard \code{glmnet} parameterization is used, where one category
+#'   serves as reference. For continuous variables, both parameterizations are
+#'   equivalent. The default is \code{FALSE}. The over-parameterized option may
+#'   be advantageous when distinguishing pairwise from higher-order interactions.
 #' @param thresholdCat Logical; if \code{FALSE} thresholds of categorical
 #'   variables are set to zero.
-#' @param quantile_level Level of the central bootstrap quantile region (default 0.95).
+#' @param quantile_level Level of the central bootstrap quantile region (default \code{0.95}).
 #'   Must be a single number between 0 and 1.
 #' @param covariates Character vector. Variables used as adjustment covariates
 #'   in model estimation.
@@ -58,8 +67,8 @@
 #'   \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
 #'   \code{"walktrap"}, or \code{"edge_betweenness"}.
 #' @param compute_loadings Logical; if \code{TRUE} (default), compute community loadings
-#'   (\code{EGAnet::net.loads}). Only supported for \code{"g"}, \code{"p"}, and binary
-#'   \code{"c"} nodes; otherwise loadings are skipped and the reason is
+#'   (\code{EGAnet::net.loads}). Only supported for Gaussian, Poisson, and binary
+#'   categorical nodes; otherwise loadings are skipped and the reason is
 #'   stored in \code{community_loadings$reason}.
 #' @param boot_what Character vector specifying which quantities to bootstrap.
 #'   Valid options are:
@@ -184,6 +193,11 @@
 #' mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.
 #' \emph{Journal of Statistical Software}, 93(8).
 #' \doi{10.18637/jss.v093.i08}
+#'
+#' Loh, P. L., & Wainwright, M. J. (2012).
+#' Structure estimation for discrete graphicalmodels:
+#' Generalized covariance matrices and their inverses.
+#' \emph{NIPS}
 #'
 #' @importFrom mgm mgm
 #' @importFrom EGAnet net.loads
@@ -450,8 +464,9 @@ mixMN <- function(
       loadings_available <- FALSE
       non_scorable_nodes <- nodes_comm[!ok_nodes]
       loadings_reason <- paste0(
-        "Loadings not computed: categorical variables with >2 levels found (MGM type 'c' with level>2). ",
-        "Community scores are only supported for 'g', 'p', and binary 'c' (level==2)."
+        "Loadings not computed: categorical variables with more than two levels were found. ",
+        "Community scores are only supported for Gaussian, Poisson, ",
+        "or binary categorical variables (i.e., categorical variables with exactly two levels)."
       )
 
       community_loadings_true <- NULL
@@ -542,11 +557,11 @@ mixMN <- function(
   }, error = function(e) {
     data.frame(
       node = keep_nodes_graph,
-      bridge_strength            = NA_real_,
-      bridge_betweenness         = NA_real_,
-      bridge_closeness           = NA_real_,
-      bridge_expected_influence1 = NA_real_,
-      bridge_expected_influence2 = NA_real_
+      bridge_strength    = NA_real_,
+      bridge_betweenness = NA_real_,
+      bridge_closeness   = NA_real_,
+      bridge_ei1         = NA_real_,
+      bridge_ei2         = NA_real_
     )
   })
 
@@ -555,21 +570,21 @@ mixMN <- function(
   }, error = function(e) {
     data.frame(
       node = keep_nodes_graph,
-      bridge_strength            = NA_real_,
-      bridge_betweenness         = NA_real_,
-      bridge_closeness           = NA_real_,
-      bridge_expected_influence1 = NA_real_,
-      bridge_expected_influence2 = NA_real_
+      bridge_strength       = NA_real_,
+      bridge_betweenness    = NA_real_,
+      bridge_closeness      = NA_real_,
+      bridge_ei1            = NA_real_,
+      bridge_ei2            = NA_real_
     )
   })
 
   bridge_outside_true <- data.frame(
-    node                         = bridge_outside_abs$node,
-    bridge_strength              = bridge_outside_abs$bridge_strength,
-    bridge_betweenness           = bridge_outside_abs$bridge_betweenness,
-    bridge_closeness             = bridge_outside_abs$bridge_closeness,
-    bridge_expected_influence1   = bridge_outside_signed$bridge_expected_influence1, # SIGNED
-    bridge_expected_influence2   = bridge_outside_signed$bridge_expected_influence2  # SIGNED
+    node                  = bridge_outside_abs$node,
+    bridge_strength       = bridge_outside_abs$bridge_strength,
+    bridge_betweenness    = bridge_outside_abs$bridge_betweenness,
+    bridge_closeness      = bridge_outside_abs$bridge_closeness,
+    bridge_ei1            = bridge_outside_signed$bridge_ei1, # SIGNED
+    bridge_ei2            = bridge_outside_signed$bridge_ei2  # SIGNED
   )
 
   centrality_true_df <- data.frame(
@@ -596,7 +611,7 @@ mixMN <- function(
   idx_out <- match(bridge_outside_true$node, keep_nodes_graph)
   bridge_excluded_df[idx_out, -1] <- bridge_outside_true[, c(
     "bridge_strength", "bridge_betweenness", "bridge_closeness",
-    "bridge_expected_influence1", "bridge_expected_influence2"
+    "bridge_ei1", "bridge_ei2"
   )]
   centrality_true_df <- cbind(centrality_true_df, bridge_excluded_df[, -1])
 
@@ -805,7 +820,7 @@ mixMN <- function(
           abs_part[match(keep_nodes_graph, abs_part$node),
                    c("bridge_strength","bridge_betweenness","bridge_closeness")],
           sgn_part[match(keep_nodes_graph, sgn_part$node),
-                   c("bridge_expected_influence1","bridge_expected_influence2")]
+                   c("bridge_ei1","bridge_ei2")]
         )
       }, error = function(e) {
         matrix(NA_real_, nrow = n_nodes_graph, ncol = 5)

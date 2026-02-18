@@ -12,11 +12,12 @@ bridge_metrics(g, membership)
 \item{membership}{Named vector/factor of community labels for a subset of nodes (names must match \code{V(g)$name}).}
 }
 \value{
-A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_ei1},
+A data.frame with columns: \code{node}, \code{community}, \code{bridge_strength}, \code{bridge_ei1},
        \code{bridge_ei2}, \code{bridge_betweenness}, \code{bridge_closeness}.
 }
 \description{
 Computes bridge centrality measures for nodes with an assigned community.
+This function is used internally by \code{mixMN()} and \code{multimixMN()}.
 Specifically, the function computes bridge strength as the sum of absolute
 edge weights connecting a node to nodes in other communities; bridge expected
 influence of order one (EI1) as the signed sum of direct connections to nodes

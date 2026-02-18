@@ -12,9 +12,9 @@
 #' scores can be computed if bootstrap community loadings are available in
 #' \code{fit$community_loadings$boot}.
 #' Community scores are only available if community loadings were computed
-#' in the fitted model, which requires that all variables in the community
-#' subgraph are of MGM type \code{"g"} or \code{"p"}, or binary categorical
-#' (\code{type == "c"} with \code{level == 2}).
+#' in the fitted model. This requires that all variables in the community
+#' subgraph are of MGM type Gaussian (\code{"g"}), Poisson (\code{"p"}), or
+#' binary categorical (\code{"c"} with \code{level == 2}).
 #'
 #' @param fit A fitted object of class \code{c("mixmashnet","mixMN_fit", "multimixMN_fit")}
 #'   returned by \code{mixMN()} or \code{multimixMN()}.
@@ -104,18 +104,40 @@ community_scores <- function(
 
     # if layer is NULL -> all layers
     if (is.null(layer)) {
-      out_list <- lapply(names(fit$layer_fits), function(L) {
-        community_scores(
-          fit   = fit$layer_fits[[L]],
-          data  = data,
-          layer = NULL,
-          scale = scale,
-          quantile_level = quantile_level,
-          return_quantile_region = return_quantile_region,
-          na_action = na_action
-        )
-      })
+
+      out_list <- vector("list", length(fit$layer_fits))
       names(out_list) <- names(fit$layer_fits)
+
+      failed_layers <- character(0)
+
+      for (L in names(fit$layer_fits)) {
+
+        res <- tryCatch(
+          community_scores(
+            fit   = fit$layer_fits[[L]],
+            data  = data,
+            layer = NULL,
+            scale = scale,
+            quantile_level = quantile_level,
+            return_quantile_region = return_quantile_region,
+            na_action = na_action
+          ),
+          error = function(e) {
+            failed_layers <<- c(failed_layers, L)
+            warning(
+              sprintf("Community scores not computed for layer '%s': %s",
+                      L, conditionMessage(e)),
+              call. = FALSE
+            )
+            NULL
+          }
+        )
+
+        out_list[[L]] <- res
+      }
+
+      out_list <- out_list[!vapply(out_list, is.null, logical(1))]
+
       return(out_list)
     }
 
@@ -415,6 +437,108 @@ community_scores <- function(
       scale = scale_vec
     )
   )
-  class(out) <- c("mixmashnet", "community_scores")
+  class(out) <- c("community_scores", "mixmashnet")
   return(out)
+}
+
+#'
+#' @export
+print.community_scores <- function(x, ...) {
+
+  cat("MixMashNet community scores\n")
+  cat(strrep("=", 30), "\n\n", sep = "")
+
+  # Basic structure
+  cat("Subjects:    ", length(x$ids), "\n", sep = "")
+  cat("Communities: ", length(x$communities), "\n", sep = "")
+
+  # Settings
+  cat("\nSettings\n")
+  cat("  Scaling:       ", x$settings$scale, "\n", sep = "")
+
+  if (!is.null(x$quantile_region)) {
+    ql <- x$quantile_region$quantile_level
+    cat("  Quantile region: ", paste0(round(100 * ql), "%"), "\n", sep = "")
+  } else {
+    cat("  Quantile region: not computed\n")
+  }
+
+  # Community names
+  cat("\nCommunity names:\n  ")
+  cat(paste(x$communities, collapse = ", "))
+  cat("\n")
+
+  invisible(x)
+}
+
+#' @export
+summary.community_scores <- function(object, ...) {
+
+  x <- object
+
+  n <- nrow(x$scores)
+  K <- ncol(x$scores)
+
+  has_qr <- !is.null(x$quantile_region)
+  ql <- if (has_qr) x$quantile_region$quantile_level else NA_real_
+
+  score_means <- colMeans(x$scores, na.rm = TRUE)
+  score_sds   <- apply(x$scores, 2, stats::sd, na.rm = TRUE)
+  score_min   <- apply(x$scores, 2, min, na.rm = TRUE)
+  score_max   <- apply(x$scores, 2, max, na.rm = TRUE)
+
+  out <- list(
+    subjects = n,
+    communities = K,
+    community_names = x$communities,
+    settings = x$settings,
+    quantile_region = list(
+      computed = has_qr,
+      quantile_level = ql
+    ),
+    score_summary = data.frame(
+      community = x$communities,
+      mean = as.numeric(score_means),
+      sd   = as.numeric(score_sds),
+      min  = as.numeric(score_min),
+      max  = as.numeric(score_max),
+      row.names = NULL
+    )
+  )
+
+  class(out) <- "summary.community_scores"
+  out
+}
+
+
+#' @export
+print.summary.community_scores <- function(x, ...) {
+
+  cat("Summary of MixMashNet community scores\n")
+  cat(strrep("=", 40), "\n\n", sep = "")
+
+  cat("Subjects:    ", x$subjects, "\n", sep = "")
+  cat("Communities: ", x$communities, "\n", sep = "")
+
+  cat("\nSettings\n")
+  cat("  Scaling:   ", x$settings$scale, "\n", sep = "")
+  cat("  NA action: ", x$settings$na_action, "\n", sep = "")
+
+  if (isTRUE(x$quantile_region$computed)) {
+    cat("  Quantile region: ",
+        round(100 * x$quantile_region$quantile_level), "%\n", sep = "")
+  } else {
+    cat("  Quantile region: not computed\n")
+  }
+
+  cat("\nPer-community statistics (across subjects)\n")
+  df <- x$score_summary
+  df$mean <- signif(df$mean, 4)
+  df$sd   <- signif(df$sd, 4)
+  df$min  <- signif(df$min, 4)
+  df$max  <- signif(df$max, 4)
+
+  print(df, row.names = FALSE)
+
+  invisible(x)
 }

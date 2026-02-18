@@ -3,6 +3,7 @@
 #' @description
 #' Computes per-node stability given the empirical community structure and the
 #' homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
+#' This function is used internally by \code{mixMN()} and \code{multimixMN()}.
 #' Stability is expressed as the proportion of bootstrap replications that
 #' assign each node to its empirical (original) community.
 #'

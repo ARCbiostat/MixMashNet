@@ -1,3 +1,8 @@
+# MixMashNet 0.4.0
+
+## Major updates
+* Added `print()` and `summary()` for `community_scores()`.
+
 # MixMashNet 0.3.0
 
 ## Major updates

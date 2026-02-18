@@ -667,15 +667,6 @@ summary.mixmashnet <- function(object,
 }
 
 
-#' Print method for "summary.mixmashnet" objects
-#'
-#' @param x A "summary.mixmashnet" object
-#' @param digits Number of digits to print
-#' @param top_n Show only the top `top_n` rows per block (ranked by |estimated|).
-#'   Use `Inf` to show all rows (default).
-#' @param ... Unused
-#'
-#' @method print summary.mixmashnet
 #' @export
 print.summary.mixmashnet <- function(x, digits = 3, top_n = Inf, ...) {
 

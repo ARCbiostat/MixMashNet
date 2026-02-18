@@ -13,12 +13,14 @@ bridge_metrics_excluded(g, membership)
 Nodes not present here are treated as excluded.}
 }
 \value{
-A data.frame with columns: \code{node}, \code{cluster}, \code{bridge_strength}, \code{bridge_closeness}, \code{bridge_betweenness},
-        \code{bridge_expected_influence1}, \code{bridge_expected_influence2}.
+A data.frame with columns: \code{node}, \code{bridge_strength}, \code{bridge_closeness}, \code{bridge_betweenness},
+        \code{bridge_ei1}, \code{bridge_ei2}.
 }
 \description{
 Computes bridge centrality measures for nodes that are not assigned to any
-community. For these excluded nodes, the function computes bridge strength, bridge
+community.
+This function is used internally by \code{mixMN()} and \code{multimixMN()}.
+For these excluded nodes, the function computes bridge strength, bridge
 closeness, bridge betweenness, and bridge expected influence of order one and
 two (EI1 and EI2), quantifying their role in connecting nodes across different
 communities.
