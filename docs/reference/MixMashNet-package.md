@@ -1,4 +1,4 @@
-# MixMashNet: Multilayer and Single Layer Network Modeling
+# Tools for Multilayer and Single Layer Network Modeling
 
 Tools for estimating and analyzing single layer and multilayer networks
 using Mixed Graphical Models (MGMs), accommodating continuous, count,

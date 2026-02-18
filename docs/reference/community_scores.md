@@ -10,7 +10,11 @@ dataset provided via the `data` argument. If `data = NULL`, the original
 dataset used to fit the model (`fit$model$data`) is used by default.
 Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
-`fit$community_loadings$boot`.
+`fit$community_loadings$boot`. Community scores are only available if
+community loadings were computed in the fitted model. This requires that
+all variables in the community subgraph are of MGM type Gaussian
+(`"g"`), Poisson (`"p"`), or binary categorical (`"c"` with
+`level == 2`).
 
 ## Usage
 
@@ -20,7 +24,7 @@ community_scores(
   data = NULL,
   layer = NULL,
   scale = TRUE,
-  quantile_level = 0.95,
+  quantile_level = NULL,
   return_quantile_region = FALSE,
   na_action = c("stop", "omit")
 )
@@ -36,7 +40,7 @@ community_scores(
 
 - data:
 
-  Optional matrix/data.frame with variables in columns. If `NULL`, uses
+  Optional data.frame with variables in columns. If `NULL`, uses
   `fit$model$data`. Errors if both are `NULL`.
 
 - layer:

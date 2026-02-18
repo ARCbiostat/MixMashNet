@@ -19,7 +19,7 @@ on new data) and can bootstrap the corresponding loadings."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MixMashNet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -102,7 +102,7 @@ Variables may be numeric, integer, logical, or factors.
 Character and Date/POSIXt variables are not supported and must be converted
 prior to model fitting.
 Variable types are internally mapped to MGM types as follows:
-numeric variables are treated as Gaussian;
+continuous numeric (double) variables are treated as Gaussian;
 integer variables are treated as Poisson unless they take only values
 in {0,1}, in which case they are treated as binary categorical;
 factors and logical variables are treated as categorical.
@@ -159,12 +159,21 @@ fitting. The original input data are not modified.</p></dd>
 
 <dt id="arg-threshold">threshold<a class="anchor" aria-label="anchor" href="#arg-threshold"></a></dt>
 <dd><p>Threshold below which edge-weights are set to zero:
-<code>"LW"</code>, <code>"HW"</code> or <code>"none"</code>.</p></dd>
+Available options are <code>"LW"</code>, <code>"HW"</code>, or <code>"none"</code>.
+<code>"LW"</code> applies the threshold proposed by Loh &amp; Wainwright;
+<code>"HW"</code> applies the threshold proposed by Haslbeck &amp; Waldorp;
+<code>"none"</code> disables thresholding. Defaults to <code>"LW"</code>.</p></dd>
 
 
 <dt id="arg-overparameterize">overparameterize<a class="anchor" aria-label="anchor" href="#arg-overparameterize"></a></dt>
-<dd><p>Logical; if <code>TRUE</code> uses the over-parameterized
-version of <code>mgm</code>.</p></dd>
+<dd><p>Logical; controls how categorical interactions are
+parameterized in the neighborhood regressions. If <code>TRUE</code>, categorical
+interactions are represented using a fully over-parameterized design matrix
+(i.e., all category combinations are explicitly modeled). If <code>FALSE</code>,
+the standard <code>glmnet</code> parameterization is used, where one category
+serves as reference. For continuous variables, both parameterizations are
+equivalent. The default is <code>FALSE</code>. The over-parameterized option may
+be advantageous when distinguishing pairwise from higher-order interactions.</p></dd>
 
 
 <dt id="arg-thresholdcat">thresholdCat<a class="anchor" aria-label="anchor" href="#arg-thresholdcat"></a></dt>
@@ -173,7 +182,7 @@ variables are set to zero.</p></dd>
 
 
 <dt id="arg-quantile-level">quantile_level<a class="anchor" aria-label="anchor" href="#arg-quantile-level"></a></dt>
-<dd><p>Level of the central bootstrap quantile region (default 0.95).
+<dd><p>Level of the central bootstrap quantile region (default <code>0.95</code>).
 Must be a single number between 0 and 1.</p></dd>
 
 
@@ -210,8 +219,10 @@ reproducibility of bootstrap replications.</p></dd>
 
 
 <dt id="arg-compute-loadings">compute_loadings<a class="anchor" aria-label="anchor" href="#arg-compute-loadings"></a></dt>
-<dd><p>Logical; if <code>TRUE</code> (default),
-compute network loadings (EGAnet net.loads) for communities.</p></dd>
+<dd><p>Logical; if <code>TRUE</code> (default), compute community loadings
+(<code><a href="https://r-ega.net/reference/net.loads.html" class="external-link">EGAnet::net.loads</a></code>). Only supported for Gaussian, Poisson, and binary
+categorical nodes; otherwise loadings are skipped and the reason is
+stored in <code>community_loadings$reason</code>.</p></dd>
 
 
 <dt id="arg-boot-what">boot_what<a class="anchor" aria-label="anchor" href="#arg-boot-what"></a></dt>
@@ -260,7 +271,7 @@ the following top-level components:</p><dl><dt><code>call</code></dt>
     <code>nodes</code> (character vector of all node names),
     <code>n</code> (number of observations),
     <code>p</code> (number of variables), and
-    <code>data</code>.</p></dd>
+    <code>data</code> (if <code>save_data = TRUE</code>).</p></dd>
 
   <dt><code>graph</code></dt>
 <dd><p>List describing the graph:
@@ -315,11 +326,18 @@ the following top-level components:</p><dl><dt><code>call</code></dt>
 <dd><p>List containing community-loading information (based on
     <code><a href="https://r-ega.net/reference/net.loads.html" class="external-link">EGAnet::net.loads</a></code>) for later community-score computation on new
     data:
-    <code>nodes</code> (nodes used for loadings),
+    <code>nodes</code>(nodes used for loadings),
     <code>wc</code> (integer community labels aligned with <code>nodes</code>),
-    <code>true</code> (matrix of standardized loadings, nodes x communities),
-    and <code>boot</code> (list of bootstrap loading matrices, one per replication,
-    or <code>NULL</code> if not bootstrapped).</p></dd>
+    <code>true</code> (matrix of standardized loadings, nodes x communities,
+    or <code>NULL</code> if loadings were not computed.),
+    <code>boot</code> (list of bootstrap loading matrices, one per replication,
+    or <code>NULL</code> if not bootstrapped),
+    <code>available</code> (logical indicating whether loadings were computed),
+    <code>reason</code> (character string explaining why loadings were not computed,
+        or <code>NULL</code> if <code>available = TRUE</code>),
+    <code>non_scorable_nodes</code> (character vector of nodes in the community
+        subgraph that prevented loadings from being computed (e.g., categorical variables
+        with &gt;2 levels), otherwise empty).</p></dd>
 
 
 </dl></div>
@@ -337,6 +355,10 @@ bootstrap and corresponding quantile regions are still computed.</p>
 mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.
 <em>Journal of Statistical Software</em>, 93(8).
 <a href="https://doi.org/10.18637/jss.v093.i08" class="external-link">doi:10.18637/jss.v093.i08</a></p>
+<p>Loh, P. L., &amp; Wainwright, M. J. (2012).
+Structure estimation for discrete graphicalmodels:
+Generalized covariance matrices and their inverses.
+<em>NIPS</em></p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

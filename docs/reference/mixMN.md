@@ -50,12 +50,13 @@ mixMN(
   numeric, integer, logical, or factors. Character and Date/POSIXt
   variables are not supported and must be converted prior to model
   fitting. Variable types are internally mapped to MGM types as follows:
-  numeric variables are treated as Gaussian; integer variables are
-  treated as Poisson unless they take only values in {0,1}, in which
-  case they are treated as binary categorical; factors and logical
-  variables are treated as categorical. Binary categorical variables
-  (two-level factors and logical variables) are internally recoded to
-  {0,1} for model fitting. The original input data are not modified.
+  continuous numeric (double) variables are treated as Gaussian; integer
+  variables are treated as Poisson unless they take only values in
+  {0,1}, in which case they are treated as binary categorical; factors
+  and logical variables are treated as categorical. Binary categorical
+  variables (two-level factors and logical variables) are internally
+  recoded to {0,1} for model fitting. The original input data are not
+  modified.
 
 - reps:
 
@@ -105,12 +106,22 @@ mixMN(
 
 - threshold:
 
-  Threshold below which edge-weights are set to zero: `"LW"`, `"HW"` or
-  `"none"`.
+  Threshold below which edge-weights are set to zero: Available options
+  are `"LW"`, `"HW"`, or `"none"`. `"LW"` applies the threshold proposed
+  by Loh & Wainwright; `"HW"` applies the threshold proposed by Haslbeck
+  & Waldorp; `"none"` disables thresholding. Defaults to `"LW"`.
 
 - overparameterize:
 
-  Logical; if `TRUE` uses the over-parameterized version of `mgm`.
+  Logical; controls how categorical interactions are parameterized in
+  the neighborhood regressions. If `TRUE`, categorical interactions are
+  represented using a fully over-parameterized design matrix (i.e., all
+  category combinations are explicitly modeled). If `FALSE`, the
+  standard `glmnet` parameterization is used, where one category serves
+  as reference. For continuous variables, both parameterizations are
+  equivalent. The default is `FALSE`. The over-parameterized option may
+  be advantageous when distinguishing pairwise from higher-order
+  interactions.
 
 - thresholdCat:
 
@@ -119,8 +130,8 @@ mixMN(
 
 - quantile_level:
 
-  Level of the central bootstrap quantile region (default 0.95). Must be
-  a single number between 0 and 1.
+  Level of the central bootstrap quantile region (default `0.95`). Must
+  be a single number between 0 and 1.
 
 - covariates:
 
@@ -153,8 +164,11 @@ mixMN(
 
 - compute_loadings:
 
-  Logical; if `TRUE` (default), compute network loadings (EGAnet
-  net.loads) for communities.
+  Logical; if `TRUE` (default), compute community loadings
+  ([`EGAnet::net.loads`](https://r-ega.net/reference/net.loads.html)).
+  Only supported for Gaussian, Poisson, and binary categorical nodes;
+  otherwise loadings are skipped and the reason is stored in
+  `community_loadings$reason`.
 
 - boot_what:
 
@@ -203,7 +217,7 @@ the following top-level components:
 
   List with: `mgm` (the fitted `mgm` object), `nodes` (character vector
   of all node names), `n` (number of observations), `p` (number of
-  variables), and `data`.
+  variables), and `data` (if `save_data = TRUE`).
 
 - `graph`:
 
@@ -252,11 +266,17 @@ the following top-level components:
 
   List containing community-loading information (based on
   [`EGAnet::net.loads`](https://r-ega.net/reference/net.loads.html)) for
-  later community-score computation on new data: `nodes` (nodes used for
+  later community-score computation on new data: `nodes`(nodes used for
   loadings), `wc` (integer community labels aligned with `nodes`),
-  `true` (matrix of standardized loadings, nodes x communities), and
-  `boot` (list of bootstrap loading matrices, one per replication, or
-  `NULL` if not bootstrapped).
+  `true` (matrix of standardized loadings, nodes x communities, or
+  `NULL` if loadings were not computed.), `boot` (list of bootstrap
+  loading matrices, one per replication, or `NULL` if not bootstrapped),
+  `available` (logical indicating whether loadings were computed),
+  `reason` (character string explaining why loadings were not computed,
+  or `NULL` if `available = TRUE`), `non_scorable_nodes` (character
+  vector of nodes in the community subgraph that prevented loadings from
+  being computed (e.g., categorical variables with \>2 levels),
+  otherwise empty).
 
 ## Details
 
@@ -274,3 +294,7 @@ Haslbeck, J. M. B., & Waldorp, L. J. (2020). mgm: Estimating
 Time-Varying Mixed Graphical Models in High-Dimensional Data. *Journal
 of Statistical Software*, 93(8).
 [doi:10.18637/jss.v093.i08](https://doi.org/10.18637/jss.v093.i08)
+
+Loh, P. L., & Wainwright, M. J. (2012). Structure estimation for
+discrete graphicalmodels: Generalized covariance matrices and their
+inverses. *NIPS*

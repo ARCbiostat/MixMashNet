@@ -73,7 +73,3 @@ Notes:
   pairs of nodes in different communities that pass through the focal
   node as an intermediate vertex. When multiple shortest paths exist,
   each path is counted separately.
-
-The returned object has class `"bridge_profiles"` and a dedicated
-[`print()`](https://rdrr.io/r/base/print.html) method
-(`print.bridge_profiles`) for convenient inspection.

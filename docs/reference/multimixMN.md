@@ -54,12 +54,13 @@ multimixMN(
   numeric, integer, logical, or factors. Character and Date/POSIXt
   variables are not supported and must be converted prior to model
   fitting. Variable types are internally mapped to MGM types as follows:
-  numeric variables are treated as Gaussian; integer variables are
-  treated as Poisson unless they take only values in {0,1}, in which
-  case they are treated as binary categorical; factors and logical
-  variables are treated as categorical. Binary categorical variables
-  (two-level factors and logical variables) are internally recoded to
-  {0,1} for model fitting. The original input data are not modified.
+  continuous numeric (double) variables are treated as Gaussian; integer
+  variables are treated as Poisson unless they take only values in
+  {0,1}, in which case they are treated as binary categorical; factors
+  and logical variables are treated as categorical. Binary categorical
+  variables (two-level factors and logical variables) are internally
+  recoded to {0,1} for model fitting. The original input data are not
+  modified.
 
 - layers:
 
@@ -69,10 +70,12 @@ multimixMN(
 
 - layer_rules:
 
-  A logical or numeric square matrix with row/column names equal to
-  layer names. Values `TRUE` or `1` indicate that cross-layer edges are
-  allowed between the corresponding layer pair. Intralayer edges are
-  always allowed.
+  A square matrix (L × L), where L is the number of layers. Row and
+  column names must match the layer names. Entries equal to `TRUE` or
+  `1` allow cross-layer edges between the corresponding pair of layers,
+  while `FALSE` or `0` disallow them. The matrix is symmetrized
+  internally. Diagonal entries are ignored (intralayer edges are always
+  permitted).
 
 - scale:
 
@@ -123,12 +126,22 @@ multimixMN(
 
 - threshold:
 
-  Threshold below which edge-weights are set to zero: `"LW"`, `"HW"` or
-  `"none"`.
+  Threshold below which edge-weights are set to zero: Available options
+  are `"LW"`, `"HW"`, or `"none"`. `"LW"` applies the threshold proposed
+  by Loh & Wainwright; `"HW"` applies the threshold proposed by Haslbeck
+  & Waldorp; `"none"` disables thresholding. Defaults to `"LW"`.
 
 - overparameterize:
 
-  Logical; if `TRUE` uses the over-parameterized version of `mgm`.
+  Logical; controls how categorical interactions are parameterized in
+  the neighborhood regressions. If `TRUE`, categorical interactions are
+  represented using a fully over-parameterized design matrix (i.e., all
+  category combinations are explicitly modeled). If `FALSE`, the
+  standard `glmnet` parameterization is used, where one category serves
+  as reference. For continuous variables, both parameterizations are
+  equivalent. The default is `FALSE`. The over-parameterized option may
+  be advantageous when distinguishing pairwise from higher-order
+  interactions.
 
 - thresholdCat:
 
@@ -137,8 +150,8 @@ multimixMN(
 
 - quantile_level:
 
-  Level of the central bootstrap quantile region (default 0.95). Must be
-  a single number between 0 and 1 (e.g., 0.90, 0.95, 0.99).
+  Level of the central bootstrap quantile region (default `0.95`). Must
+  be a single number between 0 and 1.
 
 - covariates:
 
@@ -172,8 +185,11 @@ multimixMN(
 
 - compute_loadings:
 
-  Logical; if `TRUE` (default), compute network loadings (EGAnet
-  net.loads) for communities.
+  Logical; if `TRUE` (default), compute community loadings
+  ([`EGAnet::net.loads`](https://r-ega.net/reference/net.loads.html)).
+  Only supported for Gaussian, Poisson, and binary categorical nodes;
+  otherwise loadings are skipped and the reason is stored in
+  `community_loadings$reason`.
 
 - boot_what:
 
@@ -203,6 +219,12 @@ list contains at least the following components:
 
   The matched function call.
 
+- `settings`:
+
+  List of main settings used in the call, including `reps`,
+  `cluster_method`, `covariates`, `exclude_from_cluster`,
+  `treat_singletons_as_excluded`, `boot_what`).
+
 - `data_info`:
 
   List with information derived from the input data used for model
@@ -213,17 +235,11 @@ list contains at least the following components:
   `binary_recode_map` (named list describing the mapping from original
   binary labels to the internal {0,1} coding used for model fitting).
 
-- `settings`:
-
-  List of main settings used in the call, including `reps`,
-  `cluster_method`, `covariates`, `exclude_from_cluster`,
-  `treat_singletons_as_excluded`, `boot_what`).
-
 - `model`:
 
   List with: `mgm` (the fitted `mgm` object), `nodes` (character vector
   of all node names), `n` (number of observations), `p` (number of
-  variables), and `data`.
+  variables), and `data` (if `save_data = TRUE`))
 
 - `layers`:
 

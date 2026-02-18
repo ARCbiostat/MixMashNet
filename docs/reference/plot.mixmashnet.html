@@ -31,7 +31,7 @@ what = "stability": plot node stability within communities
 
     <a class="navbar-brand me-2" href="../index.html">MixMashNet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -101,25 +101,114 @@ which layer-specific fit to use.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to the underlying helpers:</p><ul><li><p>For <code>what = "intra"</code>: forwarded to <code>plotCentrality()</code>,
-        e.g. <code>statistics</code>, <code>ordering</code>, <code>standardize</code>,
-        <code>edges_top_n</code>, <code>exclude_nodes</code>, <code>color_by_community</code>.</p></li>
-<li><p>For <code>what = "inter"</code>: forwarded to <code>plotInterlayer()</code>,
-        e.g. <code>statistics</code>, <code>pairs</code>, <code>edges_top_n</code>,
-        <code>ordering</code>, <code>standardize</code>, <code>nodes_layer</code>.</p></li>
-<li><p>For <code>what = "stability"</code>: forwarded to
-        <code>membershipStab_plot()</code>, e.g. <code>title</code>.</p></li>
-<li><p>For <code>what = "network"</code>: forwarded to internal network
-        plotting helpers <code>.plot_network_single()</code> or
-        <code>.plot_network_multi()</code>, e.g. <code>color_by</code>,
-        <code>edge_color_by</code>, <code>vertex_size</code>.</p></li>
-</ul></dd>
+<dd><p>Additional arguments. Supported arguments depend on <code>what</code>:
+see the details below.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>If <code>what != "network"</code>, the function returns a <code>ggplot</code> object.
 If <code>what = "network"</code>, the network is plotted directly.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p><strong>Network plots (<code>what = "network"</code>):</strong>
+Supported arguments (via <code>...</code>):</p><dl><dt><code>color_by</code></dt>
+<dd><p>Node coloring. Single layer: <code>c("community","none")</code>.
+    Multilayer: <code>c("layer","community","none")</code></p></dd>
+.
+  <dt><code>edge_color_by</code></dt>
+<dd><p>Edge coloring: <code>c("sign","none")</code>.</p></dd>
+
+  <dt><code>edge_scale</code></dt>
+<dd><p>Numeric scaling factor for edge widths (multiplied by <code>abs(weight)</code>).</p></dd>
+
+  <dt><code>graphics::plot.igraph</code> arguments</dt>
+<dd><p>e.g., <code>vertex.size</code>,
+    <code>vertex.label.cex</code>, <code>edge.width</code>, <code>vertex.label.color</code>, etc.</p></dd>
+
+
+</dl><p><strong>Intralayer statistics (<code>what = "intra"</code>):</strong>
+Plots node-level metrics or edge weights with bootstrap quantile regions.
+For multilayer objects:</p><ul><li><p>if <code>layer</code> is provided, plots that layer only;</p></li>
+<li><p>if <code>layer</code> is <code>NULL</code>, plots all layers (one panel per layer).</p></li>
+</ul><p>Supported arguments (via <code>...</code>):</p><dl><dt><code>statistics</code></dt>
+<dd><p>Character vector of metrics. Options include:
+    <code>"strength"</code>, <code>"expected_influence"</code>, <code>"closeness"</code>, <code>"betweenness"</code>,
+    bridge metrics <code>"bridge_strength"</code>, <code>"bridge_ei1"</code>, <code>"bridge_ei2"</code>,
+    <code>"bridge_closeness"</code>, <code>"bridge_betweenness"</code>,
+    excluded bridge metrics <code>"bridge_strength_excluded"</code>, <code>"bridge_ei1_excluded"</code>,
+    <code>"bridge_ei2_excluded"</code>, <code>"bridge_closeness_excluded"</code>, <code>"bridge_betweenness_excluded"</code>,
+    and <code>"edges"</code>.
+    Note: different metric families cannot be mixed in the same call (e.g., <code>"edges"</code> cannot
+    be combined with node metrics).</p></dd>
+
+  <dt><code>ordering</code></dt>
+<dd><p>Node ordering: <code>c("value","alphabetical","community")</code>.</p></dd>
+
+  <dt><code>standardize</code></dt>
+<dd><p>Logical; if <code>TRUE</code>, z-standardize the displayed values (within each panel).</p></dd>
+
+  <dt><code>exclude_nodes</code></dt>
+<dd><p>Optional character vector of node names to remove before plotting.</p></dd>
+
+  <dt><code>color_by_community</code></dt>
+<dd><p>Logical; if <code>TRUE</code>, color nodes by community (when available).</p></dd>
+
+  <dt><code>edges_top_n</code></dt>
+<dd><p>Integer; when <code>statistics = "edges"</code>, keep the top edges by
+    absolute weight.</p></dd>
+
+  <dt><code>title</code></dt>
+<dd><p>Optional plot title. In multilayer mode, if not provided a layer-specific
+    title is added automatically.</p></dd>
+
+
+</dl><p><strong>Interlayer summaries (<code>what = "inter"</code>; multilayer only):</strong>
+Plots interlayer node metrics or interlayer edge weights with bootstrap quantile regions.</p>
+<p>Supported arguments (via <code>...</code>):</p><dl><dt><code>statistics</code></dt>
+<dd><p>Character vector. Node metrics:
+    <code>c("strength","expected_influence","closeness","betweenness")</code>, or <code>"edges"</code> for
+    interlayer edge weights. Node metrics and <code>"edges"</code> cannot be combined.</p></dd>
+
+  <dt><code>pairs</code></dt>
+<dd><p>Layer pairs to show. Either <code>"*"</code> (all available) or a character vector
+    of pair keys like <code>"bio_dis"</code> (order-insensitive).</p></dd>
+
+  <dt><code>edges_top_n</code></dt>
+<dd><p>Integer; keep the top interlayer edges by absolute weight.</p></dd>
+
+  <dt><code>ordering</code></dt>
+<dd><p>Ordering within panels: <code>c("value","alphabetical")</code>.</p></dd>
+
+  <dt><code>standardize</code></dt>
+<dd><p>Logical; if <code>TRUE</code>, z-standardize values (node metrics by metric,
+    edges by pair).</p></dd>
+
+  <dt><code>exclude_nodes</code></dt>
+<dd><p>Optional character vector; removes nodes (and incident interlayer edges).</p></dd>
+
+  <dt><code>nodes_layer</code></dt>
+<dd><p>Optional layer name to restrict node metrics to nodes belonging to that layer.</p></dd>
+
+  <dt><code>title</code></dt>
+<dd><p>Optional plot title.</p></dd>
+
+
+</dl><p><strong>Community membership stability (<code>what = "stability"</code>):</strong>
+Plots node stability by community.
+For multilayer objects, <code>layer</code> selects a specific layer; if <code>layer</code> is <code>NULL</code>,
+stability plots are shown for all layers.</p>
+<p>Supported arguments (via <code>...</code>):</p><dl><dt><code>title</code></dt>
+<dd><p>Plot title. Default: <code>"Node Stability by Community"</code>.</p></dd>
+
+  <dt><code>cutoff</code></dt>
+<dd><p>Optional numeric threshold in \([0,1]\) shown as a dashed vertical line.
+    Use <code>NULL</code> to hide the line. Default: 0.7.</p></dd>
+
+
+</dl><p>The quantile region level is taken from the fitted object (<code>x$settings$quantile_level</code>);
+if missing or invalid, a default of 0.95 is used.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -1,10 +1,11 @@
 # Bridge metrics for nodes excluded from communities
 
 Computes bridge centrality measures for nodes that are not assigned to
-any community. For these excluded nodes, the function computes bridge
-strength, bridge closeness, bridge betweenness, and bridge expected
-influence of order one and two (EI1 and EI2), quantifying their role in
-connecting nodes across different communities.
+any community. This function is used internally by [`mixMN()`](mixMN.md)
+and [`multimixMN()`](multimixMN.md). For these excluded nodes, the
+function computes bridge strength, bridge closeness, bridge betweenness,
+and bridge expected influence of order one and two (EI1 and EI2),
+quantifying their role in connecting nodes across different communities.
 
 ## Usage
 
@@ -26,9 +27,8 @@ bridge_metrics_excluded(g, membership)
 
 ## Value
 
-A data.frame with columns: `node`, `cluster`, `bridge_strength`,
-`bridge_closeness`, `bridge_betweenness`, `bridge_expected_influence1`,
-`bridge_expected_influence2`.
+A data.frame with columns: `node`, `bridge_strength`,
+`bridge_closeness`, `bridge_betweenness`, `bridge_ei1`, `bridge_ei2`.
 
 ## Details
 
