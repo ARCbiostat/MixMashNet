@@ -199,6 +199,42 @@
 #' Generalized covariance matrices and their inverses.
 #' \emph{NIPS}
 #'
+#' @examples
+#' data(bacteremia)
+#' df <- bacteremia[, !names(bacteremia) %in% "BloodCulture"]
+#'
+#' fit <- mixMN(
+#'   data = df,
+#'   lambdaSel = "EBIC",
+#'   lambdaGam = 0.25,
+#'   reps = 0,
+#'   seed_model = 42,
+#'   compute_loadings = FALSE,
+#'   progress = FALSE
+#' )
+#' fit
+#'
+#' # Plot the estimated network
+#' set.seed(1)
+#' plot(fit)
+#'
+#' \donttest{
+#' fit_b <- mixMN(
+#'   data = df,
+#'   lambdaSel = "EBIC",
+#'   lambdaGam = 0.25,
+#'   reps = 5,
+#'   seed_model = 42,
+#'   seed_boot =42,
+#'   boot_what = "community",
+#'   compute_loadings = FALSE,
+#'   progress = FALSE
+#' )
+#'
+#' # Plot the membership stability
+#' plot(fit_b, what = "stability", cutoff = 0.7)
+#' }
+#'
 #' @importFrom mgm mgm
 #' @importFrom EGAnet net.loads
 #' @importFrom igraph graph_from_adjacency_matrix simplify E ecount V distances betweenness vcount

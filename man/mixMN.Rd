@@ -247,6 +247,43 @@ before calling \code{mixMN()}. If \code{boot_what} is \code{"none"} and
 \code{reps > 0}, node-level metrics are not bootstrapped but edge-weight
 bootstrap and corresponding quantile regions are still computed.
 }
+\examples{
+data(bacteremia)
+df <- bacteremia[, !names(bacteremia) \%in\% "BloodCulture"]
+
+fit <- mixMN(
+  data = df,
+  lambdaSel = "EBIC",
+  lambdaGam = 0.25,
+  reps = 0,
+  seed_model = 42,
+  compute_loadings = FALSE,
+  progress = FALSE
+)
+fit
+
+# Plot the estimated network
+set.seed(1)
+plot(fit)
+
+\donttest{
+fit_b <- mixMN(
+  data = df,
+  lambdaSel = "EBIC",
+  lambdaGam = 0.25,
+  reps = 5,
+  seed_model = 42,
+  seed_boot =42,
+  boot_what = "community",
+  compute_loadings = FALSE,
+  progress = FALSE
+)
+
+# Plot the membership stability
+plot(fit_b, what = "stability", cutoff = 0.7)
+}
+
+}
 \references{
 Haslbeck, J. M. B., & Waldorp, L. J. (2020).
 mgm: Estimating Time-Varying Mixed Graphical Models in High-Dimensional Data.

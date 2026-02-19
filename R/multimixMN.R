@@ -167,6 +167,52 @@
 #' \emph{Journal of Statistical Software}, 93(8).
 #' \doi{10.18637/jss.v093.i08}
 #'
+#' @examples
+#'
+#' \donttest{
+#' data(nhanes)
+#'
+#' bio_vars  <- c("ALT", "AST", "HDL", "HbA1c")
+#' ant_vars  <- c("BMI", "Waist", "ArmCirc", "LegLength")
+#' life_vars <- c("Smoke", "PhysicalActivity", "Drug")
+#' covs      <- c("Age", "Gender", "MonInc")
+#'
+#' df <- nhanes[, c(bio_vars, ant_vars, life_vars, covs)]
+#'
+#' # Layer assignment (must cover all columns except covariates)
+#' layers <- c(
+#'   setNames(rep("bio",  length(bio_vars)),  bio_vars),
+#'   setNames(rep("ant",  length(ant_vars)),  ant_vars),
+#'   setNames(rep("life", length(life_vars)), life_vars)
+#' )
+#'
+#' # Allow cross-layer edges bio<->ant and ant<->life; disallow bio<->life
+#' layer_rules <- matrix(0, nrow = 3, ncol = 3,
+#'                       dimnames = list(c("bio","ant","life"),
+#'                                       c("bio","ant","life")))
+#' layer_rules["bio","ant"]  <- 1
+#' layer_rules["ant","life"] <- 1
+#'
+#' fitM <- multimixMN(
+#'   data = df,
+#'   layers = layers,
+#'   layer_rules = layer_rules,
+#'   covariates = covs,
+#'   lambdaSel = "EBIC",
+#'   lambdaGam = 0.25,
+#'   reps = 5,
+#'   seed_model = 42,
+#'   seed_boot = 42,
+#'   compute_loadings = FALSE,
+#'   progress = FALSE
+#' )
+#' fitM
+#'
+#' # Plot the estimated network
+#' set.seed(1)
+#' plot(fitM, color_by = "layer")
+#' }
+#'
 #' @importFrom stats setNames quantile
 #' @importFrom utils combn capture.output
 #' @importFrom igraph graph_from_adjacency_matrix simplify ecount E V distances betweenness vcount

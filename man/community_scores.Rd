@@ -78,6 +78,27 @@ The function requires that \code{fit$community_loadings$true} exists and that
 the input \code{data} contains all required variables in
 \code{fit$community_loadings$nodes}. It errors otherwise.
 }
+\examples{
+data(bacteremia)
+
+vars <- c("WBC", "NEU", "HGB", "PLT", "CRP")
+df <- bacteremia[, vars]
+
+fit <- mixMN(
+  data = df,
+  lambdaSel = "EBIC",
+  reps = 0,
+  seed_model = 42,
+  compute_loadings = TRUE,
+  progress = FALSE,
+  save_data = TRUE
+)
+
+# Compute community scores on the original data
+scores <- community_scores(fit)
+summary(scores)
+
+}
 \references{
 Christensen, A. P., Golino, H., Abad, F. J., & Garrido, L. E. (2025).
 Revised network loadings. \emph{Behavior Research Methods}, 57(4), 114.

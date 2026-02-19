@@ -34,6 +34,35 @@
 #' @return
 #' The input object \code{fit}, with updated community and/or layer palettes.
 #'
+#' @examples
+#' data(bacteremia)
+#'
+#' vars <- c("WBC", "NEU", "HGB", "PLT", "CRP")
+#' df <- bacteremia[, vars]
+#'
+#' fit <- mixMN(
+#'   data = df,
+#'   lambdaSel = "EBIC",
+#'   reps = 0,
+#'   seed_model = 42,
+#'   compute_loadings = FALSE,
+#'   progress = FALSE
+#' )
+#'
+#' # View original community palette
+#' fit$communities$palette
+#'
+#' # Update colors for communities 1 and 2
+#' fit2 <- update_palette(
+#'   fit,
+#'   community_colors = c("1" = "red", "2" = "blue")
+#' )
+#'
+#' fit2$communities$palette
+#'
+#' set.seed(1)
+#' plot(fit2)
+#'
 #' @export
 update_palette <- function(
     fit,

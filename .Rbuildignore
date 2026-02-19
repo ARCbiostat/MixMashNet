@@ -6,8 +6,4 @@
 ^docs$
 ^pkgdown$
 
-^vignettes/shiny-single\.Rmd$
-^vignettes/shiny-multilayer\.Rmd$
-
-
-
+^vignettes$
