@@ -4,9 +4,11 @@ Identifies which communities contribute most to the bridge role of a
 given node, by decomposing its bridge connectivity into
 community-specific contributions, excluding its own community when
 assigned. The function is designed as an interpretative companion to
-[`bridge_metrics()`](bridge_metrics.md) and
-[`bridge_metrics_excluded()`](bridge_metrics_excluded.md), providing the
-components underlying the corresponding overall bridge indices.
+[`bridge_metrics()`](https://arcbiostat.github.io/MixMashNet/reference/bridge_metrics.md)
+and
+[`bridge_metrics_excluded()`](https://arcbiostat.github.io/MixMashNet/reference/bridge_metrics_excluded.md),
+providing the components underlying the corresponding overall bridge
+indices.
 
 ## Usage
 

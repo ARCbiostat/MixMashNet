@@ -1,18 +1,20 @@
 # Bridge metrics for nodes across communities
 
 Computes bridge centrality measures for nodes with an assigned
-community. This function is used internally by [`mixMN()`](mixMN.md) and
-[`multimixMN()`](multimixMN.md). Specifically, the function computes
-bridge strength as the sum of absolute edge weights connecting a node to
-nodes in other communities; bridge expected influence of order one (EI1)
-as the signed sum of direct connections to nodes in other communities;
-bridge expected influence of order two (EI2) as the signed influence
-that propagates indirectly to nodes in other communities via one
-intermediate neighbor (i.e., through paths of length two); bridge
-betweenness as the number of times a node lies on shortest paths between
-nodes belonging to different communities; and bridge closeness as the
-inverse of the mean shortest-path distance to nodes in other
-communities.
+community. This function is used internally by
+[`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+and
+[`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
+Specifically, the function computes bridge strength as the sum of
+absolute edge weights connecting a node to nodes in other communities;
+bridge expected influence of order one (EI1) as the signed sum of direct
+connections to nodes in other communities; bridge expected influence of
+order two (EI2) as the signed influence that propagates indirectly to
+nodes in other communities via one intermediate neighbor (i.e., through
+paths of length two); bridge betweenness as the number of times a node
+lies on shortest paths between nodes belonging to different communities;
+and bridge closeness as the inverse of the mean shortest-path distance
+to nodes in other communities.
 
 ## Usage
 

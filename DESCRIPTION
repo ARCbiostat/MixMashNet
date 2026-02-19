@@ -15,8 +15,6 @@ Depends: R (>= 4.1)
 Imports: mgm, igraph, qgraph, colorspace, future.apply, stats, utils,
          ggplot2, EGAnet, networktools, dplyr, magrittr, rlang,
          tibble, tidyr, patchwork, progressr
-Suggests: knitr, rmarkdown
-VignetteBuilder: knitr
 RoxygenNote: 7.3.3
 URL: https://arcbiostat.github.io/MixMashNet/
 BugReports: https://github.com/ARCbiostat/MixMashNet/issues

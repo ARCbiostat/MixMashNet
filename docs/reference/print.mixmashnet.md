@@ -1,7 +1,10 @@
 # Print method for MixMashNet objects
 
-Compact textual summary for objects returned by [`mixMN()`](mixMN.md)
-and [`multimixMN()`](multimixMN.md). The method reports:
+Compact textual summary for objects returned by
+[`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+and
+[`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
+The method reports:
 
 - whether the fit is single layer (`mixMN`) or multilayer
   (`multimixMN`);
@@ -34,8 +37,10 @@ print(x, ...)
 
 - x:
 
-  An object of class `mixmashnet`, returned by [`mixMN()`](mixMN.md) or
-  [`multimixMN()`](multimixMN.md).
+  An object of class `mixmashnet`, returned by
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  or
+  [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
 
 - ...:
 
@@ -47,4 +52,5 @@ The input object `x`, returned invisibly.
 
 ## See also
 
-[`mixMN`](mixMN.md), [`multimixMN`](multimixMN.md)
+[`mixMN`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md),
+[`multimixMN`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md)

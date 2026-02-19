@@ -1,10 +1,6 @@
 ---
 title: "Single-layer app"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Single-layer app}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: rmarkdown::html_document
 ---
 
 <iframe

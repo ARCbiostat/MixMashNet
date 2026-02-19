@@ -2,5 +2,7 @@
 
 ### All vignettes
 
-- [Multilayer app](shiny-multilayer.md):
-- [Single-layer app](shiny-single.md):
+- [Multilayer
+  app](https://arcbiostat.github.io/MixMashNet/articles/shiny-multilayer.md):
+- [Single-layer
+  app](https://arcbiostat.github.io/MixMashNet/articles/shiny-single.md):

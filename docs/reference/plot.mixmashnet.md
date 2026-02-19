@@ -1,7 +1,10 @@
 # Plot method for MixMashNet objects
 
-Unified plotting interface for objects returned by [`mixMN()`](mixMN.md)
-and [`multimixMN()`](multimixMN.md). Depending on `what`, it can:
+Unified plotting interface for objects returned by
+[`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+and
+[`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
+Depending on `what`, it can:
 
 - `what = "network"`: plot the estimated network (single layer or
   multilayer);
@@ -28,8 +31,10 @@ plot(x, what = c("network", "intra", "inter", "stability"), layer = NULL, ...)
 
 - x:
 
-  An object of class `mixmashnet`, as returned by [`mixMN()`](mixMN.md)
-  or [`multimixMN()`](multimixMN.md).
+  An object of class `mixmashnet`, as returned by
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  or
+  [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
 
 - what:
 

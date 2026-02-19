@@ -13,7 +13,8 @@ membershipStab_table(stab_obj, digits = 3)
 
 - stab_obj:
 
-  An object from [`membershipStab()`](membershipStab.md).
+  An object from
+  [`membershipStab()`](https://arcbiostat.github.io/MixMashNet/reference/membershipStab.md).
 
 - digits:
 

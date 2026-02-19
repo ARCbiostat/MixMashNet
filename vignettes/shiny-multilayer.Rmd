@@ -1,10 +1,6 @@
 ---
 title: "Multilayer app"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Multilayer app}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: rmarkdown::html_document
 ---
 
 <iframe

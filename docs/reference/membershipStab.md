@@ -2,10 +2,12 @@
 
 Computes per-node stability given the empirical community structure and
 the homogenized bootstrap memberships contained in a `mixMN_fit` object.
-This function is used internally by [`mixMN()`](mixMN.md) and
-[`multimixMN()`](multimixMN.md). Stability is expressed as the
-proportion of bootstrap replications that assign each node to its
-empirical (original) community.
+This function is used internally by
+[`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+and
+[`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
+Stability is expressed as the proportion of bootstrap replications that
+assign each node to its empirical (original) community.
 
 ## Usage
 
@@ -17,8 +19,9 @@ membershipStab(fit, IS.plot = FALSE)
 
 - fit:
 
-  An object returned by [`mixMN()`](mixMN.md) (class `mixMN_fit`),
-  containing `$communities$original_membership` and
+  An object returned by
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  (class `mixMN_fit`), containing `$communities$original_membership` and
   `$communities$boot_memberships`. Bootstrap memberships must be
   available, i.e. `reps > 0` and `"community" %in% boot_what`.
 

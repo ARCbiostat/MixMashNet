@@ -2,7 +2,8 @@
 
 Low-level constructor that computes clustering, centrality, and bridge
 metrics from a signed weighted adjacency matrix. It returns a
-`mixMN_fit` object analogous a quello prodotto da [`mixMN()`](mixMN.md),
+`mixMN_fit` object analogous a quello prodotto da
+[`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md),
 ma stimato direttamente da `wadj_signed` invece che da `mgm()`. The
 arguments `reps`, `seed_boot`, and `boot_what` are stored in `$settings`
 for compatibility with bootstrap-based functions, but no bootstrap is
@@ -41,7 +42,8 @@ mixMN_from_wadj(
 - conf_level:
 
   Confidence level for percentile bootstrap CIs (default 0.95). Stored
-  in `$settings` for consistency with [`mixMN()`](mixMN.md).
+  in `$settings` for consistency with
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md).
 
 - exclude_from_graph:
 
@@ -62,7 +64,8 @@ mixMN_from_wadj(
 
   Integer; number of bootstrap replications. Currently not used inside
   this function, but saved in `$settings$reps` for consistency with
-  [`mixMN()`](mixMN.md) and downstream bootstrap utilities.
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  and downstream bootstrap utilities.
 
 - seed_boot:
 
@@ -122,5 +125,6 @@ Centrality indices are computed on the signed matrix `wadj_signed` (via
 while distances for closeness and betweenness are based on \\\|w\|\\
 with edge length \\1/\|w\|\\. Bridge metrics are computed separately on
 the absolute and signed graphs using
-[`bridge_metrics()`](bridge_metrics.md) and
-[`bridge_metrics_excluded()`](bridge_metrics_excluded.md).
+[`bridge_metrics()`](https://arcbiostat.github.io/MixMashNet/reference/bridge_metrics.md)
+and
+[`bridge_metrics_excluded()`](https://arcbiostat.github.io/MixMashNet/reference/bridge_metrics_excluded.md).

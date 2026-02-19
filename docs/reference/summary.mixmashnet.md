@@ -23,8 +23,10 @@ summary(
 
 - object:
 
-  An object of class `"mixmashnet"` returned by [`mixMN()`](mixMN.md) or
-  [`multimixMN()`](multimixMN.md).
+  An object of class `"mixmashnet"` returned by
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  or
+  [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
 
 - what:
 

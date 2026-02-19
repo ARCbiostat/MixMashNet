@@ -36,7 +36,9 @@ community_scores(
 
   A fitted object of class
   `c("mixmashnet","mixMN_fit", "multimixMN_fit")` returned by
-  [`mixMN()`](mixMN.md) or [`multimixMN()`](multimixMN.md).
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  or
+  [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
 
 - data:
 
