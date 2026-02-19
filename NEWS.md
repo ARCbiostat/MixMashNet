@@ -1,3 +1,8 @@
+# MixMashNet 0.5.0
+
+## Major updates
+* Added examples to `mixMN()`, `multimixNM()`, `community_scores()` and `update_palette()`.
+
 # MixMashNet 0.4.0
 
 ## Major updates
