@@ -1,3 +1,8 @@
+# MixMashNet 0.6.0
+
+## Major updates
+* Deleted `warnings` parameter from `mgm_masked()`.
+
 # MixMashNet 0.5.0
 
 ## Major updates
