@@ -23,7 +23,7 @@
 #' @param method Fitting backend (default \code{"glm"}) as in \pkg{mgm}.
 #' @param binarySign Logical; if \code{TRUE}, store sign information.
 #' @param scale Logical; if \code{TRUE}, standardize Gaussian variables.
-#' @param verbatim,pbar,warnings,saveModels,saveData Overhead/UX flags as in \pkg{mgm}.
+#' @param verbatim,pbar,saveModels,saveData Overhead/UX flags as in \pkg{mgm}.
 #' @param overparameterize Logical; use overparameterized design matrix (as in \pkg{mgm}).
 #' @param thresholdCat Logical; categorical thresholding (as in \pkg{mgm}).
 #' @param signInfo Logical; store sign information (as in \pkg{mgm}).
@@ -65,7 +65,6 @@ mgm_masked <- function(data, type, level,
                        scale,
                        verbatim,
                        pbar,
-                       warnings,
                        saveModels,
                        saveData,
                        overparameterize,
@@ -100,7 +99,6 @@ mgm_masked <- function(data, type, level,
   if (missing(scale))             scale <- TRUE
   if (missing(verbatim))          verbatim <- FALSE
   if (missing(pbar))              pbar <- TRUE
-  if (missing(warnings))          warnings <- TRUE
   if (missing(saveModels))        saveModels <- TRUE
   if (missing(saveData))          saveData <- FALSE
   if (missing(overparameterize))  overparameterize <- FALSE
@@ -117,9 +115,6 @@ mgm_masked <- function(data, type, level,
     if (!is.list(mask_list) || length(mask_list) != p)
       stop("mask_list must be a list of length p; each element is integer indices allowed for that target")
   }
-
-  oldw <- getOption("warn")
-  if (!warnings) options(warn = -1)
 
   # REQUIREMENTS (no :::)
   .mgm_fun("glmnetRequirements")(data = data, type = type, weights = weights)
@@ -181,7 +176,6 @@ mgm_masked <- function(data, type, level,
     scale = scale,
     verbatim = verbatim,
     pbar = pbar,
-    warnings = warnings,
     saveModels = saveModels,
     saveData = saveData,
     overparameterize = overparameterize,
@@ -351,7 +345,6 @@ mgm_masked <- function(data, type, level,
 
   mgmobj <- Reg2Graph_safe(mgmobj = mgmobj)
   if (!saveModels) mgmobj$nodemodels <- NULL
-  if (!warnings) options(warn = oldw)
 
   class(mgmobj) <- c("mgm", "core")
   return(mgmobj)
