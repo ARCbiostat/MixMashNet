@@ -1,5 +1,24 @@
 # Changelog
 
+## MixMashNet 0.6.0
+
+CRAN release: 2026-03-03
+
+### Major updates
+
+- Deleted `warnings` parameter from `mgm_masked()`.
+
+## MixMashNet 0.5.0
+
+### Major updates
+
+- Added examples to
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md),
+  `multimixNM()`,
+  [`community_scores()`](https://arcbiostat.github.io/MixMashNet/reference/community_scores.md)
+  and
+  [`update_palette()`](https://arcbiostat.github.io/MixMashNet/reference/update_palette.md).
+
 ## MixMashNet 0.4.0
 
 ### Major updates

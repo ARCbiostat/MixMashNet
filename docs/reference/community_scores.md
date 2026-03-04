@@ -124,3 +124,41 @@ the input `data` contains all required variables in
 Christensen, A. P., Golino, H., Abad, F. J., & Garrido, L. E. (2025).
 Revised network loadings. *Behavior Research Methods*, 57(4), 114.
 [doi:10.3758/s13428-025-02640-3](https://doi.org/10.3758/s13428-025-02640-3)
+
+## Examples
+
+``` r
+data(bacteremia)
+
+vars <- c("WBC", "NEU", "HGB", "PLT", "CRP")
+df <- bacteremia[, vars]
+
+fit <- mixMN(
+  data = df,
+  lambdaSel = "EBIC",
+  reps = 0,
+  seed_model = 42,
+  compute_loadings = TRUE,
+  progress = FALSE,
+  save_data = TRUE
+)
+
+# Compute community scores on the original data
+scores <- community_scores(fit)
+summary(scores)
+#> Summary of MixMashNet community scores
+#> ========================================
+#> 
+#> Subjects:    7420
+#> Communities: 2
+#> 
+#> Settings
+#>   Scaling:   TRUE
+#>   NA action: stop
+#>   Quantile region: not computed
+#> 
+#> Per-community statistics (across subjects)
+#>  community       mean     sd    min    max
+#>          1 -2.454e-16 1.6180 -2.864 20.130
+#>          2  1.321e-17 0.7288 -2.032  3.173
+```

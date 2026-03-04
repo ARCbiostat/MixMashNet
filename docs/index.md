@@ -29,7 +29,14 @@ MixMashNet provides tools for:
 
 ## Installation
 
-The development version of **MixMashNet** can be installed from GitHub:
+**MixMashNet** can be installed from CRAN with:
+
+``` r
+
+install.packages("MixMashNet")
+```
+
+The latest version can be installed from GitHub with:
 
 ``` r
 
