@@ -39,7 +39,13 @@ Additional information and the companion **interactive visualization apps** can 
 
 ## Installation
 
-You can install the development version of MixMashNet from [GitHub](https://github.com/) with:
+You can install MixMashNet from CRAN with:
+
+```{r, eval=FALSE}
+install.packages("MixMashNet")
+```
+
+To install the most up-to-date version of MixMashNet, you can install it from [GitHub](https://github.com/) with:
 
 ``` {r, eval=FALSE}
 # install.packages("devtools")

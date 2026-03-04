@@ -37,8 +37,14 @@ apps** can be found at the package’s website:
 
 ## Installation
 
-You can install the development version of MixMashNet from
-[GitHub](https://github.com/) with:
+You can install MixMashNet from CRAN with:
+
+``` r
+install.packages("MixMashNet")
+```
+
+To install the most up-to-date version of MixMashNet, you can install it
+from [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("devtools")
@@ -104,7 +110,7 @@ set.seed(2)
 plot(fit0)
 ```
 
-<img src="man/figures/README-unnamed-chunk-4-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-5-1.png" alt="" width="100%" />
 
 ### Node stability
 
@@ -130,7 +136,7 @@ Plot item stability:
 plot(fit1, what = "stability")
 ```
 
-<img src="man/figures/README-unnamed-chunk-6-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" alt="" width="100%" />
 
 ### Excluding unstable nodes
 
@@ -155,7 +161,7 @@ fit2 <- mixMN(
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
-#> Total computation time: 7.8 seconds (~ 0.13 minutes).
+#> Total computation time: 7.6 seconds (~ 0.13 minutes).
 ```
 
 Recompute stability:
@@ -164,7 +170,7 @@ Recompute stability:
 plot(fit2, what = "stability")
 ```
 
-<img src="man/figures/README-unnamed-chunk-8-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-9-1.png" alt="" width="100%" />
 
 ### Visualization with excluded nodes
 
@@ -176,7 +182,7 @@ set.seed(2)
 plot(fit2)
 ```
 
-<img src="man/figures/README-unnamed-chunk-9-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-10-1.png" alt="" width="100%" />
 
 ### Edge weights
 
@@ -186,7 +192,7 @@ We can compute the edge weights with their 95% quantile regions.
 plot(fit2, statistics = "edges")
 ```
 
-<img src="man/figures/README-unnamed-chunk-10-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-11-1.png" alt="" width="100%" />
 
 ### General centrality indices
 
@@ -200,7 +206,7 @@ plot(fit2,
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-11-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-12-1.png" alt="" width="100%" />
 
 ### Bridge centrality indices
 
@@ -216,7 +222,7 @@ plot(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-12-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-13-1.png" alt="" width="100%" />
 
 ### Bridge centrality indices for excluded nodes
 
@@ -233,7 +239,7 @@ plot(
 )
 ```
 
-<img src="man/figures/README-unnamed-chunk-13-1.png" alt="" width="100%" />
+<img src="man/figures/README-unnamed-chunk-14-1.png" alt="" width="100%" />
 
 ✨ That’s it! With just a few lines of code, you can mix, mash, and
 explore your networks.
