@@ -94,7 +94,7 @@ fit0 <- mixMN(
   reps               = 0,                # no bootstrap: just estimate the network
   lambdaSel          = "EBIC",
   seed_model         = 42,
-  cluster_method     = "louvain",
+  cluster_method     = "infomap",
   covariates         = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
 )
 ```

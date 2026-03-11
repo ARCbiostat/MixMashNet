@@ -96,7 +96,7 @@ fit0 <- mixMN(
   reps               = 0,                # no bootstrap: just estimate the network
   lambdaSel          = "EBIC",
   seed_model         = 42,
-  cluster_method     = "louvain",
+  cluster_method     = "infomap",
   covariates         = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
 )
 ```
@@ -127,7 +127,7 @@ fit1 <- mixMN(
   cluster_method     = "infomap",
   covariates         = c("age", "sex", "re")
 )
-#> Total computation time: 20.4 seconds (~ 0.34 minutes).
+#> Total computation time: 20.0 seconds (~ 0.33 minutes).
 ```
 
 Plot item stability:
@@ -161,7 +161,7 @@ fit2 <- mixMN(
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
-#> Total computation time: 7.6 seconds (~ 0.13 minutes).
+#> Total computation time: 7.8 seconds (~ 0.13 minutes).
 ```
 
 Recompute stability:
