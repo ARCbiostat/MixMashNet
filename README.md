@@ -62,7 +62,8 @@ Load package and example data
 
 ``` r
 library(MixMashNet)
-data(nhgh_data) # example dataset bundled with the package
+data(bacteremia) # example dataset bundled with the package
+df <- bacteremia[, !names(bacteremia) %in% "BloodCulture"]
 ```
 
 ### Parallel execution (optional)
@@ -86,18 +87,18 @@ plan(multisession, workers = max(1, parallel::detectCores() - 1))
 ### Run MixMashNet
 
 We now fit the MGM model.  
-Here, covariates (`age`, `sex`, `re`) are included in the estimation to
-adjust the network, but they are excluded from the visualization and
-centrality metrics.
+Here, covariates (`AGE`, `SEX`) are included in the estimation to adjust
+the network, but they are excluded from the visualization and centrality
+metrics.
 
 ``` r
 fit0 <- mixMN(
-  data               = nhgh_data,
+  data               = df,
   reps               = 0,                # no bootstrap: just estimate the network
-  lambdaSel          = "EBIC",
+  lambdaSel          = "CV",
   seed_model         = 42,
-  cluster_method     = "infomap",
-  covariates         = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
+  cluster_method     = "louvain",
+  covariates         = c("AGE", "SEX")  # adjust by covariates, exclude them from the graph
 )
 ```
 
@@ -106,7 +107,7 @@ fit0 <- mixMN(
 Nodes are colored according to their community membership.
 
 ``` r
-set.seed(2)
+set.seed(28)
 plot(fit0)
 ```
 
@@ -119,15 +120,15 @@ model with non-parametric bootstrap.
 
 ``` r
 fit1 <- mixMN(
-  data               = nhgh_data,
+  data               = df,
   reps               = 20,             # increase reps for more stable results
-  lambdaSel          = "EBIC",
+  lambdaSel          = "CV",
   seed_model         = 42,
   seed_boot          = 42,
-  cluster_method     = "infomap",
-  covariates         = c("age", "sex", "re")
+  cluster_method     = "louvain",
+  covariates         = c("AGE", "SEX")
 )
-#> Total computation time: 20.0 seconds (~ 0.33 minutes).
+#> Total computation time: 21.6 seconds (~ 0.36 minutes).
 ```
 
 Plot item stability:
@@ -151,17 +152,17 @@ low_stability <- names(stab1$membership.stability$empirical.dimensions)[
   ]
 
 fit2 <- mixMN(
-  data                 = nhgh_data,
+  data                 = df,
   reps                 = 20,                    
-  lambdaSel            = "EBIC",
+  lambdaSel            = "CV",
   seed_model           = 42,
   seed_boot            = 42,
-  cluster_method       = "infomap",
-  covariates           = c("age", "sex", "re"),
+  cluster_method       = "louvain",
+  covariates           = c("AGE", "SEX"),
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
-#> Total computation time: 7.8 seconds (~ 0.13 minutes).
+#> Total computation time: 8.3 seconds (~ 0.14 minutes).
 ```
 
 Recompute stability:
@@ -178,7 +179,7 @@ Finally, plot the updated network. Excluded nodes (unstable or
 singletons) are displayed in grey.
 
 ``` r
-set.seed(2)
+set.seed(28)
 plot(fit2)
 ```
 

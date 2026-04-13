@@ -63,7 +63,8 @@ Load package and example data
 
 ```{r example}
 library(MixMashNet)
-data(nhgh_data) # example dataset bundled with the package
+data(bacteremia) # example dataset bundled with the package
+df <- bacteremia[, !names(bacteremia) %in% "BloodCulture"]
 ```
 
 
@@ -86,16 +87,16 @@ plan(multisession, workers = max(1, parallel::detectCores() - 1))
 ### Run MixMashNet
 
 We now fit the MGM model.  
-Here, covariates (`age`, `sex`, `re`) are included in the estimation to adjust the network, but they are excluded from the visualization and centrality metrics.
+Here, covariates (`AGE`, `SEX`) are included in the estimation to adjust the network, but they are excluded from the visualization and centrality metrics.
 
 ```{r,results='hide'}
 fit0 <- mixMN(
-  data               = nhgh_data,
+  data               = df,
   reps               = 0,                # no bootstrap: just estimate the network
-  lambdaSel          = "EBIC",
+  lambdaSel          = "CV",
   seed_model         = 42,
-  cluster_method     = "infomap",
-  covariates         = c("age", "sex", "re")  # adjust by covariates, exclude them from the graph
+  cluster_method     = "louvain",
+  covariates         = c("AGE", "SEX")  # adjust by covariates, exclude them from the graph
 )
 ```
 
@@ -104,7 +105,7 @@ fit0 <- mixMN(
 Nodes are colored according to their community membership.
 
 ```{r,warning=FALSE}
-set.seed(2)
+set.seed(28)
 plot(fit0)
 ```
 
@@ -115,13 +116,13 @@ To assess the robustness of community assignment, we re-estimate the model with 
 
 ```{r,results='hide'}
 fit1 <- mixMN(
-  data               = nhgh_data,
+  data               = df,
   reps               = 20,             # increase reps for more stable results
-  lambdaSel          = "EBIC",
+  lambdaSel          = "CV",
   seed_model         = 42,
   seed_boot          = 42,
-  cluster_method     = "infomap",
-  covariates         = c("age", "sex", "re")
+  cluster_method     = "louvain",
+  covariates         = c("AGE", "SEX")
 )
 ```
 
@@ -144,13 +145,13 @@ low_stability <- names(stab1$membership.stability$empirical.dimensions)[
   ]
 
 fit2 <- mixMN(
-  data                 = nhgh_data,
+  data                 = df,
   reps                 = 20,                    
-  lambdaSel            = "EBIC",
+  lambdaSel            = "CV",
   seed_model           = 42,
   seed_boot            = 42,
-  cluster_method       = "infomap",
-  covariates           = c("age", "sex", "re"),
+  cluster_method       = "louvain",
+  covariates           = c("AGE", "SEX"),
   exclude_from_cluster = low_stability,           #exclude unstable nodes
   treat_singletons_as_excluded = TRUE             # declare not to consider singletons as communities
 )
@@ -168,7 +169,7 @@ Finally, plot the updated network.
 Excluded nodes (unstable or singletons) are displayed in grey.
 
 ```{r,warning=FALSE}
-set.seed(2)
+set.seed(28)
 plot(fit2)
 ```
 
@@ -195,7 +196,7 @@ plot(fit2,
 Bridge centrality indices quantify the role of each node as a connector between different communities.
 Here we display bridge strength, bridge expected influence (EI1 and EI2), bridge closeness, and bridge betweenness, with their 95% quantile regions.
 
-```{r}
+```{r, warning=FALSE}
 plot(
   fit2,
   statistics = c("bridge_strength", "bridge_ei1", "bridge_ei2", "bridge_closeness", "bridge_betweenness")

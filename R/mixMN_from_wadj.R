@@ -20,15 +20,28 @@ mixMN_from_wadj <- function(
     quantile_level = 0.95,
     covariates = NULL,
     exclude_from_cluster = NULL,
-    cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
+    cluster_method = c(
+      "louvain", "edge_betweenness", "fast_greedy", "infomap", "label_prop",
+      "leading_eigen", "leiden", "optimal", "spinglass", "walktrap"
+    ),
+    cluster_args = list(),
     reps = 0,
     seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
     boot_what = c("general_index", "interlayer_index", "bridge_index",
                   "excluded_index", "community", "loadings", "none"),
-    palette_layer = NULL
+    palette_layer = NULL,
+    n = NULL
 ) {
-  cluster_method <- match.arg(cluster_method)
+  if (is.character(cluster_method)) {
+    cluster_method <- match.arg(cluster_method, choices = .default_cluster_methods())
+  } else if (!is.function(cluster_method)) {
+    stop("`cluster_method` must be either a supported character string or a function.")
+  }
+
+  if (!is.list(cluster_args)) {
+    stop("`cluster_args` must be a list.")
+  }
 
   boot_what <- match.arg(
     boot_what,
@@ -57,20 +70,11 @@ mixMN_from_wadj <- function(
   # --- Graphs for clustering (abs) ---
   g_cluster <- igraph::graph_from_adjacency_matrix(abs(wadj_signed_cluster),
                                                    mode = "undirected", weighted = TRUE, diag = FALSE)
-  if (cluster_method %in% c("infomap", "edge_betweenness", "walktrap")) {
+  if (.needs_simplify_clustering_graph(cluster_method)) {
     g_cluster <- igraph::simplify(g_cluster, remove.multiple = TRUE, remove.loops = TRUE)
   }
 
   # --- Clustering ---
-  cluster_fun <- function(graph) {
-    switch(cluster_method,
-           louvain          = igraph::cluster_louvain(graph, weights = igraph::E(graph)$weight),
-           fast_greedy      = igraph::cluster_fast_greedy(graph, weights = igraph::E(graph)$weight),
-           infomap          = igraph::cluster_infomap(graph),
-           walktrap         = igraph::cluster_walktrap(graph, weights = igraph::E(graph)$weight),
-           edge_betweenness = igraph::cluster_edge_betweenness(graph, weights = igraph::E(graph)$weight))
-  }
-
   .base_hue_for_nodes <- function(nodes_ref) {
     s <- paste(sort(nodes_ref), collapse = "|")
     as.numeric(sum(utf8ToInt(s)) %% 360)
@@ -97,9 +101,15 @@ mixMN_from_wadj <- function(
 
   # Membership on abs graph (as in the rest of the code base)
   original_membership <- tryCatch({
-    m <- cluster_fun(g_cluster)$membership
-    stats::setNames(m, keep_nodes_cluster)
-  }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
+    clu <- .run_clustering(
+      graph = g_cluster,
+      cluster_method = cluster_method,
+      cluster_args = cluster_args
+    )
+    .extract_membership(clu, keep_nodes_cluster)
+  }, error = function(e) {
+    stats::setNames(rep(NA_integer_, length(keep_nodes_cluster)), keep_nodes_cluster)
+  })
 
   sizes <- table(original_membership)
   if (treat_singletons_as_excluded) {
@@ -284,7 +294,8 @@ mixMN_from_wadj <- function(
 
     settings = list(
       reps                         = reps,
-      cluster_method               = cluster_method,
+      cluster_method               = if (is.character(cluster_method)) cluster_method else "custom",
+      cluster_args                 = cluster_args,
       covariates                   = covariates,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
@@ -293,6 +304,7 @@ mixMN_from_wadj <- function(
     ),
 
     model = list(
+      n     = n,
       mgm   = NULL,
       nodes = all_nodes
     ),
@@ -349,6 +361,6 @@ mixMN_from_wadj <- function(
     )
   )
 
-  class(out) <- c("mixmashnet", "mixMN_fit")
+  class(out) <- "mixMN_fit"
   return(out)
 }

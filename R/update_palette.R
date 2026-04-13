@@ -1,38 +1,104 @@
+# -------------------------------------------------------------------------
+# Internal helpers
+# -------------------------------------------------------------------------
+
+#' Internal helper for summary methods
+#' @keywords internal
+#' @noRd
+.warn_extra_names <- function(given, allowed, what) {
+  if (is.null(names(given))) return(invisible(NULL))
+  extra <- setdiff(names(given), allowed)
+  if (length(extra)) {
+    warning(
+      sprintf(
+        "%s: ignoring %d unknown name(s): %s",
+        what, length(extra), paste(extra, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
+}
+
+#' Internal helper for summary methods
+#' @keywords internal
+#' @noRd
+.apply_named_update <- function(old, new_named, allowed_names, what) {
+  if (is.null(new_named)) return(old)
+
+  if (is.null(names(new_named)) ||
+      anyNA(names(new_named)) ||
+      any(names(new_named) == "")) {
+    stop(
+      sprintf(
+        "%s must be a *named* vector (names = ids, values = colors).",
+        what
+      ),
+      call. = FALSE
+    )
+  }
+
+  .warn_extra_names(new_named, allowed_names, what)
+
+  upd <- intersect(names(new_named), allowed_names)
+  if (!length(upd)) return(old)
+
+  old <- as.character(old)
+  names(old) <- allowed_names
+  old[upd] <- as.character(new_named[upd])
+  old
+}
+
 #' Update community and layer color palettes in MixMashNet objects
 #'
 #' @description
 #' Updates the color palettes associated with communities and/or layers in
-#' \code{mixMN_fit} and \code{multimixMN_fit} objects. The function replaces only
-#' the colors corresponding to the provided names, leaving all other colors
-#' unchanged.
+#' fitted \code{mixMN_fit} and \code{multimixMN_fit} objects.
 #'
-#' If colors are provided for names that do not exist in the object (e.g.,
-#' unknown community labels or layer names), a warning is issued and those entries
-#' are ignored. If some communities or layers are not specified, their original
-#' colors are preserved.
+#' For \code{mixMN_fit} objects, \code{community_colors} must be a named
+#' character vector specifying colors for community labels in
+#' \code{object$communities$palette}.
 #'
-#' @param fit An object of class \code{mixMN_fit} or \code{multimixMN_fit}.
-#' @param community_colors Optional named character vector specifying new colors
-#'   for communities. Names must correspond to existing community labels
-#'   (as stored in \code{communities$palette}). Missing names are ignored.
+#' For \code{multimixMN_fit} objects, \code{community_colors} must be a named
+#' list whose elements correspond to layer names. Each element must be a named
+#' character vector specifying colors for the community labels of that layer.
+#' The list may be partial, so only the specified layers are updated.
+#'
+#' For \code{multimixMN_fit} objects, \code{layer_colors} updates the palette
+#' stored in \code{object$layers$palette}.
+#'
+#' The function replaces only the colors corresponding to the provided names,
+#' leaving all other colors unchanged. Unknown layer names, community labels,
+#' or layer labels are ignored with a warning.
+#'
+#' @aliases update_palette update_palette.mixMN_fit update_palette.multimixMN_fit
+#' @param object An object of class \code{mixMN_fit} or
+#'   \code{multimixMN_fit}.
+#' @param community_colors For \code{mixMN_fit} objects, an optional named
+#'   character vector specifying new colors for communities.
+#'
+#'   For \code{multimixMN_fit} objects, an optional named list whose names are
+#'   layer names and whose elements are named character vectors specifying new
+#'   colors for communities within each layer.
 #' @param layer_colors Optional named character vector specifying new colors for
-#'   layers. Names must correspond to existing layer names
-#'   (as stored in \code{layers$palette}). Only applicable to
-#'   \code{multimixMN_fit} objects.
+#'   layers. Only applicable to \code{multimixMN_fit} objects.
+#' @param ... Further arguments passed to methods.
 #'
 #' @details
-#' For \code{mixMN_fit} objects, community colors are updated in
-#' \code{fit$communities$palette}.
+#' For single layer fits, only \code{community_colors} is used.
 #'
-#' For \code{multimixMN_fit} objects, community colors are updated separately
-#' within each layer (i.e., in \code{fit$layer_fits[[L]]$communities$palette}),
-#' while layer colors are updated in \code{fit$layers$palette}.
+#' For multilayer fits:
+#' \itemize{
+#'   \item \code{community_colors} updates community palettes within the
+#'   specified layers;
+#'   \item \code{layer_colors} updates the palette of the layers themselves.
+#' }
 #'
-#' The function performs in-place modification of the palettes and returns the
-#' updated object.
+#' For multilayer fits, \code{community_colors} can be partial: layers not
+#' included in the list are left unchanged.
 #'
 #' @return
-#' The input object \code{fit}, with updated community and/or layer palettes.
+#' The input object, with updated community and/or layer palettes.
 #'
 #' @examples
 #' data(bacteremia)
@@ -49,10 +115,8 @@
 #'   progress = FALSE
 #' )
 #'
-#' # View original community palette
 #' fit$communities$palette
 #'
-#' # Update colors for communities 1 and 2
 #' fit2 <- update_palette(
 #'   fit,
 #'   community_colors = c("1" = "red", "2" = "blue")
@@ -64,101 +128,124 @@
 #' plot(fit2)
 #'
 #' @export
-update_palette <- function(
-    fit,
-    community_colors = NULL,  # named vector: names = community labels
-    layer_colors = NULL       # named vector: names = layer names
+update_palette <- function(object, ...) {
+  UseMethod("update_palette")
+}
+
+#' @rdname update_palette
+#' @export
+update_palette.mixMN_fit <- function(
+    object,
+    community_colors = NULL,
+    layer_colors = NULL,
+    ...
 ) {
-  stopifnot(is.list(fit))
+  stopifnot(is.list(object))
 
-  is_multilayer <- inherits(fit, "multimixMN_fit") ||
-    (!is.null(fit$layers) && !is.null(fit$layer_fits))
-  is_single <- inherits(fit, "mixMN_fit") ||
-    (!is.null(fit$communities) && is.null(fit$layers))
-
-  if (!is_multilayer && !is_single) {
-    stop("`fit` must be a mixMN_fit or multimixMN_fit object.", call. = FALSE)
+  if (!is.null(layer_colors)) {
+    warning(
+      "`layer_colors` is ignored for mixMN_fit objects.",
+      call. = FALSE
+    )
   }
 
-  .warn_extra_names <- function(given, allowed, what) {
-    if (is.null(names(given))) return(invisible(NULL))
-    extra <- setdiff(names(given), allowed)
-    if (length(extra)) {
-      warning(
-        sprintf(
-          "%s: ignoring %d unknown name(s): %s",
-          what, length(extra), paste(extra, collapse = ", ")
+  if (!is.null(community_colors)) {
+    if (is.list(community_colors)) {
+      stop(
+        "`community_colors` must be a named character vector for mixMN_fit objects.",
+        call. = FALSE
+      )
+    }
+
+    if (is.null(object$communities$palette)) {
+      stop("This mixMN_fit object has no `communities$palette`.", call. = FALSE)
+    }
+
+    allowed <- names(object$communities$palette)
+    object$communities$palette <- .apply_named_update(
+      object$communities$palette,
+      community_colors,
+      allowed,
+      "community_colors"
+    )
+  }
+
+  object
+}
+
+#' @rdname update_palette
+#' @export
+update_palette.multimixMN_fit <- function(
+    object,
+    community_colors = NULL,
+    layer_colors = NULL,
+    ...
+) {
+  stopifnot(is.list(object))
+
+  # ---- communities palette ----
+  if (!is.null(community_colors)) {
+    if (!is.list(community_colors) || is.null(names(community_colors)) ||
+        anyNA(names(community_colors)) || any(names(community_colors) == "")) {
+      stop(
+        paste(
+          "`community_colors` must be a named list for multimixMN_fit objects.",
+          "Names must correspond to layer names, and each element must be a",
+          "named character vector of community colors."
         ),
         call. = FALSE
       )
     }
-    invisible(NULL)
-  }
 
-  .apply_named_update <- function(old, new_named, allowed_names, what) {
-    if (is.null(new_named)) return(old)
-
-    if (is.null(names(new_named)) || anyNA(names(new_named)) || any(names(new_named) == "")) {
-      stop(sprintf(
-        "%s must be a *named* vector (names = ids, values = colors).",
-        what
-      ), call. = FALSE)
+    if (is.null(object$layer_fits)) {
+      stop("This multimixMN_fit object has no `layer_fits`.", call. = FALSE)
     }
 
-    .warn_extra_names(new_named, allowed_names, what)
+    available_layers <- names(object$layer_fits)
+    .warn_extra_names(community_colors, available_layers, "community_colors")
 
-    upd <- intersect(names(new_named), allowed_names)
-    if (!length(upd)) return(old)
+    layers_to_update <- intersect(names(community_colors), available_layers)
 
-    old <- as.character(old)
-    names(old) <- allowed_names
-    old[upd] <- as.character(new_named[upd])
-    old
-  }
+    for (L in layers_to_update) {
+      pal <- object$layer_fits[[L]]$communities$palette
+      if (is.null(pal)) next
 
-  # ---- communities palette ----
-  if (!is.null(community_colors)) {
+      layer_update <- community_colors[[L]]
 
-    # single-layer
-    if (is_single && !is.null(fit$communities$palette)) {
-      allowed <- names(fit$communities$palette)
-      fit$communities$palette <- .apply_named_update(
-        fit$communities$palette,
-        community_colors,
-        allowed,
-        "community_colors"
-      )
-    }
-
-    # multilayer: per-layer communities
-    if (is_multilayer && !is.null(fit$layer_fits)) {
-      for (L in names(fit$layer_fits)) {
-        pal <- fit$layer_fits[[L]]$communities$palette
-        if (is.null(pal)) next
-        allowed <- names(pal)
-        fit$layer_fits[[L]]$communities$palette <- .apply_named_update(
-          pal,
-          community_colors,
-          allowed,
-          sprintf("community_colors (layer '%s')", L)
+      if (is.null(layer_update)) next
+      if (!is.character(layer_update)) {
+        stop(
+          sprintf(
+            "community_colors[['%s']] must be a named character vector.",
+            L
+          ),
+          call. = FALSE
         )
       }
+
+      allowed <- names(pal)
+      object$layer_fits[[L]]$communities$palette <- .apply_named_update(
+        pal,
+        layer_update,
+        allowed,
+        sprintf("community_colors[['%s']]", L)
+      )
     }
   }
 
-  # ---- layers palette (multilayer only) ----
-  if (is_multilayer && !is.null(layer_colors)) {
-    if (is.null(fit$layers$palette)) {
+  # ---- layers palette ----
+  if (!is.null(layer_colors)) {
+    if (is.null(object$layers$palette)) {
       stop("This multimixMN_fit object has no `layers$palette`.", call. = FALSE)
     }
-    allowed <- names(fit$layers$palette)
-    fit$layers$palette <- .apply_named_update(
-      fit$layers$palette,
+    allowed <- names(object$layers$palette)
+    object$layers$palette <- .apply_named_update(
+      object$layers$palette,
       layer_colors,
       allowed,
       "layer_colors"
     )
   }
 
-  fit
+  object
 }

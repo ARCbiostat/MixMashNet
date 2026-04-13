@@ -1,5 +1,53 @@
 #' @keywords internal
 #' @noRd
+.plot_mm_get_layer_fit <- function(obj, layer_name) {
+  if (is.null(obj$layer_fits) || !length(obj$layer_fits)) {
+    stop("No 'layer_fits' found in this 'multimixMN_fit' object.")
+  }
+  if (is.null(layer_name)) {
+    stop(
+      "This is a 'multimixMN_fit' object. Please specify the ",
+      "'layer' argument (e.g., layer = \"bio\")."
+    )
+  }
+  if (!layer_name %in% names(obj$layer_fits)) {
+    stop(
+      "Layer '", layer_name, "' not found. Available layers: ",
+      paste(names(obj$layer_fits), collapse = ", ")
+    )
+  }
+  obj$layer_fits[[layer_name]]
+}
+
+#' @keywords internal
+#' @noRd
+.plot_mm_default_stats_intra <- function() {
+  c("strength", "expected_influence", "closeness", "betweenness")
+}
+
+#' @keywords internal
+#' @noRd
+.plot_mm_default_stats_inter <- function() {
+  c("strength", "expected_influence", "closeness", "betweenness")
+}
+
+#' @keywords internal
+#' @noRd
+.plot_mm_centrality_args <- function() {
+  c(
+    "statistics", "ordering", "standardize",
+    "edges_top_n", "exclude_nodes", "color_by_community"
+  )
+}
+
+#' @keywords internal
+#' @noRd
+.plot_mm_wants_centrality <- function(dots) {
+  any(names(dots) %in% .plot_mm_centrality_args())
+}
+
+#' @keywords internal
+#' @noRd
 .get_abs_weights <- function(g) {
   w <- igraph::E(g)$weight
   if (is.null(w)) w <- rep(1, igraph::ecount(g)) else w <- abs(w)

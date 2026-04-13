@@ -3,7 +3,6 @@
 #' @description
 #' Computes per-node stability given the empirical community structure and the
 #' homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
-#' This function is used internally by \code{mixMN()} and \code{multimixMN()}.
 #' Stability is expressed as the proportion of bootstrap replications that
 #' assign each node to its empirical (original) community.
 #'
@@ -11,8 +10,6 @@
 #'   containing \code{$communities$original_membership} and
 #'   \code{$communities$boot_memberships}. Bootstrap memberships must be
 #'   available, i.e. \code{reps > 0} and \code{"community" \%in\% boot_what}.
-#' @param IS.plot Logical; if \code{TRUE}, prints a stability plot via the
-#'   internal helper \code{membershipStab_plot()}.
 #'
 #' @return An object of class \code{c("membershipStab")}, with components:
 #' \describe{
@@ -50,7 +47,7 @@
 #'
 #' @importFrom EGAnet community.homogenize
 #' @export
-membershipStab <- function(fit, IS.plot = FALSE) {
+membershipStab <- function(fit) {
   # --- Extract inputs
   structure <- fit$communities$original_membership
   boot.list <- fit$communities$boot_memberships
@@ -139,15 +136,135 @@ membershipStab <- function(fit, IS.plot = FALSE) {
       all.dimensions       = prop_matrix
     )
   )
-  class(result) <- c("membershipStab")
+  class(result) <- "membershipStab"
 
   if (!is.null(palette)) {
     attr(result, "palette") <- palette
     result$community_palette <- palette
   }
 
-  if (isTRUE(IS.plot)) {
-    print(membershipStab_plot(result))
-  }
   return(result)
+}
+
+#' @export
+print.membershipStab <- function(x, ...) {
+  if (!inherits(x, "membershipStab")) {
+    stop("`x` must be an object of class 'membershipStab'.")
+  }
+
+  empirical <- x$membership$empirical
+  bootstrap <- x$membership$bootstrap
+  stab <- x$membership.stability$empirical.dimensions
+
+  n_nodes <- if (!is.null(empirical)) length(empirical) else 0L
+  n_boot  <- if (!is.null(bootstrap) && is.matrix(bootstrap)) nrow(bootstrap) else 0L
+  n_comm  <- if (!is.null(empirical)) length(unique(stats::na.omit(as.integer(empirical)))) else 0L
+
+  cat("MixMashNet membership stability object\n")
+  cat(strrep("=", 38), "\n", sep = "")
+  cat("Nodes: ", n_nodes, "\n", sep = "")
+  cat("Bootstrap replications: ", n_boot, "\n", sep = "")
+  cat("Communities: ", n_comm, "\n", sep = "")
+
+  if (!is.null(stab) && length(stab)) {
+    cat(
+      "Node stability range: ",
+      round(min(stab, na.rm = TRUE), 3), " to ",
+      round(max(stab, na.rm = TRUE), 3), "\n",
+      sep = ""
+    )
+  }
+
+  invisible(x)
+}
+
+#' @export
+summary.membershipStab <- function(object, ...) {
+  if (!inherits(object, "membershipStab")) {
+    stop("`object` must be an object of class 'membershipStab'.")
+  }
+
+  empirical <- object$membership$empirical
+  bootstrap <- object$membership$bootstrap
+  stab <- object$membership.stability$empirical.dimensions
+
+  n_nodes <- if (!is.null(empirical)) length(empirical) else 0L
+  n_boot  <- if (!is.null(bootstrap) && is.matrix(bootstrap)) nrow(bootstrap) else 0L
+  n_comm  <- if (!is.null(empirical)) {
+    length(unique(stats::na.omit(as.integer(empirical))))
+  } else {
+    0L
+  }
+
+  stab_summary <- if (!is.null(stab) && length(stab)) {
+    stats::quantile(
+      stab,
+      probs = c(0, 0.25, 0.5, 0.75, 1),
+      na.rm = TRUE,
+      names = FALSE
+    )
+  } else {
+    rep(NA_real_, 5)
+  }
+
+  names(stab_summary) <- c("min", "q1", "median", "q3", "max")
+
+  out <- list(
+    n_nodes = n_nodes,
+    n_bootstrap = n_boot,
+    n_communities = n_comm,
+    mean_stability = if (!is.null(stab) && length(stab)) mean(stab, na.rm = TRUE) else NA_real_,
+    stability_summary = stab_summary,
+    n_below_0_50 = if (!is.null(stab) && length(stab)) sum(stab < 0.50, na.rm = TRUE) else NA_integer_,
+    n_below_0_70 = if (!is.null(stab) && length(stab)) sum(stab < 0.70, na.rm = TRUE) else NA_integer_
+  )
+
+  class(out) <- "summary.membershipStab"
+  out
+}
+
+#' @export
+print.summary.membershipStab <- function(x, digits = 3, ...) {
+  if (!inherits(x, "summary.membershipStab")) {
+    stop("`x` must be an object of class 'summary.membershipStab'.")
+  }
+
+  cat("Summary of MixMashNet membership stability\n")
+  cat(strrep("=", 42), "\n", sep = "")
+  cat("Nodes: ", x$n_nodes, "\n", sep = "")
+  cat("Bootstrap replications: ", x$n_bootstrap, "\n", sep = "")
+  cat("Communities: ", x$n_communities, "\n", sep = "")
+  cat("Mean node stability: ", round(x$mean_stability, digits), "\n", sep = "")
+
+  cat("\nNode stability distribution:\n")
+  ss <- round(x$stability_summary, digits)
+  cat("  Min:    ", ss["min"], "\n", sep = "")
+  cat("  1st Qu.:", ss["q1"], "\n", sep = "")
+  cat("  Median: ", ss["median"], "\n", sep = "")
+  cat("  3rd Qu.:", ss["q3"], "\n", sep = "")
+  cat("  Max:    ", ss["max"], "\n", sep = "")
+
+  cat("\nNodes below stability thresholds:\n")
+  cat("  < 0.50: ", x$n_below_0_50, "\n", sep = "")
+  cat("  < 0.70: ", x$n_below_0_70, "\n", sep = "")
+
+  invisible(x)
+}
+
+#' @export
+plot.membershipStab <- function(
+    x,
+    title = "Node Stability by Community",
+    cutoff = 0.7,
+    ...
+) {
+  if (!inherits(x, "membershipStab")) {
+    stop("`x` must be an object of class 'membershipStab'.")
+  }
+
+  membershipStab_plot(
+    stab_obj = x,
+    title = title,
+    cutoff = cutoff
+  )
 }

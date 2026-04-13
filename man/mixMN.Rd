@@ -27,7 +27,9 @@ mixMN(
   treat_singletons_as_excluded = FALSE,
   seed_model = NULL,
   seed_boot = NULL,
-  cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
+  cluster_method = c("louvain", "edge_betweenness", "fast_greedy", "infomap",
+    "label_prop", "leading_eigen", "leiden", "optimal", "spinglass", "walktrap"),
+  cluster_args = list(),
   compute_loadings = TRUE,
   boot_what = c("general_index", "bridge_index", "excluded_index", "community",
     "loadings"),
@@ -110,9 +112,24 @@ MGM fit.}
 \item{seed_boot}{Optional integer seed passed to \code{future.apply} for
 reproducibility of bootstrap replications.}
 
-\item{cluster_method}{Community detection algorithm used on the network:
-\code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
-\code{"walktrap"}, or \code{"edge_betweenness"}.}
+\item{cluster_method}{Community detection method used on the clustering graph.
+  Either a character string naming one of the built-in methods
+  \code{"louvain"}, \code{"edge_betweenness"}, \code{"fast_greedy"},
+  \code{"infomap"}, \code{"label_prop"}, \code{"leading_eigen"},
+  \code{"leiden"},  \code{"optimal"},
+  \code{"spinglass"}, \code{"walktrap"},
+  or a user-supplied function.
+
+  If a function is supplied, it must accept a graph through argument
+  \code{graph} and return either an \pkg{igraph} \code{communities} object,
+  a list with component \code{membership}, or a membership vector of length
+  equal to the number of nodes used for clustering.}
+
+\item{cluster_args}{Named list of additional arguments passed to the selected
+community detection method. For example, \code{steps} for \code{"walktrap"},
+\code{nb.trials} for \code{"infomap"}, \code{spins} for
+\code{"spinglass"}.
+Ignored if not relevant for the selected method.}
 
 \item{compute_loadings}{Logical; if \code{TRUE} (default), compute community loadings
 (\code{EGAnet::net.loads}). Only supported for Gaussian, Poisson, and binary
@@ -134,7 +151,7 @@ Valid options are:
 \item{progress}{Logical; if \code{TRUE} (default), show a bootstrap progress bar.}
 }
 \value{
-An object of class \code{c("mixmashnet", "mixMN_fit")}, that is a list with
+An object of class \code{"mixMN_fit"}, that is a list with
 the following top-level components:
 \describe{
   \item{\code{call}}{
@@ -142,7 +159,7 @@ the following top-level components:
   }
   \item{\code{settings}}{
     List of main settings used in the call, including
-    \code{reps}, \code{cluster_method},
+    \code{reps}, \code{cluster_method}, \code{cluster_args},
     \code{covariates}, \code{exclude_from_cluster},
     \code{treat_singletons_as_excluded}, and \code{boot_what}.
   }
@@ -257,6 +274,8 @@ fit <- mixMN(
   lambdaGam = 0.25,
   reps = 0,
   seed_model = 42,
+  cluster_method = "louvain",
+  covariates = c("AGE", "SEX"),
   compute_loadings = FALSE,
   progress = FALSE
 )
@@ -274,6 +293,8 @@ fit_b <- mixMN(
   reps = 5,
   seed_model = 42,
   seed_boot =42,
+  cluster_method = "louvain",
+  covariates = c("AGE", "SEX"),
   boot_what = "community",
   compute_loadings = FALSE,
   progress = FALSE

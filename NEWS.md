@@ -1,3 +1,11 @@
+# MixMashNet 1.0.0
+
+## Major updates
+* Added `get_centrality()` and `get_edges()` methods for `mixMN_fit` and `multimixMN_fit`, as well as `layer_slice()` for `multimixMN_fit`.
+* Added the `find_bridge_layers()` function.
+* Added support in `mixMN()` and `multimixMN()` for user-supplied functions in the `cluster_method` argument.
+* Added the `cluster_args` argument to `mixMN()` and `multimixMN()`.
+* The summaries of `mixMN()` and `multimixMN()` now display the top 10 intralayer and interlayer edges, respectively
 # MixMashNet 0.6.0
 
 ## Major updates

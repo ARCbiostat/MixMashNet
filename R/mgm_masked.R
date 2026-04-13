@@ -1,4 +1,4 @@
-#' Masked MGM (modified from \pkg{mgm})
+#' Masked MGM
 #'
 #' @description
 #' A modified version of the model-fitting routine from \pkg{mgm} that adds support

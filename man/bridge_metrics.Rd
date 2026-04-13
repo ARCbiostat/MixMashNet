@@ -33,10 +33,6 @@ Bridge betweenness and closeness are computed on the positive-weight subgraph
 only, with weights converted to distances as \eqn{d = 1/w}.
 }
 \references{
-Jones, P. J. (2025). \pkg{networktools}: Tools for identifying important nodes
-in networks. R package version 1.6.1.
-\url{https://github.com/paytonjjones/networktools}
-
 Jones, P. J., Ma, R., & McNally, R. J. (2021).
 Bridge Centrality: A Network Approach to Understanding Comorbidity.
 \emph{Multivariate Behavioral Research}, 56(2), 353–367.

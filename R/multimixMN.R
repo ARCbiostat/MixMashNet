@@ -77,9 +77,24 @@
 #' @param treat_singletons_as_excluded Logical; if \code{TRUE}, singleton
 #'   communities (size 1) are treated as "excluded" when computing bridge
 #'   metrics and related summaries.
-#' @param cluster_method Community detection algorithm applied within each
-#'   layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
-#'   \code{"walktrap"}, or \code{"edge_betweenness"}.
+#' @param cluster_method Community detection method used within each layer.
+#'   Either a character string naming one of the built-in methods
+#'   \code{"louvain"}, \code{"edge_betweenness"}, \code{"fast_greedy"},
+#'   \code{"infomap"}, \code{"label_prop"}, \code{"leading_eigen"},
+#'   \code{"leiden"}, \code{"optimal"},
+#'   \code{"spinglass"}, \code{"walktrap"},
+#'   or a user-supplied function.
+#'
+#'   If a function is supplied, it must accept a graph through argument
+#'   \code{graph} and return either an \pkg{igraph} \code{communities} object,
+#'   a list with component \code{membership}, or a membership vector of length
+#'   equal to the number of nodes used for clustering.
+#'
+#' @param cluster_args Named list of additional arguments passed to the selected
+#'   community detection method. For example, \code{steps} for \code{"walktrap"},
+#'   \code{nb.trials} for \code{"infomap"}, \code{spins} for
+#'   \code{"spinglass"}.
+#'   Ignored if not relevant for the selected method.
 #' @param compute_loadings Logical; if \code{TRUE} (default), compute community loadings
 #'   (\code{EGAnet::net.loads}). Only supported for Gaussian, Poisson, and binary
 #'   categorical nodes; otherwise loadings are skipped and the reason is
@@ -99,7 +114,7 @@
 #' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress bar.
 #'
 #' @return
-#' An object of class \code{c("mixmashnet", "multimixMN_fit")}. The returned
+#' An object of class \code{"multimixMN_fit"}. The returned
 #' list contains at least the following components:
 #' \describe{
 #'   \item{\code{call}}{
@@ -107,7 +122,7 @@
 #'   }
 #'   \item{\code{settings}}{
 #'   List of main settings used in the call, including
-#'    \code{reps}, \code{cluster_method}, \code{covariates},
+#'    \code{reps}, \code{cluster_method}, \code{cluster_args}, \code{covariates},
 #'     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
 #'     \code{boot_what}).
 #'   }
@@ -239,7 +254,11 @@ multimixMN <- function(
     exclude_from_cluster = NULL,
     seed_model = NULL, seed_boot = NULL,
     treat_singletons_as_excluded = FALSE,
-    cluster_method = c("louvain","fast_greedy","infomap","walktrap","edge_betweenness"),
+    cluster_method = c(
+      "louvain", "edge_betweenness", "fast_greedy", "infomap", "label_prop",
+      "leading_eigen", "leiden", "optimal", "spinglass", "walktrap"
+    ),
+    cluster_args = list(),
     compute_loadings = TRUE,
     boot_what = c("general_index", "interlayer_index", "bridge_index",
                   "excluded_index", "community", "loadings"),
@@ -247,7 +266,14 @@ multimixMN <- function(
     progress = TRUE
 ) {
   lambdaSel <- match.arg(lambdaSel)
-  cluster_method <- match.arg(cluster_method)
+  if (is.character(cluster_method)) {
+    cluster_method <- match.arg(cluster_method, choices = .default_cluster_methods())
+  } else if (!is.function(cluster_method)) {
+    stop("`cluster_method` must be either a supported character string or a function.")
+  }
+  if (!is.list(cluster_args)) {
+    stop("`cluster_args` must be a list.")
+  }
   if (!is.null(seed_model)) set.seed(seed_model)
 
   all_nodes <- colnames(data); p <- ncol(data)
@@ -447,15 +473,6 @@ multimixMN <- function(
     rep(default, nrow(df))
   }
   .as_chr <- function(x) if (is.factor(x)) as.character(x) else as.character(x)
-  cluster_fun <- function(graph) {
-    switch(cluster_method,
-           louvain          = igraph::cluster_louvain(graph, weights = igraph::E(graph)$weight),
-           fast_greedy      = igraph::cluster_fast_greedy(graph, weights = igraph::E(graph)$weight),
-           infomap          = igraph::cluster_infomap(graph),
-           walktrap         = igraph::cluster_walktrap(graph, weights = igraph::E(graph)$weight),
-           edge_betweenness = igraph::cluster_edge_betweenness(graph, weights = igraph::E(graph)$weight)
-    )
-  }
 
   # --- Build per-node masks from layer_rules
   mask_list <- vector("list", length(all_nodes))
@@ -525,15 +542,22 @@ multimixMN <- function(
       covariates   = NULL,
       exclude_from_cluster = intersect(exclude_from_cluster, nL),
       cluster_method = cluster_method,
+      cluster_args = cluster_args,
       reps          = 0,
       seed_boot     = NULL,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what     = boot_what,
-      palette_layer = pal_L
+      palette_layer = pal_L,
+      n             = nrow(data)
     )
     fitL$data_info <- list(
-      mgm_type_level    = var_interpretation,
-      binary_recode_map = binary_recode_map
+      mgm_type_level = var_interpretation[
+        match(nL, var_interpretation$node),
+        , drop = FALSE
+      ],
+      binary_recode_map = binary_recode_map[
+        intersect(nL, names(binary_recode_map))
+      ]
     )
 
     membL <- fitL$communities$groups
@@ -758,7 +782,7 @@ multimixMN <- function(
   inter_betweenness_boot <- if (do_interlayer_boot)
     matrix(NA_real_, reps, length(nodes_int), dimnames = list(NULL, nodes_int)) else NULL
 
-  use_progress <- isTRUE(progress) && requireNamespace("progressr", quietly = TRUE)
+  use_progress <- isTRUE(progress)
   seq_reps <- seq_len(reps)
 
   .boot_rep <- function(bi, p = NULL) {
@@ -810,13 +834,18 @@ multimixMN <- function(
         g_c <- igraph::graph_from_adjacency_matrix(
           abs(Wc), mode = "undirected", weighted = TRUE, diag = FALSE
         )
-        g_c <- igraph::simplify(g_c, remove.multiple = TRUE, remove.loops = TRUE)
+
+        if (.needs_simplify_clustering_graph(cluster_method)) {
+          g_c <- igraph::simplify(g_c, remove.multiple = TRUE, remove.loops = TRUE)
+        }
 
         memb_boot <- tryCatch({
-          cl <- cluster_fun(g_c)
-          mb <- cl$membership
-          names(mb) <- nodes_c
-          mb
+          clu_b <- .run_clustering(
+            graph = g_c,
+            cluster_method = cluster_method,
+            cluster_args = cluster_args
+          )
+          .extract_membership(clu_b, nodes_c)
         }, error = function(e) {
           stats::setNames(rep(NA_integer_, length(nodes_c)), nodes_c)
         })
@@ -1392,7 +1421,8 @@ multimixMN <- function(
 
     settings = list(
       reps                         = reps,
-      cluster_method               = cluster_method,
+      cluster_method               = if (is.character(cluster_method)) cluster_method else "custom",
+      cluster_args                 = cluster_args,
       covariates                   = covariates,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
@@ -1430,6 +1460,6 @@ multimixMN <- function(
     )
   )
 
-  class(out) <- c("mixmashnet", "multimixMN_fit")
+  class(out) <- "multimixMN_fit"
   return(out)
 }

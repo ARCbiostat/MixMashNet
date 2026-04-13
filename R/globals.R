@@ -11,5 +11,6 @@ utils::globalVariables(c(
   "order_reversed","label_colored","includes_zero","item",
   "sum_abs_w","sum_signed_w","sum_signed_w2",
   "inv_mean_dist","pair","hits",
-  "n_g","m","s"
+  "n_g","m","s",
+  "contribution"
 ))

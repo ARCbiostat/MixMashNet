@@ -1,7 +1,7 @@
 #' Plot node stability per community (internal helper)
 #'
 #' @description
-#' Internal helper used by \code{plot.mixmashnet()}
+#' Internal helper used by \code{plot.mixMN_fit()} and \code{plot.multimixMN_fit()}
 #' to visualize per-node stability by community using a horizontal barplot.
 #'
 #' @param stab_obj Stability object as returned by \code{membershipStab()},

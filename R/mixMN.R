@@ -63,9 +63,24 @@
 #'   MGM fit.
 #' @param seed_boot Optional integer seed passed to \code{future.apply} for
 #'   reproducibility of bootstrap replications.
-#' @param cluster_method Community detection algorithm used on the network:
-#'   \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
-#'   \code{"walktrap"}, or \code{"edge_betweenness"}.
+#' @param cluster_method Community detection method used on the clustering graph.
+#'   Either a character string naming one of the built-in methods
+#'   \code{"louvain"}, \code{"edge_betweenness"}, \code{"fast_greedy"},
+#'   \code{"infomap"}, \code{"label_prop"}, \code{"leading_eigen"},
+#'   \code{"leiden"},  \code{"optimal"},
+#'   \code{"spinglass"}, \code{"walktrap"},
+#'   or a user-supplied function.
+#'
+#'   If a function is supplied, it must accept a graph through argument
+#'   \code{graph} and return either an \pkg{igraph} \code{communities} object,
+#'   a list with component \code{membership}, or a membership vector of length
+#'   equal to the number of nodes used for clustering.
+#'
+#' @param cluster_args Named list of additional arguments passed to the selected
+#'   community detection method. For example, \code{steps} for \code{"walktrap"},
+#'   \code{nb.trials} for \code{"infomap"}, \code{spins} for
+#'   \code{"spinglass"}.
+#'   Ignored if not relevant for the selected method.
 #' @param compute_loadings Logical; if \code{TRUE} (default), compute community loadings
 #'   (\code{EGAnet::net.loads}). Only supported for Gaussian, Poisson, and binary
 #'   categorical nodes; otherwise loadings are skipped and the reason is
@@ -83,7 +98,7 @@
 #' @param progress Logical; if \code{TRUE} (default), show a bootstrap progress bar.
 #'
 #' @return
-#' An object of class \code{c("mixmashnet", "mixMN_fit")}, that is a list with
+#' An object of class \code{"mixMN_fit"}, that is a list with
 #' the following top-level components:
 #' \describe{
 #'   \item{\code{call}}{
@@ -91,7 +106,7 @@
 #'   }
 #'   \item{\code{settings}}{
 #'     List of main settings used in the call, including
-#'     \code{reps}, \code{cluster_method},
+#'     \code{reps}, \code{cluster_method}, \code{cluster_args},
 #'     \code{covariates}, \code{exclude_from_cluster},
 #'     \code{treat_singletons_as_excluded}, and \code{boot_what}.
 #'   }
@@ -209,6 +224,8 @@
 #'   lambdaGam = 0.25,
 #'   reps = 0,
 #'   seed_model = 42,
+#'   cluster_method = "louvain",
+#'   covariates = c("AGE", "SEX"),
 #'   compute_loadings = FALSE,
 #'   progress = FALSE
 #' )
@@ -226,6 +243,8 @@
 #'   reps = 5,
 #'   seed_model = 42,
 #'   seed_boot =42,
+#'   cluster_method = "louvain",
+#'   covariates = c("AGE", "SEX"),
 #'   boot_what = "community",
 #'   compute_loadings = FALSE,
 #'   progress = FALSE
@@ -238,7 +257,10 @@
 #' @importFrom mgm mgm
 #' @importFrom EGAnet net.loads
 #' @importFrom igraph graph_from_adjacency_matrix simplify E ecount V distances betweenness vcount
-#' @importFrom igraph cluster_louvain cluster_fast_greedy cluster_infomap cluster_walktrap cluster_edge_betweenness
+#' @importFrom igraph cluster_edge_betweenness cluster_fast_greedy
+#' @importFrom igraph cluster_infomap cluster_label_prop cluster_leading_eigen
+#' @importFrom igraph cluster_leiden cluster_louvain cluster_optimal
+#' @importFrom igraph cluster_spinglass cluster_walktrap
 #' @importFrom qgraph centrality
 #' @importFrom colorspace qualitative_hcl
 #' @importFrom future.apply future_lapply
@@ -268,7 +290,11 @@ mixMN <- function(
     treat_singletons_as_excluded = FALSE,
     seed_model = NULL,
     seed_boot = NULL,
-    cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
+    cluster_method = c(
+      "louvain", "edge_betweenness", "fast_greedy", "infomap", "label_prop",
+      "leading_eigen", "leiden", "optimal", "spinglass", "walktrap"
+    ),
+    cluster_args = list(),
     compute_loadings = TRUE,
     boot_what = c("general_index", "bridge_index", "excluded_index",
                   "community", "loadings"),
@@ -276,7 +302,21 @@ mixMN <- function(
     progress = TRUE
 ) {
   lambdaSel <- match.arg(lambdaSel)
-  cluster_method <- match.arg(cluster_method)
+  if (is.character(cluster_method)) {
+    cluster_method <- match.arg(
+      cluster_method,
+      choices = c(
+        "louvain", "edge_betweenness", "fast_greedy", "infomap", "label_prop",
+        "leading_eigen", "leiden", "optimal", "spinglass", "walktrap"
+      )
+    )
+  } else if (!is.function(cluster_method)) {
+    stop("`cluster_method` must be either a supported character string or a function.")
+  }
+
+  if (!is.list(cluster_args)) {
+    stop("`cluster_args` must be a list.")
+  }
   if (!is.null(seed_model)) set.seed(seed_model)
 
   # ---- Infer mgm spec + build mgm matrix (0/1 for binary factors/logicals) ----
@@ -295,7 +335,6 @@ mixMN <- function(
   if (is.null(rownames(data))) {
     rownames(data) <- sprintf("id_%d", seq_len(nrow(data)))
   }
-  subject_ids <- rownames(data)
 
   # quantile region
   if (!is.numeric(quantile_level) || length(quantile_level) != 1L ||
@@ -410,9 +449,8 @@ mixMN <- function(
   wadj_signed_cluster <- wadj_signed[keep_nodes_cluster, keep_nodes_cluster]
 
   # ---- Build graphs ----
-  g_graph   <- igraph::graph_from_adjacency_matrix(abs(wadj_signed_graph),   mode = "undirected", weighted = TRUE, diag = FALSE)
   g_cluster <- igraph::graph_from_adjacency_matrix(abs(wadj_signed_cluster), mode = "undirected", weighted = TRUE, diag = FALSE)
-  if (cluster_method %in% c("infomap", "edge_betweenness", "walktrap")) {
+  if (.needs_simplify_clustering_graph(cluster_method)) {
     g_cluster <- igraph::simplify(g_cluster, remove.multiple = TRUE, remove.loops = TRUE)
   }
 
@@ -420,23 +458,16 @@ mixMN <- function(
   g_bridge_abs    <- igraph::graph_from_adjacency_matrix(abs(wadj_signed_graph), mode = "undirected", weighted = TRUE, diag = FALSE)
   g_bridge_signed <- igraph::graph_from_adjacency_matrix(wadj_signed_graph,      mode = "undirected", weighted = TRUE, diag = FALSE)
 
-  cluster_fun <- function(graph) {
-    switch(
-      cluster_method,
-      louvain          = igraph::cluster_louvain(graph, weights = igraph::E(graph)$weight),
-      fast_greedy      = igraph::cluster_fast_greedy(graph, weights = igraph::E(graph)$weight),
-      infomap          = igraph::cluster_infomap(graph),
-      walktrap         = igraph::cluster_walktrap(graph, weights = igraph::E(graph)$weight),
-      edge_betweenness = igraph::cluster_edge_betweenness(graph, weights = igraph::E(graph)$weight)
-    )
-  }
-
-  if (cluster_method %in% c("louvain", "infomap") && !is.null(seed_model)) set.seed(seed_model)
-
   original_membership <- tryCatch({
-    m <- cluster_fun(g_cluster)$membership
-    stats::setNames(m, keep_nodes_cluster)
-  }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
+    clu <- .run_clustering(
+      graph = g_cluster,
+      cluster_method = cluster_method,
+      cluster_args = cluster_args
+    )
+    .extract_membership(clu, keep_nodes_cluster)
+  }, error = function(e) {
+    rep(NA_integer_, length(keep_nodes_cluster))
+  })
 
   sizes <- table(original_membership)
 
@@ -690,7 +721,7 @@ mixMN <- function(
   edge_boot_mat <- NULL
   community_loadings_boot <- NULL
 
-  use_progress <- isTRUE(progress) && requireNamespace("progressr", quietly = TRUE)
+  use_progress <- isTRUE(progress)
   seq_reps <- seq_len(reps)
 
   .boot_rep <- function(i, p = NULL) {
@@ -748,7 +779,8 @@ mixMN <- function(
     g_cluster_boot <- igraph::graph_from_adjacency_matrix(abs(boot_wadj_signed_cluster), mode = "undirected", weighted = TRUE, diag = FALSE)
     g_bridge_abs_boot    <- igraph::graph_from_adjacency_matrix(abs(boot_wadj_signed_graph), mode = "undirected", weighted = TRUE, diag = FALSE)
     g_bridge_signed_boot <- igraph::graph_from_adjacency_matrix(boot_wadj_signed_graph,      mode = "undirected", weighted = TRUE, diag = FALSE)
-    if (cluster_method %in% c("infomap", "edge_betweenness", "walktrap")) {
+
+    if (.needs_simplify_clustering_graph(cluster_method)) {
       g_cluster_boot <- igraph::simplify(g_cluster_boot, remove.multiple = TRUE, remove.loops = TRUE)
     }
 
@@ -756,9 +788,15 @@ mixMN <- function(
     boot_membership <- NULL
     if (isTRUE(do_community_boot)) {
       boot_membership <- tryCatch({
-        m <- cluster_fun(g_cluster_boot)$membership
-        stats::setNames(m, keep_nodes_cluster)
-      }, error = function(e) rep(NA_integer_, length(keep_nodes_cluster)))
+        clu_b <- .run_clustering(
+          graph = g_cluster_boot,
+          cluster_method = cluster_method,
+          cluster_args = cluster_args
+        )
+        .extract_membership(clu_b, keep_nodes_cluster)
+      }, error = function(e) {
+        rep(NA_integer_, length(keep_nodes_cluster))
+      })
     }
 
     ## centrality vector
@@ -1111,12 +1149,13 @@ mixMN <- function(
 
     settings = list(
       reps                         = reps,
-      cluster_method               = cluster_method,
+      cluster_method               = if (is.character(cluster_method)) cluster_method else "custom",
+      cluster_args                 = cluster_args,
       covariates                   = covariates,
       exclude_from_cluster         = exclude_from_cluster,
       treat_singletons_as_excluded = treat_singletons_as_excluded,
       boot_what                    = boot_what,
-      quantile_level = quantile_level
+      quantile_level               = quantile_level
     ),
 
     data_info = list(
@@ -1184,6 +1223,6 @@ mixMN <- function(
     )
   )
 
-  class(fit) <- c("mixmashnet", "mixMN_fit")
+  class(fit) <- "mixMN_fit"
   return(fit)
 }

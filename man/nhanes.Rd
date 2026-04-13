@@ -3,7 +3,7 @@
 \docType{data}
 \name{nhanes}
 \alias{nhanes}
-\title{NHANES dataset}
+\title{NHANES-derived dataset for multilayer network analysis}
 \format{
 A data frame with 2759 rows and 29 variables:
 \describe{
@@ -42,7 +42,8 @@ A data frame with 2759 rows and 29 variables:
 data(nhanes)
 }
 \description{
-Example dataset used in MixMashNet examples. This dataset contains 29 variables
+Example dataset derived to illustrate multilayer
+network estimation in MixMashNet. This dataset contains 29 variables
 derived from the National Health and Nutrition Examination Survey (NHANES)
 }
 \references{

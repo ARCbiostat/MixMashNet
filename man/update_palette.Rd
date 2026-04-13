@@ -2,46 +2,67 @@
 % Please edit documentation in R/update_palette.R
 \name{update_palette}
 \alias{update_palette}
+\alias{update_palette.mixMN_fit}
+\alias{update_palette.multimixMN_fit}
 \title{Update community and layer color palettes in MixMashNet objects}
 \usage{
-update_palette(fit, community_colors = NULL, layer_colors = NULL)
+update_palette(object, ...)
+
+\method{update_palette}{mixMN_fit}(object, community_colors = NULL, layer_colors = NULL, ...)
+
+\method{update_palette}{multimixMN_fit}(object, community_colors = NULL, layer_colors = NULL, ...)
 }
 \arguments{
-\item{fit}{An object of class \code{mixMN_fit} or \code{multimixMN_fit}.}
+\item{object}{An object of class \code{mixMN_fit} or
+\code{multimixMN_fit}.}
 
-\item{community_colors}{Optional named character vector specifying new colors
-for communities. Names must correspond to existing community labels
-(as stored in \code{communities$palette}). Missing names are ignored.}
+\item{...}{Further arguments passed to methods.}
+
+\item{community_colors}{For \code{mixMN_fit} objects, an optional named
+  character vector specifying new colors for communities.
+
+  For \code{multimixMN_fit} objects, an optional named list whose names are
+  layer names and whose elements are named character vectors specifying new
+  colors for communities within each layer.}
 
 \item{layer_colors}{Optional named character vector specifying new colors for
-layers. Names must correspond to existing layer names
-(as stored in \code{layers$palette}). Only applicable to
-\code{multimixMN_fit} objects.}
+layers. Only applicable to \code{multimixMN_fit} objects.}
 }
 \value{
-The input object \code{fit}, with updated community and/or layer palettes.
+The input object, with updated community and/or layer palettes.
 }
 \description{
 Updates the color palettes associated with communities and/or layers in
-\code{mixMN_fit} and \code{multimixMN_fit} objects. The function replaces only
-the colors corresponding to the provided names, leaving all other colors
-unchanged.
+fitted \code{mixMN_fit} and \code{multimixMN_fit} objects.
 
-If colors are provided for names that do not exist in the object (e.g.,
-unknown community labels or layer names), a warning is issued and those entries
-are ignored. If some communities or layers are not specified, their original
-colors are preserved.
+For \code{mixMN_fit} objects, \code{community_colors} must be a named
+character vector specifying colors for community labels in
+\code{object$communities$palette}.
+
+For \code{multimixMN_fit} objects, \code{community_colors} must be a named
+list whose elements correspond to layer names. Each element must be a named
+character vector specifying colors for the community labels of that layer.
+The list may be partial, so only the specified layers are updated.
+
+For \code{multimixMN_fit} objects, \code{layer_colors} updates the palette
+stored in \code{object$layers$palette}.
+
+The function replaces only the colors corresponding to the provided names,
+leaving all other colors unchanged. Unknown layer names, community labels,
+or layer labels are ignored with a warning.
 }
 \details{
-For \code{mixMN_fit} objects, community colors are updated in
-\code{fit$communities$palette}.
+For single layer fits, only \code{community_colors} is used.
 
-For \code{multimixMN_fit} objects, community colors are updated separately
-within each layer (i.e., in \code{fit$layer_fits[[L]]$communities$palette}),
-while layer colors are updated in \code{fit$layers$palette}.
+For multilayer fits:
+\itemize{
+  \item \code{community_colors} updates community palettes within the
+  specified layers;
+  \item \code{layer_colors} updates the palette of the layers themselves.
+}
 
-The function performs in-place modification of the palettes and returns the
-updated object.
+For multilayer fits, \code{community_colors} can be partial: layers not
+included in the list are left unchanged.
 }
 \examples{
 data(bacteremia)
@@ -58,10 +79,8 @@ fit <- mixMN(
   progress = FALSE
 )
 
-# View original community palette
 fit$communities$palette
 
-# Update colors for communities 1 and 2
 fit2 <- update_palette(
   fit,
   community_colors = c("1" = "red", "2" = "blue")

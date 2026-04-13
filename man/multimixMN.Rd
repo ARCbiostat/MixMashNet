@@ -28,7 +28,9 @@ multimixMN(
   seed_model = NULL,
   seed_boot = NULL,
   treat_singletons_as_excluded = FALSE,
-  cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
+  cluster_method = c("louvain", "edge_betweenness", "fast_greedy", "infomap",
+    "label_prop", "leading_eigen", "leiden", "optimal", "spinglass", "walktrap"),
+  cluster_args = list(),
   compute_loadings = TRUE,
   boot_what = c("general_index", "interlayer_index", "bridge_index", "excluded_index",
     "community", "loadings"),
@@ -126,9 +128,24 @@ reproducibility of bootstrap replications.}
 communities (size 1) are treated as "excluded" when computing bridge
 metrics and related summaries.}
 
-\item{cluster_method}{Community detection algorithm applied within each
-layer. One of \code{"louvain"}, \code{"fast_greedy"}, \code{"infomap"},
-\code{"walktrap"}, or \code{"edge_betweenness"}.}
+\item{cluster_method}{Community detection method used within each layer.
+  Either a character string naming one of the built-in methods
+  \code{"louvain"}, \code{"edge_betweenness"}, \code{"fast_greedy"},
+  \code{"infomap"}, \code{"label_prop"}, \code{"leading_eigen"},
+  \code{"leiden"}, \code{"optimal"},
+  \code{"spinglass"}, \code{"walktrap"},
+  or a user-supplied function.
+
+  If a function is supplied, it must accept a graph through argument
+  \code{graph} and return either an \pkg{igraph} \code{communities} object,
+  a list with component \code{membership}, or a membership vector of length
+  equal to the number of nodes used for clustering.}
+
+\item{cluster_args}{Named list of additional arguments passed to the selected
+community detection method. For example, \code{steps} for \code{"walktrap"},
+\code{nb.trials} for \code{"infomap"}, \code{spins} for
+\code{"spinglass"}.
+Ignored if not relevant for the selected method.}
 
 \item{compute_loadings}{Logical; if \code{TRUE} (default), compute community loadings
 (\code{EGAnet::net.loads}). Only supported for Gaussian, Poisson, and binary
@@ -152,7 +169,7 @@ bootstrap is performed if \code{reps > 0}).}
 \item{progress}{Logical; if \code{TRUE} (default), show a bootstrap progress bar.}
 }
 \value{
-An object of class \code{c("mixmashnet", "multimixMN_fit")}. The returned
+An object of class \code{"multimixMN_fit"}. The returned
 list contains at least the following components:
 \describe{
   \item{\code{call}}{
@@ -160,7 +177,7 @@ list contains at least the following components:
   }
   \item{\code{settings}}{
   List of main settings used in the call, including
-   \code{reps}, \code{cluster_method}, \code{covariates},
+   \code{reps}, \code{cluster_method}, \code{cluster_args}, \code{covariates},
     \code{exclude_from_cluster}, \code{treat_singletons_as_excluded},
     \code{boot_what}).
   }

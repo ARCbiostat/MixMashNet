@@ -16,12 +16,13 @@
 #' subgraph are of MGM type Gaussian (\code{"g"}), Poisson (\code{"p"}), or
 #' binary categorical (\code{"c"} with \code{level == 2}).
 #'
-#' @param fit A fitted object of class \code{c("mixmashnet","mixMN_fit", "multimixMN_fit")}
+#' @param fit A fitted object of class \code{c("mixMN_fit", "multimixMN_fit")}
 #'   returned by \code{mixMN()} or \code{multimixMN()}.
 #' @param data Optional data.frame with variables in columns. If
 #'   \code{NULL}, uses \code{fit$model$data}. Errors if both are \code{NULL}.
 #' @param layer Optional. If fit is a multimixMN_fit, specify which layer to score (name or index).
-#'   If NULL, scores are computed for all layers and returned as a named list.
+#'   If NULL, scores are computed for all scoreable layers and returned as a named list.
+#'   If no layer is scoreable, the function errors.
 #' @param scale Logical; if \code{TRUE} (default), z-standardize variables used
 #'   for scoring, using the mean/SD computed from the dataset used for scoring.
 #' @param quantile_level Optional numeric from 0 to 1, e.g. 0.95 or 0.99. If provided,
@@ -34,7 +35,7 @@
 #'   within each community (i.e., uses available variables only, re-normalizing
 #'   weights within community for that row).
 #'
-#' @return A list with class \code{c("mixmashnet","community_scores")} containing:
+#' @return A list with class \code{"community_scores"} containing:
 #' \describe{
 #'   \item{\code{call}}{The matched call.}
 #'   \item{\code{settings}}{List with \code{scale}, \code{quantile_level}, and \code{na_action}.}
@@ -47,9 +48,10 @@
 #'     \code{loadings_boot_available}, and scaling parameters (\code{center}, \code{scale}).}
 #' }
 #' If \code{fit} is a \code{mixMN_fit} (or a \code{multimixMN_fit} with \code{layer} specified),
-#' returns a \code{c("mixmashnet","community_scores")} object.
+#' returns a \code{"community_scores"} object.
 #' If \code{fit} is a \code{multimixMN_fit} and \code{layer = NULL}, returns a named list
-#' of \code{community_scores} objects (one per layer).
+#' of \code{community_scores} objects for all scoreable layers. If no layer is
+#' scoreable, the function errors.
 #'
 #' @details
 #' The function requires that \code{fit$community_loadings$true} exists and that
@@ -102,7 +104,6 @@ community_scores <- function(
     quantile_level <- 0.95
   }
 
-  # ---- MULTI: compute per layer ----
   if (is.null(fit) || !(inherits(fit, "mixMN_fit") || inherits(fit, "multimixMN_fit"))) {
     stop("`fit` must be a `mixMN_fit` or `multimixMN_fit` object.")
   }
@@ -110,7 +111,6 @@ community_scores <- function(
   # ---- MULTI: compute per layer ----
   if (inherits(fit, "multimixMN_fit")) {
 
-    # choose data: from multi by default
     if (is.null(data)) {
       data <- fit$model$data
       if (is.null(data)) {
@@ -128,7 +128,7 @@ community_scores <- function(
       out_list <- vector("list", length(fit$layer_fits))
       names(out_list) <- names(fit$layer_fits)
 
-      failed_layers <- character(0)
+      failed_messages <- character(0)
 
       for (L in names(fit$layer_fits)) {
 
@@ -143,11 +143,9 @@ community_scores <- function(
             na_action = na_action
           ),
           error = function(e) {
-            failed_layers <<- c(failed_layers, L)
-            warning(
-              sprintf("Community scores not computed for layer '%s': %s",
-                      L, conditionMessage(e)),
-              call. = FALSE
+            failed_messages <<- c(
+              failed_messages,
+              sprintf("Layer '%s': %s", L, conditionMessage(e))
             )
             NULL
           }
@@ -156,7 +154,34 @@ community_scores <- function(
         out_list[[L]] <- res
       }
 
-      out_list <- out_list[!vapply(out_list, is.null, logical(1))]
+      keep <- !vapply(out_list, is.null, logical(1))
+      out_list <- out_list[keep]
+
+      if (length(out_list) == 0) {
+        stop(
+          paste(
+            c(
+              "Community scores are not available for any layer in this multilayer fit.",
+              failed_messages
+            ),
+            collapse = "\n"
+          ),
+          call. = FALSE
+        )
+      }
+
+      if (length(failed_messages) > 0) {
+        warning(
+          paste(
+            c(
+              "Community scores were computed only for scoreable layers.",
+              failed_messages
+            ),
+            collapse = "\n"
+          ),
+          call. = FALSE
+        )
+      }
 
       return(out_list)
     }
@@ -212,11 +237,9 @@ community_scores <- function(
     stop("`fit$community_loadings$wc` is missing or has wrong length: cannot zero cross-loadings.")
   }
 
-  # Ensure dimnames
   if (is.null(rownames(L_true))) rownames(L_true) <- nodes
   if (is.null(colnames(L_true))) colnames(L_true) <- paste0("C", seq_len(ncol(L_true)))
 
-  # helper: set cross-loadings to 0 using hard membership wc
   .zero_cross_loadings <- function(Lmat, nodes, wc) {
     Lmat <- Lmat[nodes, , drop = FALSE]
     K <- ncol(Lmat)
@@ -227,20 +250,22 @@ community_scores <- function(
       stop("`wc` contains community indices outside [1, K].")
     }
 
-    Lhard <- matrix(0, nrow = nrow(Lmat), ncol = K,
-                    dimnames = list(rownames(Lmat), colnames(Lmat)))
+    Lhard <- matrix(
+      0,
+      nrow = nrow(Lmat),
+      ncol = K,
+      dimnames = list(rownames(Lmat), colnames(Lmat))
+    )
 
     for (j in seq_len(nrow(Lmat))) {
       k <- wc_int[j]
-      Lhard[j, k] <- Lmat[j, k]  # keep only within-community loading
+      Lhard[j, k] <- Lmat[j, k]
     }
     Lhard
   }
 
-  # apply hardening to true loadings (cross-loadings -> 0)
   L_true <- .zero_cross_loadings(L_true, nodes = nodes, wc = wc)
 
-  # ---- choose data ----
   used_fit_data <- FALSE
   if (is.null(data)) {
     data <- fit$model$data
@@ -250,19 +275,16 @@ community_scores <- function(
     }
   }
 
-  # ---- coerce and ids ----
   if (!is.data.frame(data) && !is.matrix(data)) data <- as.data.frame(data)
   if (is.null(colnames(data))) stop("`data` must have column names.")
   if (is.null(rownames(data))) rownames(data) <- sprintf("id_%d", seq_len(nrow(data)))
   ids <- rownames(data)
 
-  # ---- variable checks ----
   missing_vars <- setdiff(nodes, colnames(data))
   if (length(missing_vars) > 0) {
     stop("`data` is missing required variables: ", paste(missing_vars, collapse = ", "))
   }
 
-  # ---- build numeric X (robust to logical / binary factors) ----
   bin_map <- fit$data_info$binary_recode_map
   if (is.null(bin_map)) bin_map <- list()
 
@@ -273,7 +295,7 @@ community_scores <- function(
 
     if (is.numeric(v))  return(v)
     if (is.integer(v))  return(as.numeric(v))
-    if (is.logical(v))  return(as.numeric(v))  # FALSE/TRUE -> 0/1
+    if (is.logical(v))  return(as.numeric(v))
 
     if (is.factor(v) || is.ordered(v)) {
       lv <- levels(v)
@@ -296,17 +318,14 @@ community_scores <- function(
   colnames(X) <- nodes
   rownames(X) <- ids
 
-  # ---- NA handling ----
   if (na_action == "stop" && anyNA(X)) {
     stop("Missing values detected in required variables. Use `na_action = \"omit\"` if you want row-wise omission.")
   }
 
-  # ---- scaling on the scoring data (default) ----
   center_vec <- rep(0, ncol(X)); names(center_vec) <- colnames(X)
   scale_vec  <- rep(1, ncol(X)); names(scale_vec)  <- colnames(X)
 
   if (isTRUE(scale)) {
-    # compute mean/sd on the dataset used for scoring
     center_vec <- apply(X, 2, function(v) mean(v, na.rm = TRUE))
     scale_vec  <- apply(X, 2, function(v) stats::sd(v, na.rm = TRUE))
     scale_vec[is.na(scale_vec) | scale_vec == 0] <- 1
@@ -314,23 +333,22 @@ community_scores <- function(
     X <- sweep(X, 2, scale_vec, "/")
   }
 
-  # ---- score computation ----
-  # Scores = X %*% L_true (n x p) %*% (p x K) -> (n x K)
-  # We need L_true aligned to nodes
   L_true <- L_true[nodes, , drop = FALSE]
 
   compute_scores_matrix <- function(Xmat, Lmat) {
-    # Xmat: n x p ; Lmat: p x K
     S <- Xmat %*% Lmat
     colnames(S) <- colnames(Lmat)
     S
   }
 
-  # If NA and na_action = "omit": compute per community, per row with renormalized weights
   if (na_action == "omit" && anyNA(X)) {
     K <- ncol(L_true)
-    S <- matrix(NA_real_, nrow = nrow(X), ncol = K,
-                dimnames = list(ids, colnames(L_true)))
+    S <- matrix(
+      NA_real_,
+      nrow = nrow(X),
+      ncol = K,
+      dimnames = list(ids, colnames(L_true))
+    )
 
     for (k in seq_len(K)) {
       w <- L_true[, k]
@@ -340,9 +358,7 @@ community_scores <- function(
         if (!any(ok)) {
           S[i, k] <- NA_real_
         } else {
-          # re-normalize weights to keep scale stable (optional; reasonable default)
           w_ok <- w[ok]
-          # if all weights are 0, keep unnormalized
           denom <- sum(abs(w_ok))
           if (is.na(denom) || denom == 0) denom <- 1
           S[i, k] <- sum(xi[ok] * w_ok) / denom
@@ -356,7 +372,6 @@ community_scores <- function(
     rownames(scores) <- ids
   }
 
-  # ---- quantile regions (optional) ----
   quantile_region_out <- NULL
   if (isTRUE(return_quantile_region)) {
     if (!is.numeric(quantile_level) || length(quantile_level) != 1L ||
@@ -370,16 +385,18 @@ community_scores <- function(
     }
 
     alpha <- 1 - quantile_level
-    probs <- c(alpha/2, 1 - alpha/2)
+    probs <- c(alpha / 2, 1 - alpha / 2)
 
     reps <- length(L_boot)
     n <- nrow(X)
     K <- ncol(L_true)
 
-    # container to store boot scores as a list then stack
+    S_boot <- array(
+      NA_real_,
+      dim = c(reps, n, K),
+      dimnames = list(NULL, ids, colnames(L_true))
+    )
 
-    S_boot <- array(NA_real_, dim = c(reps, n, K),
-                    dimnames = list(NULL, ids, colnames(L_true)))
     for (r in seq_len(reps)) {
       Lr <- L_boot[[r]]
       if (is.null(Lr)) next
@@ -387,12 +404,15 @@ community_scores <- function(
       if (is.null(colnames(Lr))) colnames(Lr) <- colnames(L_true)
       if (is.null(rownames(Lr))) rownames(Lr) <- nodes
 
-      # harden bootstrap loadings: cross-loadings -> 0
       Lr <- .zero_cross_loadings(Lr, nodes = nodes, wc = wc)
 
       if (na_action == "omit" && anyNA(X)) {
-        Sr <- matrix(NA_real_, nrow = n, ncol = K,
-                     dimnames = list(ids, colnames(L_true)))
+        Sr <- matrix(
+          NA_real_,
+          nrow = n,
+          ncol = K,
+          dimnames = list(ids, colnames(L_true))
+        )
 
         for (k in seq_len(K)) {
           w <- Lr[, k]
@@ -417,7 +437,6 @@ community_scores <- function(
       S_boot[r, , ] <- Sr
     }
 
-    # Quantiles over reps for each subject/community cell
     lower <- matrix(NA_real_, nrow = n, ncol = K, dimnames = list(ids, colnames(L_true)))
     upper <- matrix(NA_real_, nrow = n, ncol = K, dimnames = list(ids, colnames(L_true)))
 
@@ -435,7 +454,11 @@ community_scores <- function(
       }
     }
 
-    quantile_region_out <- list(lower = lower, upper = upper, quantile_level = quantile_level)
+    quantile_region_out <- list(
+      lower = lower,
+      upper = upper,
+      quantile_level = quantile_level
+    )
   }
 
   out <- list(
@@ -452,27 +475,25 @@ community_scores <- function(
     details = list(
       nodes_used = nodes,
       loadings_true = L_true,
-      loadings_boot_available = !is.null(fit$community_loadings$boot) && length(fit$community_loadings$boot) > 0,
+      loadings_boot_available = !is.null(fit$community_loadings$boot) &&
+        length(fit$community_loadings$boot) > 0,
       center = center_vec,
       scale = scale_vec
     )
   )
-  class(out) <- c("community_scores", "mixmashnet")
+  class(out) <- "community_scores"
   return(out)
 }
 
-#'
 #' @export
 print.community_scores <- function(x, ...) {
 
   cat("MixMashNet community scores\n")
   cat(strrep("=", 30), "\n\n", sep = "")
 
-  # Basic structure
   cat("Subjects:    ", length(x$ids), "\n", sep = "")
   cat("Communities: ", length(x$communities), "\n", sep = "")
 
-  # Settings
   cat("\nSettings\n")
   cat("  Scaling:       ", x$settings$scale, "\n", sep = "")
 
@@ -483,7 +504,6 @@ print.community_scores <- function(x, ...) {
     cat("  Quantile region: not computed\n")
   }
 
-  # Community names
   cat("\nCommunity names:\n  ")
   cat(paste(x$communities, collapse = ", "))
   cat("\n")
@@ -506,6 +526,9 @@ summary.community_scores <- function(object, ...) {
   score_sds   <- apply(x$scores, 2, stats::sd, na.rm = TRUE)
   score_min   <- apply(x$scores, 2, min, na.rm = TRUE)
   score_max   <- apply(x$scores, 2, max, na.rm = TRUE)
+  score_median <- apply(x$scores, 2, stats::median, na.rm = TRUE)
+  score_q1     <- apply(x$scores, 2, stats::quantile, probs = 0.25, na.rm = TRUE)
+  score_q3     <- apply(x$scores, 2, stats::quantile, probs = 0.75, na.rm = TRUE)
 
   out <- list(
     subjects = n,
@@ -518,10 +541,13 @@ summary.community_scores <- function(object, ...) {
     ),
     score_summary = data.frame(
       community = x$communities,
-      mean = as.numeric(score_means),
-      sd   = as.numeric(score_sds),
-      min  = as.numeric(score_min),
-      max  = as.numeric(score_max),
+      mean   = as.numeric(score_means),
+      sd     = as.numeric(score_sds),
+      median = as.numeric(score_median),
+      q1     = as.numeric(score_q1),
+      q3     = as.numeric(score_q3),
+      min    = as.numeric(score_min),
+      max    = as.numeric(score_max),
       row.names = NULL
     )
   )
@@ -529,7 +555,6 @@ summary.community_scores <- function(object, ...) {
   class(out) <- "summary.community_scores"
   out
 }
-
 
 #' @export
 print.summary.community_scores <- function(x, ...) {
@@ -557,6 +582,11 @@ print.summary.community_scores <- function(x, ...) {
   df$sd   <- signif(df$sd, 4)
   df$min  <- signif(df$min, 4)
   df$max  <- signif(df$max, 4)
+  df$median <- signif(df$median, 4)
+  df$q1     <- signif(df$q1, 4)
+  df$q3     <- signif(df$q3, 4)
+
+  df <- df[, c("community", "mean", "sd", "median", "q1", "q3", "min", "max")]
 
   print(df, row.names = FALSE)
 

@@ -15,14 +15,15 @@ community_scores(
 )
 }
 \arguments{
-\item{fit}{A fitted object of class \code{c("mixmashnet","mixMN_fit", "multimixMN_fit")}
+\item{fit}{A fitted object of class \code{c("mixMN_fit", "multimixMN_fit")}
 returned by \code{mixMN()} or \code{multimixMN()}.}
 
 \item{data}{Optional data.frame with variables in columns. If
 \code{NULL}, uses \code{fit$model$data}. Errors if both are \code{NULL}.}
 
 \item{layer}{Optional. If fit is a multimixMN_fit, specify which layer to score (name or index).
-If NULL, scores are computed for all layers and returned as a named list.}
+If NULL, scores are computed for all scoreable layers and returned as a named list.
+If no layer is scoreable, the function errors.}
 
 \item{scale}{Logical; if \code{TRUE} (default), z-standardize variables used
 for scoring, using the mean/SD computed from the dataset used for scoring.}
@@ -40,7 +41,7 @@ within each community (i.e., uses available variables only, re-normalizing
 weights within community for that row).}
 }
 \value{
-A list with class \code{c("mixmashnet","community_scores")} containing:
+A list with class \code{"community_scores"} containing:
 \describe{
   \item{\code{call}}{The matched call.}
   \item{\code{settings}}{List with \code{scale}, \code{quantile_level}, and \code{na_action}.}
@@ -53,9 +54,10 @@ A list with class \code{c("mixmashnet","community_scores")} containing:
     \code{loadings_boot_available}, and scaling parameters (\code{center}, \code{scale}).}
 }
 If \code{fit} is a \code{mixMN_fit} (or a \code{multimixMN_fit} with \code{layer} specified),
-returns a \code{c("mixmashnet","community_scores")} object.
+returns a \code{"community_scores"} object.
 If \code{fit} is a \code{multimixMN_fit} and \code{layer = NULL}, returns a named list
-of \code{community_scores} objects (one per layer).
+of \code{community_scores} objects for all scoreable layers. If no layer is
+scoreable, the function errors.
 }
 \description{
 Computes subject-level community scores. Community scores are obtained as

@@ -4,16 +4,13 @@
 \alias{membershipStab}
 \title{Node stability from bootstrap community assignments}
 \usage{
-membershipStab(fit, IS.plot = FALSE)
+membershipStab(fit)
 }
 \arguments{
 \item{fit}{An object returned by \code{mixMN()} (class \code{mixMN_fit}),
 containing \code{$communities$original_membership} and
 \code{$communities$boot_memberships}. Bootstrap memberships must be
 available, i.e. \code{reps > 0} and \code{"community" \%in\% boot_what}.}
-
-\item{IS.plot}{Logical; if \code{TRUE}, prints a stability plot via the
-internal helper \code{membershipStab_plot()}.}
 }
 \value{
 An object of class \code{c("membershipStab")}, with components:
@@ -40,7 +37,6 @@ An object of class \code{c("membershipStab")}, with components:
 \description{
 Computes per-node stability given the empirical community structure and the
 homogenized bootstrap memberships contained in a \code{mixMN_fit} object.
-This function is used internally by \code{mixMN()} and \code{multimixMN()}.
 Stability is expressed as the proportion of bootstrap replications that
 assign each node to its empirical (original) community.
 }

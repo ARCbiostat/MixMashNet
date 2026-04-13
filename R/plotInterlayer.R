@@ -44,7 +44,7 @@ interlayerPairs <- function(object) {
 #' Plot interlayer node metrics or interlayer edge weights with quantile regions.
 #'
 #' @description
-#' Internal helper used by \code{plot.mixmashnet()} to visualize interlayer
+#' Internal helper to visualize interlayer
 #' node metrics or interlayer edge weights with bootstrap quantile regions.
 #'
 #' @keywords internal
@@ -71,7 +71,7 @@ plotInterlayer <- function(
   ordering   <- match.arg(ordering)
   statistics <- match.arg(statistics, several.ok = TRUE)
 
-  if (!is.list(fit_multi) || !"multimixMN_fit" %in% class(fit_multi)) {
+  if (!inherits(fit_multi, "multimixMN_fit")) {
     stop("`fit_multi` must be a `multimixMN_fit` object returned by multimixMN().")
   }
 

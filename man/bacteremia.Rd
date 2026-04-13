@@ -3,7 +3,7 @@
 \docType{data}
 \name{bacteremia}
 \alias{bacteremia}
-\title{Bacteremia dataset}
+\title{Bacteremia example dataset for single layer network analysis}
 \format{
 A data frame with 7420 rows and 16 variables:
 \describe{
@@ -29,7 +29,8 @@ A data frame with 7420 rows and 16 variables:
 data(bacteremia)
 }
 \description{
-Example dataset used in MixMashNet examples. This dataset contains 7240
+Clinical bacteremia dataset used to illustrate single-layer network
+estimation with MixMashNet This dataset contains 7240
 patients with clinical suspicion of bacteremia who underwent blood culture testing
 at the Vienna General Hospital.
 }

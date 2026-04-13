@@ -4,13 +4,15 @@
 \alias{find_bridge_communities}
 \title{Bridge profiles of a node across communities}
 \usage{
-find_bridge_communities(fit, node)
+find_bridge_communities(fit, node, layer = NULL)
 }
 \arguments{
-\item{fit}{An object of class \code{mixMN_fit}.}
+\item{fit}{An object of class \code{mixMN_fit} or \code{multimixMN_fit}.}
 
-\item{node}{Character scalar: node of interest; must belong to
-\code{fit$graph$keep_nodes_graph}.}
+\item{node}{Character scalar: node of interest.}
+
+\item{layer}{Character scalar giving the layer of interest for
+\code{multimixMN_fit} objects. Ignored for \code{mixMN_fit} objects.}
 }
 \value{
 An object of class \code{"bridge_profiles"} (a named list) with the
@@ -37,20 +39,25 @@ contributions, excluding its own community when assigned. The function is
 designed as an interpretative companion to \code{bridge_metrics()} and
 \code{bridge_metrics_excluded()}, providing the components underlying
 the corresponding overall bridge indices.
-}
-\details{
+
 Bridge connectivity is summarized using five complementary profiles: bridge
 strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.
 
-Notes:
-\itemize{
-  \item Bridge profiles are computed using only connections from the focal node to
-        nodes in communities different from its own. If the focal node is not
-        assigned to any community, i.e. excluded, connections to all assigned nodes in
-        communities are considered.
-  \item Bridge betweenness is computed by counting all shortest paths between
-        pairs of nodes in different communities that pass through the focal
-        node as an intermediate vertex. When multiple shortest paths exist,
-        each path is counted separately.
+For single layer fits (\code{mixMN_fit}), profiles are computed directly on
+the supplied fitted object.
+
+For multilayer fits (\code{multimixMN_fit}), profiles are computed within the
+selected layer only, by applying the same single layer procedure to the
+corresponding intralayer fit stored in \code{fit$layer_fits[[layer]]}.
 }
+\details{
+Bridge profiles are computed using only connections from the focal node to
+nodes in communities different from its own. If the focal node is not
+assigned to any community, i.e. excluded, connections to all assigned nodes in
+communities are considered.
+
+Bridge betweenness is computed by counting all shortest paths between
+pairs of nodes in different communities that pass through the focal
+node as an intermediate vertex. When multiple shortest paths exist,
+each path is counted separately.
 }

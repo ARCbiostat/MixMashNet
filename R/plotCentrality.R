@@ -1,8 +1,8 @@
 #' Plot bootstrap centrality with quantile regions (nodes or edges)
 #'
 #' @description
-#' Internal helper used by \code{plot.mixmashnet()} to visualize node and edge
-  #' centrality with bootstrap quantile regions.
+#' Internal helper to visualize node and edge
+#' centrality with bootstrap quantile regions.
 #'
 #' @keywords internal
 #' @noRd

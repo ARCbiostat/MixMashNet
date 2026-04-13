@@ -1,5 +1,6 @@
 #' Bridge profiles of a node across communities
 #'
+#' @description
 #' Identifies which communities contribute most to the bridge role of a
 #' given node, by decomposing its bridge connectivity into community-specific
 #' contributions, excluding its own community when assigned. The function is
@@ -10,21 +11,28 @@
 #' Bridge connectivity is summarized using five complementary profiles: bridge
 #' strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.
 #'
-#' Notes:
-#' \itemize{
-#'   \item Bridge profiles are computed using only connections from the focal node to
-#'         nodes in communities different from its own. If the focal node is not
-#'         assigned to any community, i.e. excluded, connections to all assigned nodes in
-#'         communities are considered.
-#'   \item Bridge betweenness is computed by counting all shortest paths between
-#'         pairs of nodes in different communities that pass through the focal
-#'         node as an intermediate vertex. When multiple shortest paths exist,
-#'         each path is counted separately.
-#' }
+#' For single layer fits (\code{mixMN_fit}), profiles are computed directly on
+#' the supplied fitted object.
 #'
-#' @param fit An object of class \code{mixMN_fit}.
-#' @param node Character scalar: node of interest; must belong to
-#'   \code{fit$graph$keep_nodes_graph}.
+#' For multilayer fits (\code{multimixMN_fit}), profiles are computed within the
+#' selected layer only, by applying the same single layer procedure to the
+#' corresponding intralayer fit stored in \code{fit$layer_fits[[layer]]}.
+#'
+#' @details
+#' Bridge profiles are computed using only connections from the focal node to
+#' nodes in communities different from its own. If the focal node is not
+#' assigned to any community, i.e. excluded, connections to all assigned nodes in
+#' communities are considered.
+#'
+#' Bridge betweenness is computed by counting all shortest paths between
+#' pairs of nodes in different communities that pass through the focal
+#' node as an intermediate vertex. When multiple shortest paths exist,
+#' each path is counted separately.
+#'
+#' @param fit An object of class \code{mixMN_fit} or \code{multimixMN_fit}.
+#' @param node Character scalar: node of interest.
+#' @param layer Character scalar giving the layer of interest for
+#'   \code{multimixMN_fit} objects. Ignored for \code{mixMN_fit} objects.
 #'
 #' @return An object of class \code{"bridge_profiles"} (a named list) with the
 #'   following components:
@@ -48,7 +56,45 @@
 #' @importFrom tibble tibble
 #' @importFrom tidyr separate
 #' @export
-find_bridge_communities <- function(fit, node) {
+find_bridge_communities <- function(fit, node, layer = NULL) {
+  if (inherits(fit, "mixMN_fit")) {
+    if (!is.null(layer)) {
+      warning("`layer` is ignored for `mixMN_fit` objects.")
+    }
+    return(.find_bridge_communities_single(fit = fit, node = node))
+  }
+
+  if (inherits(fit, "multimixMN_fit")) {
+    if (is.null(layer) || length(layer) != 1L || !is.character(layer)) {
+      stop("For `multimixMN_fit` objects, `layer` must be a single character string.")
+    }
+
+    if (is.null(fit$layer_fits) || is.null(names(fit$layer_fits))) {
+      stop("`fit$layer_fits` is missing or not named.")
+    }
+
+    if (!(layer %in% names(fit$layer_fits))) {
+      stop("Requested `layer` is not available in `fit$layer_fits`.")
+    }
+
+    layer_fit <- fit$layer_fits[[layer]]
+
+    if (!inherits(layer_fit, "mixMN_fit")) {
+      stop("`fit$layer_fits[[layer]]` must be an object of class `mixMN_fit`.")
+    }
+
+    if (is.null(layer_fit$graph$keep_nodes_graph) ||
+        !(node %in% layer_fit$graph$keep_nodes_graph)) {
+      stop("Requested `node` is not present in the selected layer.")
+    }
+
+    return(.find_bridge_communities_single(fit = layer_fit, node = node))
+  }
+
+  stop("`fit` must be an object of class `mixMN_fit` or `multimixMN_fit`.")
+}
+
+.find_bridge_communities_single <- function(fit, node) {
   # ---- guardrails ----
   stopifnot(inherits(fit, "mixMN_fit"))
   if (is.null(fit$graph$keep_nodes_graph) || is.null(fit$statistics$edge$true)) {
@@ -57,7 +103,7 @@ find_bridge_communities <- function(fit, node) {
 
   nodes <- fit$graph$keep_nodes_graph
   if (!length(nodes)) stop("`graph$keep_nodes_graph` is empty.")
-  if (!(node %in% nodes)) stop("Requested 'node' is not in `graph$keep_nodes_graph`.")
+  if (!(node %in% nodes)) stop("Requested `node` is not in `graph$keep_nodes_graph`.")
 
   Edf <- fit$statistics$edge$true
   if (!all(c("edge", "weight") %in% names(Edf))) {
@@ -70,8 +116,10 @@ find_bridge_communities <- function(fit, node) {
   W <- matrix(0, nrow = length(nodes), ncol = length(nodes),
               dimnames = list(nodes, nodes))
   for (k in seq_len(nrow(Edf))) {
-    ab <- split_edge(Edf$edge[k]); if (length(ab) != 2L) next
-    a <- ab[1]; b <- ab[2]
+    ab <- split_edge(Edf$edge[k])
+    if (length(ab) != 2L) next
+    a <- ab[1]
+    b <- ab[2]
     if (!(a %in% nodes && b %in% nodes)) next
     w <- Edf$weight[k]
     W[a, b] <- w
@@ -82,7 +130,7 @@ find_bridge_communities <- function(fit, node) {
 
   # ---- membership aligned on `nodes` ----
   if (!is.null(fit$communities) && !is.null(fit$communities$groups)) {
-    grp <- fit$communities$groups  # factor, named
+    grp <- fit$communities$groups
     if (is.null(names(grp))) stop("`communities$groups` must be a named factor.")
     comm_full <- setNames(rep(NA_integer_, length(nodes)), nodes)
     in_idx <- names(grp)[names(grp) %in% nodes]
@@ -95,11 +143,11 @@ find_bridge_communities <- function(fit, node) {
   if (!length(assigned_idx)) {
     empty <- tibble::tibble()
     out <- list(
-      bridge_strength    = list(overall = 0,       by_comm = empty),
-      bridge_ei1         = list(overall = 0,       by_comm = empty),
-      bridge_ei2         = list(overall = 0,       by_comm = empty),
+      bridge_strength    = list(overall = 0,        by_comm = empty),
+      bridge_ei1         = list(overall = 0,        by_comm = empty),
+      bridge_ei2         = list(overall = 0,        by_comm = empty),
       bridge_closeness   = list(overall = NA_real_, by_comm = empty),
-      bridge_betweenness = list(overall = 0,       by_pair = empty)
+      bridge_betweenness = list(overall = 0,        by_pair = empty)
     )
     class(out) <- c("bridge_profiles", class(out))
     return(out)
@@ -108,12 +156,16 @@ find_bridge_communities <- function(fit, node) {
   v_comm <- comm_full[[node]]
 
   other_comm_targets <- function() {
-    if (is.na(v_comm)) setdiff(assigned_idx, match(node, nodes))
-    else setdiff(assigned_idx[comm_full[assigned_idx] != v_comm], match(node, nodes))
+    if (is.na(v_comm)) {
+      setdiff(assigned_idx, match(node, nodes))
+    } else {
+      setdiff(assigned_idx[comm_full[assigned_idx] != v_comm], match(node, nodes))
+    }
   }
   targets <- other_comm_targets()
 
   # ================== PROFILES WITHOUT PATHS (on signed W) ==================
+
   # strength
   strength_list <- if (!length(targets)) {
     list(overall = NA_real_, by_comm = tibble::tibble())
@@ -128,6 +180,7 @@ find_bridge_communities <- function(fit, node) {
     }) |>
       dplyr::bind_rows() |>
       dplyr::arrange(dplyr::desc(sum_abs_w))
+
     list(overall = sum(abs(W[node, targets])), by_comm = by_comm)
   }
 
@@ -145,6 +198,7 @@ find_bridge_communities <- function(fit, node) {
     }) |>
       dplyr::bind_rows() |>
       dplyr::arrange(dplyr::desc(sum_signed_w))
+
     list(overall = sum(W[node, targets]), by_comm = by_comm)
   }
 
@@ -152,9 +206,11 @@ find_bridge_communities <- function(fit, node) {
   ei2_list <- if (!length(targets)) {
     list(overall = NA_real_, by_comm = tibble::tibble())
   } else {
-    A  <- W; diag(A) <- 0
+    A <- W
+    diag(A) <- 0
     A2 <- A %*% A
     infl2 <- A[node, ] + A2[node, ]
+
     tgt_comm <- comm_full[targets]
     idx_by_comm <- split(targets, tgt_comm)
     by_comm <- lapply(idx_by_comm, function(idx) {
@@ -165,38 +221,65 @@ find_bridge_communities <- function(fit, node) {
     }) |>
       dplyr::bind_rows() |>
       dplyr::arrange(dplyr::desc(sum_signed_w2))
+
     list(overall = sum(infl2[targets]), by_comm = by_comm)
   }
 
   # ================== PATHS ON |W| (edge length = 1/|w|) ==================
   EPS  <- 1e-10
   Wabs <- abs(W)
-  g_absw <- igraph::graph_from_adjacency_matrix(Wabs, mode = "undirected", weighted = TRUE, diag = FALSE)
-  if (is.null(igraph::E(g_absw)$weight)) igraph::E(g_absw)$weight <- 1
+
+  g_absw <- igraph::graph_from_adjacency_matrix(
+    Wabs,
+    mode = "undirected",
+    weighted = TRUE,
+    diag = FALSE
+  )
+
+  if (is.null(igraph::E(g_absw)$weight)) {
+    igraph::E(g_absw)$weight <- 1
+  }
   igraph::E(g_absw)$weight <- abs(igraph::E(g_absw)$weight)
 
   # remove edges with NA or |w| <= EPS
-  g_inv <- igraph::delete_edges(g_absw, which(is.na(igraph::E(g_absw)$weight) | igraph::E(g_absw)$weight <= EPS))
+  g_inv <- igraph::delete_edges(
+    g_absw,
+    which(is.na(igraph::E(g_absw)$weight) | igraph::E(g_absw)$weight <= EPS)
+  )
 
   # invert: distance = 1/|w|
-  if (igraph::ecount(g_inv) > 0) igraph::E(g_inv)$weight <- 1 / igraph::E(g_inv)$weight
+  if (igraph::ecount(g_inv) > 0) {
+    igraph::E(g_inv)$weight <- 1 / igraph::E(g_inv)$weight
+  }
 
   # remove negative inverted edges (coherent with original-style)
   g_pos <- if (igraph::ecount(g_inv) > 0) {
     igraph::delete_edges(g_inv, which(igraph::E(g_inv)$weight < 0))
-  } else g_inv
+  } else {
+    g_inv
+  }
 
   # ---- CLOSENESS (weighted on 1/|w|) ----
   closeness_list <- if (!length(targets) || igraph::ecount(g_pos) == 0) {
     list(overall = NA_real_, by_comm = tibble::tibble())
   } else {
     v_id <- match(node, igraph::V(g_pos)$name)
-    d_all <- suppressWarnings(igraph::distances(
-      g_pos, v = v_id, to = igraph::V(g_pos)$name[targets],
-      weights = igraph::E(g_pos)$weight, mode = "all"
-    ))
+    d_all <- suppressWarnings(
+      igraph::distances(
+        g_pos,
+        v = v_id,
+        to = igraph::V(g_pos)$name[targets],
+        weights = igraph::E(g_pos)$weight,
+        mode = "all"
+      )
+    )
     d_all <- as.numeric(d_all)
-    overall <- if (all(is.infinite(d_all))) NA_real_ else 1 / mean(d_all[is.finite(d_all)])
+
+    overall <- if (all(is.infinite(d_all))) {
+      NA_real_
+    } else {
+      1 / mean(d_all[is.finite(d_all)])
+    }
 
     tgt_comm <- comm_full[targets]
     by_comm <- lapply(split(seq_along(targets), tgt_comm), function(ix) {
@@ -208,10 +291,11 @@ find_bridge_communities <- function(fit, node) {
     }) |>
       dplyr::bind_rows() |>
       dplyr::arrange(dplyr::desc(inv_mean_dist))
+
     list(overall = overall, by_comm = by_comm)
   }
 
-  # sanity checks on vertex sets (avoid name mismatches)
+  # sanity checks on vertex sets
   stopifnot(identical(sort(nodes), sort(igraph::V(g_pos)$name)))
   stopifnot(all(names(comm_full) == nodes))
 
@@ -241,26 +325,33 @@ find_bridge_communities <- function(fit, node) {
         if (!length(to_nodes)) next
 
         for (t in to_nodes) {
-          sp <- suppressWarnings(igraph::get.all.shortest.paths(g_pos, from = src, to = t, mode = "all"))
+          sp <- suppressWarnings(
+            igraph::get.all.shortest.paths(g_pos, from = src, to = t, mode = "all")
+          )
           if (!length(sp$res)) next
 
-          # count multiplicity: number of shortest paths that include v_id as intermediate
           k_hit <- 0L
-          for (p in sp$res) if (any(mid_ids(p) == v_id)) k_hit <- k_hit + 1L
+          for (p in sp$res) {
+            if (any(mid_ids(p) == v_id)) k_hit <- k_hit + 1L
+          }
 
           if (k_hit > 0L) {
             total_hits <- total_hits + k_hit
-            key <- paste(sort(c(as.integer(src_comm), as.integer(assigned_communities[[t]]))), collapse = "-")
+            key <- paste(
+              sort(c(as.integer(src_comm), as.integer(assigned_communities[[t]]))),
+              collapse = "-"
+            )
             by_pair_tab[[key]] <- (if (is.null(by_pair_tab[[key]])) 0L else by_pair_tab[[key]]) + k_hit
           }
         }
       }
     }
 
-    # undirected correction
     if (!igraph::is_directed(g_pos)) {
       total_hits <- total_hits / 2
-      if (length(by_pair_tab)) by_pair_tab <- lapply(by_pair_tab, function(x) x / 2)
+      if (length(by_pair_tab)) {
+        by_pair_tab <- lapply(by_pair_tab, function(x) x / 2)
+      }
     }
 
     betweenness_by_pair <- if (length(by_pair_tab)) {
@@ -280,7 +371,6 @@ find_bridge_communities <- function(fit, node) {
     )
   }
 
-  # ---- output ----
   out <- list(
     bridge_strength    = strength_list,
     bridge_ei1         = ei1_list,
@@ -294,14 +384,23 @@ find_bridge_communities <- function(fit, node) {
 }
 
 #' @export
-print.bridge_profiles <- function(x,
-                                  statistic = c("bridge_strength", "bridge_ei1", "bridge_ei2",
-                                                "bridge_closeness", "bridge_betweenness"),
-                                  digits = 3,
-                                  ...) {
+print.bridge_profiles <- function(
+    x,
+    statistic = c("bridge_strength", "bridge_ei1", "bridge_ei2",
+                  "bridge_closeness", "bridge_betweenness"),
+    digits = 3,
+    ...
+) {
+  stat_labels <- c(
+    bridge_strength    = "Bridge Strength",
+    bridge_ei1         = "Bridge Expected Influence (EI1)",
+    bridge_ei2         = "Bridge Expected Influence (EI2)",
+    bridge_closeness   = "Bridge Closeness",
+    bridge_betweenness = "Bridge Betweenness"
+  )
+
   if (missing(statistic)) {
-    for (s in c("bridge_strength", "bridge_ei1", "bridge_ei2",
-                "bridge_closeness", "bridge_betweenness")) {
+    for (s in names(stat_labels)) {
       print.bridge_profiles(x, statistic = s, digits = digits)
     }
     return(invisible(x))
@@ -309,7 +408,7 @@ print.bridge_profiles <- function(x,
 
   statistic <- match.arg(statistic)
 
-  cat("\nBridge profile:", statistic, "\n")
+  cat("\n", stat_labels[[statistic]], "\n", sep = "")
   cat(strrep("=", 60), "\n")
 
   obj <- x[[statistic]]
@@ -319,7 +418,6 @@ print.bridge_profiles <- function(x,
     return(invisible(x))
   }
 
-  # ---- OVERALL ----
   cat("\nOverall:\n")
   if (is.na(obj$overall)) {
     cat("  NA\n")
@@ -327,7 +425,6 @@ print.bridge_profiles <- function(x,
     cat("  ", round(obj$overall, digits), "\n")
   }
 
-  # labels used ONLY for printing
   pretty_labels <- c(
     community      = "Community",
     sum_abs_w      = "Contribution (|w|)",
@@ -350,16 +447,46 @@ print.bridge_profiles <- function(x,
       )
   }
 
-  # ---- BY COMMUNITY ----
   if (!is.null(obj$by_comm) && nrow(obj$by_comm) > 0) {
+    df <- obj$by_comm
+    num_col <- names(df)[vapply(df, is.numeric, logical(1))]
+
+    if (length(num_col) >= 1L) {
+      value_col <- setdiff(num_col, "community")
+      if (length(value_col) >= 1L) {
+        value_col <- value_col[1L]
+        df_nonzero <- df[!is.na(df[[value_col]]) &
+                           abs(df[[value_col]]) > .Machine$double.eps, ,
+                         drop = FALSE]
+        if (nrow(df_nonzero) > 0) {
+          df <- df_nonzero
+        }
+      }
+    }
+
     cat("\nBy community:\n")
-    print(prettify(obj$by_comm), row.names = FALSE)
+    print(prettify(df), row.names = FALSE)
   }
 
-  # ---- BY COMMUNITY PAIR ----
   if (!is.null(obj$by_pair) && nrow(obj$by_pair) > 0) {
+    df <- obj$by_pair
+    num_col <- names(df)[vapply(df, is.numeric, logical(1))]
+
+    if (length(num_col) >= 1L) {
+      value_col <- setdiff(num_col, c("Ci", "Cj"))
+      if (length(value_col) >= 1L) {
+        value_col <- value_col[1L]
+        df_nonzero <- df[!is.na(df[[value_col]]) &
+                           abs(df[[value_col]]) > .Machine$double.eps, ,
+                         drop = FALSE]
+        if (nrow(df_nonzero) > 0) {
+          df <- df_nonzero
+        }
+      }
+    }
+
     cat("\nBy community pair:\n")
-    print(prettify(obj$by_pair), row.names = FALSE)
+    print(prettify(df), row.names = FALSE)
   }
 
   cat("\n")
