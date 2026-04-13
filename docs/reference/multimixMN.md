@@ -37,7 +37,9 @@ multimixMN(
   seed_model = NULL,
   seed_boot = NULL,
   treat_singletons_as_excluded = FALSE,
-  cluster_method = c("louvain", "fast_greedy", "infomap", "walktrap", "edge_betweenness"),
+  cluster_method = c("louvain", "edge_betweenness", "fast_greedy", "infomap",
+    "label_prop", "leading_eigen", "leiden", "optimal", "spinglass", "walktrap"),
+  cluster_args = list(),
   compute_loadings = TRUE,
   boot_what = c("general_index", "interlayer_index", "bridge_index", "excluded_index",
     "community", "loadings"),
@@ -179,9 +181,23 @@ multimixMN(
 
 - cluster_method:
 
-  Community detection algorithm applied within each layer. One of
-  `"louvain"`, `"fast_greedy"`, `"infomap"`, `"walktrap"`, or
-  `"edge_betweenness"`.
+  Community detection method used within each layer. Either a character
+  string naming one of the built-in methods `"louvain"`,
+  `"edge_betweenness"`, `"fast_greedy"`, `"infomap"`, `"label_prop"`,
+  `"leading_eigen"`, `"leiden"`, `"optimal"`, `"spinglass"`,
+  `"walktrap"`, or a user-supplied function.
+
+  If a function is supplied, it must accept a graph through argument
+  `graph` and return either an igraph `communities` object, a list with
+  component `membership`, or a membership vector of length equal to the
+  number of nodes used for clustering.
+
+- cluster_args:
+
+  Named list of additional arguments passed to the selected community
+  detection method. For example, `steps` for `"walktrap"`, `nb.trials`
+  for `"infomap"`, `spins` for `"spinglass"`. Ignored if not relevant
+  for the selected method.
 
 - compute_loadings:
 
@@ -212,8 +228,8 @@ multimixMN(
 
 ## Value
 
-An object of class `c("mixmashnet", "multimixMN_fit")`. The returned
-list contains at least the following components:
+An object of class `"multimixMN_fit"`. The returned list contains at
+least the following components:
 
 - `call`:
 
@@ -222,8 +238,8 @@ list contains at least the following components:
 - `settings`:
 
   List of main settings used in the call, including `reps`,
-  `cluster_method`, `covariates`, `exclude_from_cluster`,
-  `treat_singletons_as_excluded`, `boot_what`).
+  `cluster_method`, `cluster_args`, `covariates`,
+  `exclude_from_cluster`, `treat_singletons_as_excluded`, `boot_what`).
 
 - `data_info`:
 
@@ -326,7 +342,7 @@ fitM <- multimixMN(
   progress = FALSE
 )
 #>   |                                                                              |                                                                      |   0%  |                                                                              |-----                                                                 |   7%  |                                                                              |----------                                                            |  14%  |                                                                              |---------------                                                       |  21%  |                                                                              |--------------------                                                  |  29%  |                                                                              |-------------------------                                             |  36%  |                                                                              |------------------------------                                        |  43%  |                                                                              |-----------------------------------                                   |  50%  |                                                                              |----------------------------------------                              |  57%  |                                                                              |---------------------------------------------                         |  64%  |                                                                              |--------------------------------------------------                    |  71%  |                                                                              |-------------------------------------------------------               |  79%  |                                                                              |------------------------------------------------------------          |  86%  |                                                                              |-----------------------------------------------------------------     |  93%  |                                                                              |----------------------------------------------------------------------| 100%  |                                                                              |                                                                      |   0%  |                                                                              |-----                                                                 |   7%  |                                                                              |----------                                                            |  14%  |                                                                              |---------------                                                       |  21%  |                                                                              |--------------------                                                  |  29%  |                                                                              |-------------------------                                             |  36%  |                                                                              |------------------------------                                        |  43%  |                                                                              |-----------------------------------                                   |  50%  |                                                                              |----------------------------------------                              |  57%  |                                                                              |---------------------------------------------                         |  64%  |                                                                              |--------------------------------------------------                    |  71%  |                                                                              |-------------------------------------------------------               |  79%  |                                                                              |------------------------------------------------------------          |  86%  |                                                                              |-----------------------------------------------------------------     |  93%  |                                                                              |----------------------------------------------------------------------| 100%  |                                                                              |                                                                      |   0%  |                                                                              |-----                                                                 |   7%  |                                                                              |----------                                                            |  14%  |                                                                              |---------------                                                       |  21%  |                                                                              |--------------------                                                  |  29%  |                                                                              |-------------------------                                             |  36%  |                                                                              |------------------------------                                        |  43%  |                                                                              |-----------------------------------                                   |  50%  |                                                                              |----------------------------------------                              |  57%  |                                                                              |---------------------------------------------                         |  64%  |                                                                              |--------------------------------------------------                    |  71%  |                                                                              |-------------------------------------------------------               |  79%  |                                                                              |------------------------------------------------------------          |  86%  |                                                                              |-----------------------------------------------------------------     |  93%  |                                                                              |----------------------------------------------------------------------| 100%  |                                                                              |                                                                      |   0%  |                                                                              |-----                                                                 |   7%  |                                                                              |----------                                                            |  14%  |                                                                              |---------------                                                       |  21%  |                                                                              |--------------------                                                  |  29%  |                                                                              |-------------------------                                             |  36%  |                                                                              |------------------------------                                        |  43%  |                                                                              |-----------------------------------                                   |  50%  |                                                                              |----------------------------------------                              |  57%  |                                                                              |---------------------------------------------                         |  64%  |                                                                              |--------------------------------------------------                    |  71%  |                                                                              |-------------------------------------------------------               |  79%  |                                                                              |------------------------------------------------------------          |  86%  |                                                                              |-----------------------------------------------------------------     |  93%  |                                                                              |----------------------------------------------------------------------| 100%  |                                                                              |                                                                      |   0%  |                                                                              |-----                                                                 |   7%  |                                                                              |----------                                                            |  14%  |                                                                              |---------------                                                       |  21%  |                                                                              |--------------------                                                  |  29%  |                                                                              |-------------------------                                             |  36%  |                                                                              |------------------------------                                        |  43%  |                                                                              |-----------------------------------                                   |  50%  |                                                                              |----------------------------------------                              |  57%  |                                                                              |---------------------------------------------                         |  64%  |                                                                              |--------------------------------------------------                    |  71%  |                                                                              |-------------------------------------------------------               |  79%  |                                                                              |------------------------------------------------------------          |  86%  |                                                                              |-----------------------------------------------------------------     |  93%  |                                                                              |----------------------------------------------------------------------| 100%
-#> Total computation time: 27.7 seconds (~ 0.46 minutes).
+#> Total computation time: 28.5 seconds (~ 0.47 minutes).
 fitM
 #> MixMashNet fit
 #>   Type: Multilayer MGM (multimixMN)
@@ -344,6 +360,7 @@ fitM
 #>     - ant: 1
 #>     - life: 1
 #>   Covariates (adjusted for): Age, Gender, MonInc
+#>   Lambda selection: EBIC
 #>   Community detection: louvain
 #>   Bootstrap replications: 5
 #>   Bootstrapped quantities: general_index, interlayer_index, bridge_index, excluded_index, community, loadings

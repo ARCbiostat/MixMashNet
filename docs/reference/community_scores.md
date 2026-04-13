@@ -34,8 +34,8 @@ community_scores(
 
 - fit:
 
-  A fitted object of class
-  `c("mixmashnet","mixMN_fit", "multimixMN_fit")` returned by
+  A fitted object of class `c("mixMN_fit", "multimixMN_fit")` returned
+  by
   [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
   or
   [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
@@ -48,8 +48,9 @@ community_scores(
 - layer:
 
   Optional. If fit is a multimixMN_fit, specify which layer to score
-  (name or index). If NULL, scores are computed for all layers and
-  returned as a named list.
+  (name or index). If NULL, scores are computed for all scoreable layers
+  and returned as a named list. If no layer is scoreable, the function
+  errors.
 
 - scale:
 
@@ -76,7 +77,7 @@ community_scores(
 
 ## Value
 
-A list with class `c("mixmashnet","community_scores")` containing:
+A list with class `"community_scores"` containing:
 
 - `call`:
 
@@ -109,9 +110,10 @@ A list with class `c("mixmashnet","community_scores")` containing:
   `loadings_boot_available`, and scaling parameters (`center`, `scale`).
 
 If `fit` is a `mixMN_fit` (or a `multimixMN_fit` with `layer`
-specified), returns a `c("mixmashnet","community_scores")` object. If
-`fit` is a `multimixMN_fit` and `layer = NULL`, returns a named list of
-`community_scores` objects (one per layer).
+specified), returns a `"community_scores"` object. If `fit` is a
+`multimixMN_fit` and `layer = NULL`, returns a named list of
+`community_scores` objects for all scoreable layers. If no layer is
+scoreable, the function errors.
 
 ## Details
 
@@ -158,7 +160,7 @@ summary(scores)
 #>   Quantile region: not computed
 #> 
 #> Per-community statistics (across subjects)
-#>  community       mean     sd    min    max
-#>          1 -2.454e-16 1.6180 -2.864 20.130
-#>          2  1.321e-17 0.7288 -2.032  3.173
+#>  community       mean     sd   median      q1     q3    min    max
+#>          1 -2.454e-16 1.6180 -0.25530 -1.0470 0.7385 -2.864 20.130
+#>          2  1.321e-17 0.7288 -0.01143 -0.5287 0.5054 -2.032  3.173
 ```

@@ -45,10 +45,6 @@ subgraph only, with weights converted to distances as \\d = 1/w\\.
 
 ## References
 
-Jones, P. J. (2025). networktools: Tools for identifying important nodes
-in networks. R package version 1.6.1.
-<https://github.com/paytonjjones/networktools>
-
 Jones, P. J., Ma, R., & McNally, R. J. (2021). Bridge Centrality: A
 Network Approach to Understanding Comorbidity. *Multivariate Behavioral
 Research*, 56(2), 353–367.

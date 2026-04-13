@@ -16,7 +16,11 @@
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/community_scores.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/dot-mgm_fun.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/find_bridge_communities.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/find_bridge_layers.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/get_centrality.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/get_edges.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/index.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/layer_slice.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/membershipStab.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/membershipStab_table.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/mgm_masked.html</loc></url>
@@ -25,11 +29,17 @@
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/multimixMN.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/nhanes.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/nhgh_data.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/plot.mixMN_fit.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/plot.mixmashnet.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/plot.multimixMN_fit.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/print.bridge_profiles.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/print.mixMN_fit.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/print.mixmashnet.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/print.multimixMN_fit.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/print.summary.mixmashnet.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/summary.mixMN_fit.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/summary.mixmashnet.html</loc></url>
+<url><loc>https://arcbiostat.github.io/MixMashNet/reference/summary.multimixMN_fit.html</loc></url>
 <url><loc>https://arcbiostat.github.io/MixMashNet/reference/update_palette.html</loc></url>
 </urlset>
 

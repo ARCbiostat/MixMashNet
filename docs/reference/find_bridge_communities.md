@@ -10,22 +10,37 @@ and
 providing the components underlying the corresponding overall bridge
 indices.
 
+Bridge connectivity is summarized using five complementary profiles:
+bridge strength, bridge EI1, bridge EI2, bridge closeness, and bridge
+betweenness.
+
+For single layer fits (`mixMN_fit`), profiles are computed directly on
+the supplied fitted object.
+
+For multilayer fits (`multimixMN_fit`), profiles are computed within the
+selected layer only, by applying the same single layer procedure to the
+corresponding intralayer fit stored in `fit$layer_fits[[layer]]`.
+
 ## Usage
 
 ``` r
-find_bridge_communities(fit, node)
+find_bridge_communities(fit, node, layer = NULL)
 ```
 
 ## Arguments
 
 - fit:
 
-  An object of class `mixMN_fit`.
+  An object of class `mixMN_fit` or `multimixMN_fit`.
 
 - node:
 
-  Character scalar: node of interest; must belong to
-  `fit$graph$keep_nodes_graph`.
+  Character scalar: node of interest.
+
+- layer:
+
+  Character scalar giving the layer of interest for `multimixMN_fit`
+  objects. Ignored for `mixMN_fit` objects.
 
 ## Value
 
@@ -60,18 +75,12 @@ components:
 
 ## Details
 
-Bridge connectivity is summarized using five complementary profiles:
-bridge strength, bridge EI1, bridge EI2, bridge closeness, and bridge
-betweenness.
+Bridge profiles are computed using only connections from the focal node
+to nodes in communities different from its own. If the focal node is not
+assigned to any community, i.e. excluded, connections to all assigned
+nodes in communities are considered.
 
-Notes:
-
-- Bridge profiles are computed using only connections from the focal
-  node to nodes in communities different from its own. If the focal node
-  is not assigned to any community, i.e. excluded, connections to all
-  assigned nodes in communities are considered.
-
-- Bridge betweenness is computed by counting all shortest paths between
-  pairs of nodes in different communities that pass through the focal
-  node as an intermediate vertex. When multiple shortest paths exist,
-  each path is counted separately.
+Bridge betweenness is computed by counting all shortest paths between
+pairs of nodes in different communities that pass through the focal node
+as an intermediate vertex. When multiple shortest paths exist, each path
+is counted separately.

@@ -4,12 +4,26 @@ given node, by decomposing its bridge connectivity into community-specific
 contributions, excluding its own community when assigned. The function is
 designed as an interpretative companion to bridge_metrics() and
 bridge_metrics_excluded(), providing the components underlying
-the corresponding overall bridge indices."><meta property="og:description" content="Identifies which communities contribute most to the bridge role of a
+the corresponding overall bridge indices.
+Bridge connectivity is summarized using five complementary profiles: bridge
+strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.
+For single layer fits (mixMN_fit), profiles are computed directly on
+the supplied fitted object.
+For multilayer fits (multimixMN_fit), profiles are computed within the
+selected layer only, by applying the same single layer procedure to the
+corresponding intralayer fit stored in fit$layer_fits[[layer]]."><meta property="og:description" content="Identifies which communities contribute most to the bridge role of a
 given node, by decomposing its bridge connectivity into community-specific
 contributions, excluding its own community when assigned. The function is
 designed as an interpretative companion to bridge_metrics() and
 bridge_metrics_excluded(), providing the components underlying
-the corresponding overall bridge indices."></head><body>
+the corresponding overall bridge indices.
+Bridge connectivity is summarized using five complementary profiles: bridge
+strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.
+For single layer fits (mixMN_fit), profiles are computed directly on
+the supplied fitted object.
+For multilayer fits (multimixMN_fit), profiles are computed within the
+selected layer only, by applying the same single layer procedure to the
+corresponding intralayer fit stored in fit$layer_fits[[layer]]."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -17,7 +31,7 @@ the corresponding overall bridge indices."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MixMashNet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -55,11 +69,18 @@ contributions, excluding its own community when assigned. The function is
 designed as an interpretative companion to <code><a href="bridge_metrics.html">bridge_metrics()</a></code> and
 <code><a href="bridge_metrics_excluded.html">bridge_metrics_excluded()</a></code>, providing the components underlying
 the corresponding overall bridge indices.</p>
+<p>Bridge connectivity is summarized using five complementary profiles: bridge
+strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.</p>
+<p>For single layer fits (<code>mixMN_fit</code>), profiles are computed directly on
+the supplied fitted object.</p>
+<p>For multilayer fits (<code>multimixMN_fit</code>), profiles are computed within the
+selected layer only, by applying the same single layer procedure to the
+corresponding intralayer fit stored in <code>fit$layer_fits[[layer]]</code>.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">find_bridge_communities</span><span class="op">(</span><span class="va">fit</span>, <span class="va">node</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">find_bridge_communities</span><span class="op">(</span><span class="va">fit</span>, <span class="va">node</span>, layer <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -67,12 +88,16 @@ the corresponding overall bridge indices.</p>
 
 
 <dl><dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
-<dd><p>An object of class <code>mixMN_fit</code>.</p></dd>
+<dd><p>An object of class <code>mixMN_fit</code> or <code>multimixMN_fit</code>.</p></dd>
 
 
 <dt id="arg-node">node<a class="anchor" aria-label="anchor" href="#arg-node"></a></dt>
-<dd><p>Character scalar: node of interest; must belong to
-<code>fit$graph$keep_nodes_graph</code>.</p></dd>
+<dd><p>Character scalar: node of interest.</p></dd>
+
+
+<dt id="arg-layer">layer<a class="anchor" aria-label="anchor" href="#arg-layer"></a></dt>
+<dd><p>Character scalar giving the layer of interest for
+<code>multimixMN_fit</code> objects. Ignored for <code>mixMN_fit</code> objects.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -104,17 +129,15 @@ the corresponding overall bridge indices.</p>
 </dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Bridge connectivity is summarized using five complementary profiles: bridge
-strength, bridge EI1, bridge EI2, bridge closeness, and bridge betweenness.</p>
-<p>Notes:</p><ul><li><p>Bridge profiles are computed using only connections from the focal node to
-        nodes in communities different from its own. If the focal node is not
-        assigned to any community, i.e. excluded, connections to all assigned nodes in
-        communities are considered.</p></li>
-<li><p>Bridge betweenness is computed by counting all shortest paths between
-        pairs of nodes in different communities that pass through the focal
-        node as an intermediate vertex. When multiple shortest paths exist,
-        each path is counted separately.</p></li>
-</ul></div>
+    <p>Bridge profiles are computed using only connections from the focal node to
+nodes in communities different from its own. If the focal node is not
+assigned to any community, i.e. excluded, connections to all assigned nodes in
+communities are considered.</p>
+<p>Bridge betweenness is computed by counting all shortest paths between
+pairs of nodes in different communities that pass through the focal
+node as an intermediate vertex. When multiple shortest paths exist,
+each path is counted separately.</p>
+    </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

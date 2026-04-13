@@ -8,6 +8,10 @@
 
 - **Adrien Perigord**. Contributor.
 
+- **Hudson Golino**. Contributor.
+
+- **Jonas Haslbeck**. Contributor.
+
 ## Citation
 
 Source:

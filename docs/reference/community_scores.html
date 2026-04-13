@@ -33,7 +33,7 @@ binary categorical ("c" with level == 2).'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MixMashNet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -99,7 +99,7 @@ binary categorical (<code>"c"</code> with <code>level == 2</code>).</p>
 
 
 <dl><dt id="arg-fit">fit<a class="anchor" aria-label="anchor" href="#arg-fit"></a></dt>
-<dd><p>A fitted object of class <code>c("mixmashnet","mixMN_fit", "multimixMN_fit")</code>
+<dd><p>A fitted object of class <code>c("mixMN_fit", "multimixMN_fit")</code>
 returned by <code><a href="mixMN.html">mixMN()</a></code> or <code><a href="multimixMN.html">multimixMN()</a></code>.</p></dd>
 
 
@@ -110,7 +110,8 @@ returned by <code><a href="mixMN.html">mixMN()</a></code> or <code><a href="mult
 
 <dt id="arg-layer">layer<a class="anchor" aria-label="anchor" href="#arg-layer"></a></dt>
 <dd><p>Optional. If fit is a multimixMN_fit, specify which layer to score (name or index).
-If NULL, scores are computed for all layers and returned as a named list.</p></dd>
+If NULL, scores are computed for all scoreable layers and returned as a named list.
+If no layer is scoreable, the function errors.</p></dd>
 
 
 <dt id="arg-scale">scale<a class="anchor" aria-label="anchor" href="#arg-scale"></a></dt>
@@ -138,7 +139,7 @@ weights within community for that row).</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with class <code>c("mixmashnet","community_scores")</code> containing:</p><dl><dt><code>call</code></dt>
+    <p>A list with class <code>"community_scores"</code> containing:</p><dl><dt><code>call</code></dt>
 <dd><p>The matched call.</p></dd>
 
   <dt><code>settings</code></dt>
@@ -163,9 +164,10 @@ weights within community for that row).</p></dd>
 
 
 </dl><p>If <code>fit</code> is a <code>mixMN_fit</code> (or a <code>multimixMN_fit</code> with <code>layer</code> specified),
-returns a <code>c("mixmashnet","community_scores")</code> object.
+returns a <code>"community_scores"</code> object.
 If <code>fit</code> is a <code>multimixMN_fit</code> and <code>layer = NULL</code>, returns a named list
-of <code>community_scores</code> objects (one per layer).</p>
+of <code>community_scores</code> objects for all scoreable layers. If no layer is
+scoreable, the function errors.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -212,9 +214,9 @@ Revised network loadings. <em>Behavior Research Methods</em>, 57(4), 114.
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Quantile region: not computed</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Per-community statistics (across subjects)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  community       mean     sd    min    max</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>          1 -2.454e-16 1.6180 -2.864 20.130</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>          2  1.321e-17 0.7288 -2.032  3.173</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  community       mean     sd   median      q1     q3    min    max</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>          1 -2.454e-16 1.6180 -0.25530 -1.0470 0.7385 -2.864 20.130</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>          2  1.321e-17 0.7288 -0.01143 -0.5287 0.5054 -2.032  3.173</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

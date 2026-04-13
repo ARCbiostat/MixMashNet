@@ -1,8 +1,8 @@
-# NHANES dataset
+# NHANES-derived dataset for multilayer network analysis
 
-Example dataset used in MixMashNet examples. This dataset contains 29
-variables derived from the National Health and Nutrition Examination
-Survey (NHANES)
+Example dataset derived to illustrate multilayer network estimation in
+MixMashNet. This dataset contains 29 variables derived from the National
+Health and Nutrition Examination Survey (NHANES)
 
 ## Usage
 

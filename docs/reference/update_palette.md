@@ -1,54 +1,78 @@
 # Update community and layer color palettes in MixMashNet objects
 
 Updates the color palettes associated with communities and/or layers in
-`mixMN_fit` and `multimixMN_fit` objects. The function replaces only the
-colors corresponding to the provided names, leaving all other colors
-unchanged.
+fitted `mixMN_fit` and `multimixMN_fit` objects.
 
-If colors are provided for names that do not exist in the object (e.g.,
-unknown community labels or layer names), a warning is issued and those
-entries are ignored. If some communities or layers are not specified,
-their original colors are preserved.
+For `mixMN_fit` objects, `community_colors` must be a named character
+vector specifying colors for community labels in
+`object$communities$palette`.
+
+For `multimixMN_fit` objects, `community_colors` must be a named list
+whose elements correspond to layer names. Each element must be a named
+character vector specifying colors for the community labels of that
+layer. The list may be partial, so only the specified layers are
+updated.
+
+For `multimixMN_fit` objects, `layer_colors` updates the palette stored
+in `object$layers$palette`.
+
+The function replaces only the colors corresponding to the provided
+names, leaving all other colors unchanged. Unknown layer names,
+community labels, or layer labels are ignored with a warning.
 
 ## Usage
 
 ``` r
-update_palette(fit, community_colors = NULL, layer_colors = NULL)
+update_palette(object, ...)
+
+# S3 method for class 'mixMN_fit'
+update_palette(object, community_colors = NULL, layer_colors = NULL, ...)
+
+# S3 method for class 'multimixMN_fit'
+update_palette(object, community_colors = NULL, layer_colors = NULL, ...)
 ```
 
 ## Arguments
 
-- fit:
+- object:
 
   An object of class `mixMN_fit` or `multimixMN_fit`.
 
+- ...:
+
+  Further arguments passed to methods.
+
 - community_colors:
 
-  Optional named character vector specifying new colors for communities.
-  Names must correspond to existing community labels (as stored in
-  `communities$palette`). Missing names are ignored.
+  For `mixMN_fit` objects, an optional named character vector specifying
+  new colors for communities.
+
+  For `multimixMN_fit` objects, an optional named list whose names are
+  layer names and whose elements are named character vectors specifying
+  new colors for communities within each layer.
 
 - layer_colors:
 
-  Optional named character vector specifying new colors for layers.
-  Names must correspond to existing layer names (as stored in
-  `layers$palette`). Only applicable to `multimixMN_fit` objects.
+  Optional named character vector specifying new colors for layers. Only
+  applicable to `multimixMN_fit` objects.
 
 ## Value
 
-The input object `fit`, with updated community and/or layer palettes.
+The input object, with updated community and/or layer palettes.
 
 ## Details
 
-For `mixMN_fit` objects, community colors are updated in
-`fit$communities$palette`.
+For single layer fits, only `community_colors` is used.
 
-For `multimixMN_fit` objects, community colors are updated separately
-within each layer (i.e., in `fit$layer_fits[[L]]$communities$palette`),
-while layer colors are updated in `fit$layers$palette`.
+For multilayer fits:
 
-The function performs in-place modification of the palettes and returns
-the updated object.
+- `community_colors` updates community palettes within the specified
+  layers;
+
+- `layer_colors` updates the palette of the layers themselves.
+
+For multilayer fits, `community_colors` can be partial: layers not
+included in the list are left unchanged.
 
 ## Examples
 
@@ -67,12 +91,10 @@ fit <- mixMN(
   progress = FALSE
 )
 
-# View original community palette
 fit$communities$palette
 #>         1         2 
 #> "#E16A86" "#00AD9A" 
 
-# Update colors for communities 1 and 2
 fit2 <- update_palette(
   fit,
   community_colors = c("1" = "red", "2" = "blue")

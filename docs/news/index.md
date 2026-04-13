@@ -1,8 +1,34 @@
 # Changelog
 
-## MixMashNet 0.6.0
+## MixMashNet 1.0.0
 
-CRAN release: 2026-03-03
+### Major updates
+
+- Added
+  [`get_centrality()`](https://arcbiostat.github.io/MixMashNet/reference/get_centrality.md)
+  and
+  [`get_edges()`](https://arcbiostat.github.io/MixMashNet/reference/get_edges.md)
+  methods for `mixMN_fit` and `multimixMN_fit`, as well as
+  [`layer_slice()`](https://arcbiostat.github.io/MixMashNet/reference/layer_slice.md)
+  for `multimixMN_fit`.
+- Added the
+  [`find_bridge_layers()`](https://arcbiostat.github.io/MixMashNet/reference/find_bridge_layers.md)
+  function.
+- Added support in
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  and
+  [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md)
+  for user-supplied functions in the `cluster_method` argument.
+- Added the `cluster_args` argument to
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  and
+  [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md).
+- The summaries of
+  [`mixMN()`](https://arcbiostat.github.io/MixMashNet/reference/mixMN.md)
+  and
+  [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md)
+  now display the top 10 intralayer and interlayer edges, respectively
+  \# MixMashNet 0.6.0
 
 ### Major updates
 
