@@ -28,7 +28,10 @@
   and
   [`multimixMN()`](https://arcbiostat.github.io/MixMashNet/reference/multimixMN.md)
   now display the top 10 intralayer and interlayer edges, respectively
-  \# MixMashNet 0.6.0
+
+## MixMashNet 0.6.0
+
+CRAN release: 2026-03-03
 
 ### Major updates
 

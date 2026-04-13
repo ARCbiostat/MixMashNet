@@ -6,6 +6,7 @@
 * Added support in `mixMN()` and `multimixMN()` for user-supplied functions in the `cluster_method` argument.
 * Added the `cluster_args` argument to `mixMN()` and `multimixMN()`.
 * The summaries of `mixMN()` and `multimixMN()` now display the top 10 intralayer and interlayer edges, respectively
+
 # MixMashNet 0.6.0
 
 ## Major updates
