@@ -631,7 +631,7 @@ get_centrality.multimixMN_fit <- function(object,
 # -------------------------------------------------------------------------
 
 #' @export
-print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 10, ...) {
+print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
 
   `%||%` <- function(a, b) if (!is.null(a)) a else b
 
