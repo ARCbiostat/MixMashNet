@@ -80,25 +80,53 @@ membershipStab <- function(fit) {
   boot.wc <- do.call(
     rbind,
     lapply(boot.list, function(z) {
+      out <- rep(NA_integer_, p)
+      names(out) <- var_names
       if (is.null(z)) {
-        rep(NA_integer_, p)
-      } else {
-        if (is.null(names(z))) {
-          stop("All bootstrap membership vectors must be named.")
-        }
-        z[var_names]
+        return(out)
       }
+      z <- as.vector(z)
+      if (is.null(names(z))) {
+        if (length(z) == p) {
+          names(z) <- var_names
+        } else {
+          return(out)
+        }
+      }
+      common_names <- intersect(var_names, names(z))
+      out[common_names] <- suppressWarnings(as.integer(z[common_names]))
+      out
     })
   )
   if (ncol(boot.wc) != p)
     stop("Inconsistent bootstrap membership dimensions: expected ", p, ", got ", ncol(boot.wc), ".")
   colnames(boot.wc) <- var_names
 
-  # --- Homogenize bootstrap labels to target structure
-  homogenized <- EGAnet::community.homogenize(
+  # --- Keep only bootstrap replications that contain at least one non-NA label
+  valid_boot <- apply(boot.wc, 1, function(x) any(!is.na(x)))
+  n_failed_boot <- sum(!valid_boot)
+
+  if (!any(valid_boot)) {
+    stop("All bootstrap community assignments are NA. Node stability cannot be computed.")
+  }
+
+  # --- Homogenize only valid bootstrap solutions
+  homogenized_valid <- EGAnet::community.homogenize(
     target.membership  = structure,
-    convert.membership = boot.wc
+    convert.membership = boot.wc[valid_boot, , drop = FALSE]
   )
+
+  # --- Rebuild full matrix, keeping failed bootstrap runs as NA rows
+  homogenized <- matrix(NA_integer_, nrow = nrow(boot.wc), ncol = ncol(boot.wc))
+  homogenized[valid_boot, ] <- homogenized_valid
+  colnames(homogenized) <- var_names
+  rownames(homogenized) <- rownames(boot.wc)
+
+  if (n_failed_boot > 0) {
+    warning(
+      n_failed_boot, " bootstrap community assignment(s) were entirely NA and were excluded from label homogenization."
+    )
+  }
 
   # --- Max number of communities across target + bootstrap (robust to NA)
   max_communities <- max(
