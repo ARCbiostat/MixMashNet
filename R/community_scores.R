@@ -7,7 +7,7 @@
 #' \code{EGAnet::net.loads} and stored in the fitted \code{mixMN_fit} object.
 #' Scores are computed using the dataset provided via the \code{data} argument.
 #' If \code{data = NULL}, the original dataset used to fit the model
-#' (\code{fit$model$data}) is used by default.
+#' (\code{fit$model$data}) is used by default. Errors if both are NULL.
 #' Optionally, percentile bootstrap quantile regions for the community
 #' scores can be computed if bootstrap community loadings are available in
 #' \code{fit$community_loadings$boot}.
