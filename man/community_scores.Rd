@@ -79,6 +79,9 @@ binary categorical (\code{"c"} with \code{level == 2}).
 The function requires that \code{fit$community_loadings$true} exists and that
 the input \code{data} contains all required variables in
 \code{fit$community_loadings$nodes}. It errors otherwise.
+The returned object has class \code{"community_scores"} and implements
+\code{print()} and \code{summary()} methods for quick inspection and
+descriptive summaries of the scores.
 }
 \examples{
 data(bacteremia)

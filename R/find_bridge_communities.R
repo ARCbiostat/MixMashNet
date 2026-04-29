@@ -29,6 +29,10 @@
 #' node as an intermediate vertex. When multiple shortest paths exist,
 #' each path is counted separately.
 #'
+#' The returned object has class \code{"bridge_profiles"} and provides a
+#' dedicated \code{print()} method. By default, all bridge profiles are displayed;
+#' a specific profile can be selected through the \code{statistic} argument.
+#'
 #' @param fit An object of class \code{mixMN_fit} or \code{multimixMN_fit}.
 #' @param node Character scalar: node of interest.
 #' @param layer Character scalar giving the layer of interest for

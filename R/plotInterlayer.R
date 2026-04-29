@@ -465,23 +465,16 @@ plotInterlayer <- function(
       dplyr::select(-"n_g", -"m", -"s")
   }
 
-  # Ordering within each pair panel
+  # Global ordering across all selected interlayer edges
   if (ordering == "value") {
-    df <- df |>
-      dplyr::group_by(.data$pair) |>
-      dplyr::arrange(dplyr::desc(.data$observed), .by_group = TRUE) |>
-      dplyr::ungroup()
+    edge_order <- df$edge[order(-abs(df$observed))]
   } else {
-    df <- df |>
-      dplyr::group_by(.data$pair) |>
-      dplyr::arrange(.data$edge, .by_group = TRUE) |>
-      dplyr::ungroup()
+    edge_order <- sort(unique(df$edge))
   }
 
-  df <- df |>
-    dplyr::group_by(.data$pair) |>
-    dplyr::mutate(edge_f = factor(.data$edge, levels = rev(.data$edge))) |>
-    dplyr::ungroup()
+  edge_order <- unique(edge_order)
+
+  df$edge_f <- factor(df$edge, levels = rev(edge_order))
 
   # Plot edges
   p <- ggplot2::ggplot(df, ggplot2::aes(x = .data$edge_f, y = .data$observed)) +

@@ -60,4 +60,9 @@ For a focal node in the selected \code{layer}, the function decomposes:
 
 Contributions are defined so that they sum to the corresponding overall
 interlayer index.
+
+The returned object has class \code{"bridge_layer_profiles"} and provides a
+dedicated \code{print()} method. By default, all interlayer profiles are
+displayed; a specific profile can be selected through the \code{statistic}
+argument.
 }

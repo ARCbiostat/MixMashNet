@@ -38,6 +38,10 @@
 #' the proportion of bootstrap runs in which the node's community matches its
 #' empirical assignment.
 #'
+#' The returned object has class \code{"membershipStab"} and provides
+#' \code{print()}, \code{summary()}, and \code{plot()} methods for quick
+#' inspection, descriptive summaries, and visualization of node stability.
+#'
 #' @references
 #'
 #' Christensen, A. P., & Golino, H. (2021).

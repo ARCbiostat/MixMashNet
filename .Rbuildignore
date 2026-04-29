@@ -7,3 +7,5 @@
 ^pkgdown$
 
 ^vignettes$
+^\.positai$
+^\.claude$

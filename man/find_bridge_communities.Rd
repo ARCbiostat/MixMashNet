@@ -60,4 +60,8 @@ Bridge betweenness is computed by counting all shortest paths between
 pairs of nodes in different communities that pass through the focal
 node as an intermediate vertex. When multiple shortest paths exist,
 each path is counted separately.
+
+The returned object has class \code{"bridge_profiles"} and provides a
+dedicated \code{print()} method. By default, all bridge profiles are displayed;
+a specific profile can be selected through the \code{statistic} argument.
 }

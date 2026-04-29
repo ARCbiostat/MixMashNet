@@ -30,6 +30,11 @@
 #' Contributions are defined so that they sum to the corresponding overall
 #' interlayer index.
 #'
+#' The returned object has class \code{"bridge_layer_profiles"} and provides a
+#' dedicated \code{print()} method. By default, all interlayer profiles are
+#' displayed; a specific profile can be selected through the \code{statistic}
+#' argument.
+#'
 #' @param fit An object of class \code{multimixMN_fit}.
 #' @param node Character scalar: node of interest.
 #' @param layer Character scalar giving the layer of the focal node.
