@@ -245,30 +245,60 @@ community_scores <- function(
   if (is.null(colnames(L_true))) colnames(L_true) <- paste0("C", seq_len(ncol(L_true)))
 
   .zero_cross_loadings <- function(Lmat, nodes, wc) {
-    Lmat <- Lmat[nodes, , drop = FALSE]
-    K <- ncol(Lmat)
 
-    wc_int <- as.integer(wc)
-    if (any(is.na(wc_int))) stop("`wc` must be coercible to integers.")
-    if (any(wc_int < 1 | wc_int > K)) {
-      stop("`wc` contains community indices outside [1, K].")
+    Lmat <- Lmat[nodes, , drop = FALSE]
+
+    wc_chr <- as.character(wc)
+
+    if (!all(wc_chr %in% colnames(Lmat))) {
+      stop("Some community labels in `wc` are not present in the loading matrix.")
     }
 
     Lhard <- matrix(
       0,
       nrow = nrow(Lmat),
-      ncol = K,
-      dimnames = list(rownames(Lmat), colnames(Lmat))
+      ncol = ncol(Lmat),
+      dimnames = dimnames(Lmat)
     )
 
     for (j in seq_len(nrow(Lmat))) {
-      k <- wc_int[j]
-      Lhard[j, k] <- Lmat[j, k]
+      comm <- wc_chr[j]
+      Lhard[j, comm] <- Lmat[j, comm]
     }
+
     Lhard
   }
 
   L_true <- .zero_cross_loadings(L_true, nodes = nodes, wc = wc)
+
+  communities_detected <- colnames(L_true)
+
+  valid_comm <- apply(L_true, 2, function(z) {
+    any(!is.na(z) & z != 0)
+  })
+
+  dropped_communities <- colnames(L_true)[!valid_comm]
+
+  if (!any(valid_comm)) {
+    stop(
+      "Community scores cannot be computed because no community has valid loadings. ",
+      "This may happen when all communities are single-node communities.",
+      call. = FALSE
+    )
+  }
+
+  if (length(dropped_communities) > 0) {
+    warning(
+      "Community scores were not computed for ",
+      length(dropped_communities),
+      " communit", ifelse(length(dropped_communities) == 1, "y", "ies"),
+      " because valid loadings were unavailable, e.g. singleton communities: community ",
+      paste(dropped_communities, collapse = ", "),
+      call. = FALSE
+    )
+
+    L_true <- L_true[, valid_comm, drop = FALSE]
+  }
 
   used_fit_data <- FALSE
   if (is.null(data)) {
@@ -409,6 +439,7 @@ community_scores <- function(
       if (is.null(rownames(Lr))) rownames(Lr) <- nodes
 
       Lr <- .zero_cross_loadings(Lr, nodes = nodes, wc = wc)
+      Lr <- Lr[, colnames(L_true), drop = FALSE]
 
       if (na_action == "omit" && anyNA(X)) {
         Sr <- matrix(
@@ -478,6 +509,9 @@ community_scores <- function(
     quantile_region = quantile_region_out,
     details = list(
       nodes_used = nodes,
+      communities_detected = communities_detected,
+      communities_scored = colnames(L_true),
+      communities_dropped = dropped_communities,
       loadings_true = L_true,
       loadings_boot_available = !is.null(fit$community_loadings$boot) &&
         length(fit$community_loadings$boot) > 0,
@@ -496,7 +530,12 @@ print.community_scores <- function(x, ...) {
   cat(strrep("=", 30), "\n\n", sep = "")
 
   cat("Subjects:    ", length(x$ids), "\n", sep = "")
-  cat("Communities: ", length(x$communities), "\n", sep = "")
+  cat("Scored communities: ", length(x$communities), "\n", sep = "")
+
+  dropped <- x$details$communities_dropped
+  if (!is.null(dropped) && length(dropped) > 0) {
+    cat("Not scored:         ", length(dropped), "\n", sep = "")
+  }
 
   cat("\nSettings\n")
   cat("  Scaling:       ", x$settings$scale, "\n", sep = "")
@@ -508,9 +547,15 @@ print.community_scores <- function(x, ...) {
     cat("  Quantile region: not computed\n")
   }
 
-  cat("\nCommunity names:\n  ")
+  cat("\nScored community names:\n  ")
   cat(paste(x$communities, collapse = ", "))
   cat("\n")
+
+  if (!is.null(dropped) && length(dropped) > 0) {
+    cat("\nCommunities not scored because loadings were unavailable/invalid:\n  ")
+    cat(paste(dropped, collapse = ", "))
+    cat("\n")
+  }
 
   invisible(x)
 }

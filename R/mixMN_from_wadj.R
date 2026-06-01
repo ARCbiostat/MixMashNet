@@ -352,7 +352,7 @@ mixMN_from_wadj <- function(
 
     community_loadings = list(
       nodes = character(0),
-      wc    = integer(0),
+      wc    = factor(),
       true  = NULL,
       boot  = NULL,
       available = FALSE,

@@ -66,12 +66,11 @@
     color_by = c("community", "none"),
     edge_color_by = c("sign", "none"),
     edge_scale = 4,
-    layout_type = c("fr"),
+    layout = "fr",
     ...
 ) {
   color_by      <- match.arg(color_by)
   edge_color_by <- match.arg(edge_color_by)
-  layout_type   <- match.arg(layout_type)
 
   g <- x$graph$igraph
   if (is.null(g)) stop("No igraph object found in x$graph$igraph.")
@@ -110,12 +109,19 @@
   }
 
   dots <- list(...)
+
   if (is.null(dots$layout)) {
-    lay <- switch(
-      layout_type,
-      fr = igraph::layout_with_fr(g, weights = abs_w)
-    )
-    dots$layout <- lay
+    saved_layout <- igraph::graph_attr(g, "layout")
+
+    if (!is.null(saved_layout)) {
+      dots$layout <- saved_layout
+    } else {
+      dots$layout <- .resolve_layout_single(
+        g,
+        layout = layout,
+        weights = abs_w
+      )
+    }
   }
   if (is.null(dots$vertex.color))       dots$vertex.color <- vcol
   if (is.null(dots$vertex.label))       dots$vertex.label <- vnames
@@ -136,13 +142,13 @@
     color_by = c("layer", "community", "none"),
     edge_color_by = c("sign", "none"),
     edge_scale = 4,
-    layout_type = c("multilayer_fr", "fr"),
+    layout = "fr",
     layer_attr = "layer",
+    radius_layer = 4,
     ...
 ) {
   color_by      <- match.arg(color_by)
   edge_color_by <- match.arg(edge_color_by)
-  layout_type   <- match.arg(layout_type)
 
   g <- x$graph$igraph
   if (is.null(g)) stop("No igraph object found in x$graph$igraph.")
@@ -232,14 +238,30 @@
   # ======================
   dots <- list(...)
 
-  # set defaults only when absent (igraph-first behaviour)
   if (is.null(dots$layout)) {
-    lay <- switch(
-      layout_type,
-      multilayer_fr = .layout_multilayer_fr(g, layer_attr = layer_attr),
-      fr            = igraph::layout_with_fr(g, weights = abs_w)
-    )
-    dots$layout <- lay
+
+    saved_layout <- igraph::graph_attr(g, "layout")
+
+    if (!is.null(saved_layout)) {
+
+      dots$layout <- saved_layout
+
+    } else if (is.matrix(layout) &&
+               is.numeric(layout) &&
+               nrow(layout) == igraph::vcount(g) &&
+               ncol(layout) >= 2) {
+
+      dots$layout <- layout[, 1:2, drop = FALSE]
+
+    } else {
+
+      dots$layout <- .layout_multilayer(
+        g,
+        layer_attr = layer_attr,
+        radius_layer = radius_layer,
+        layout = layout
+      )
+    }
   }
   if (is.null(dots$vertex.color))       dots$vertex.color <- vcol
   if (is.null(dots$vertex.label))       dots$vertex.label <- vnames

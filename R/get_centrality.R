@@ -720,60 +720,84 @@ print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...)
 
     cat("\n", block_title, ":\n", sep = "")
 
-    metrics <- intersect(metric_order, unique(df$metric))
+    # Print only the first available metric.
+    metrics_all <- intersect(metric_order, unique(df$metric))
 
-    for (met in metrics) {
-      sub_met <- df[df$metric == met, , drop = FALSE]
-      if (!nrow(sub_met)) next
+    if (!length(metrics_all)) {
+      return(invisible(NULL))
+    }
 
-      sub_met <- order_by(sub_met, sort_cols)
-      n_total <- nrow(sub_met)
+    met <- metrics_all[1]
 
-      if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
-        o <- order(abs(sub_met$estimated), decreasing = TRUE)
-        sub_rank <- sub_met[o, , drop = FALSE]
-        sub_rank <- utils::head(sub_rank, top_n)
-      } else {
-        sub_rank <- sub_met
+    sub_met <- df[df$metric == met, , drop = FALSE]
+
+    if (!nrow(sub_met)) {
+      return(invisible(NULL))
+    }
+
+    sub_met <- order_by(sub_met, sort_cols)
+    n_total <- nrow(sub_met)
+
+    if (is.finite(top_n) && "estimated" %in% colnames(sub_met)) {
+      o <- order(abs(sub_met$estimated), decreasing = TRUE)
+      sub_rank <- sub_met[o, , drop = FALSE]
+      sub_rank <- utils::head(sub_rank, top_n)
+     } else {
+       sub_rank <- sub_met
+     }
+
+     n_rank <- nrow(sub_rank)
+
+    if (is.finite(max_rows) && n_rank > max_rows) {
+      sub_print <- utils::head(sub_rank, max_rows)
+     } else {
+      sub_print <- sub_rank
+     }
+
+    if ("layer" %in% colnames(sub_print) &&
+        length(unique(sub_print$layer)) == 1L &&
+        all(sub_print$layer == "1")) {
+       sub_print <- sub_print[, setdiff(colnames(sub_print), "layer"), drop = FALSE]
+    }
+
+    sub_print <- sub_print[, setdiff(colnames(sub_print), c("metric", "scope", drop_cols)), drop = FALSE]
+    sub_print <- drop_all_na_boot_cols(sub_print)
+    sub_print <- prettify_colnames(sub_print, quantile_level = quantile_level)
+
+    cat("\n  Metric:", met, "\n")
+    print(sub_print, row.names = FALSE)
+
+    if (n_rank > nrow(sub_print)) {
+      cat("... showing ", nrow(sub_print), " of ", n_rank, " rows", sep = "")
+      if (n_total > n_rank) {
+        cat(" (", n_total, " total before top_n)", sep = "")
       }
-
-      n_rank <- nrow(sub_rank)
-
-      if (is.finite(max_rows) && n_rank > max_rows) {
-        sub_print <- utils::head(sub_rank, max_rows)
-      } else {
-        sub_print <- sub_rank
-      }
-
-      if ("layer" %in% colnames(sub_print) &&
-          length(unique(sub_print$layer)) == 1L &&
-          all(sub_print$layer == "1")) {
-        sub_print <- sub_print[, setdiff(colnames(sub_print), "layer"), drop = FALSE]
-      }
-
-      sub_print <- sub_print[, setdiff(colnames(sub_print), c("metric", "scope", drop_cols)), drop = FALSE]
-      sub_print <- drop_all_na_boot_cols(sub_print)
-      sub_print <- prettify_colnames(sub_print, quantile_level = quantile_level)
-
-      cat("\n  Metric:", met, "\n")
-      print(sub_print, row.names = FALSE)
-
-      if (n_rank > nrow(sub_print)) {
-        cat("... showing ", nrow(sub_print), " of ", n_rank, " rows", sep = "")
-        if (n_total > n_rank) {
-          cat(" (", n_total, " total before top_n)", sep = "")
-        }
-        cat("\n")
+      cat("\n")
       } else if (n_total > n_rank) {
         cat("... showing ", n_rank, " of ", n_total, " rows after top_n filtering\n", sep = "")
-      }
+        }
+
+    if (length(metrics_all) > 1) {
+      cat(
+        "\n... additional statistics are available in the returned object.\n",
+        sep = ""
+      )
     }
 
     invisible(NULL)
   }
 
-  if ("intra" %in% unique(x$scope)) {
+  has_intra <- "intra" %in% unique(x$scope)
+  has_inter <- "inter" %in% unique(x$scope)
+
+  # If both intra- and interlayer summaries are present, print only
+  # an interlayer preview. The full object still contains both scopes.
+  print_intra <- has_intra && !has_inter
+  print_inter <- has_inter
+
+  if (print_intra) {
     x_intra <- x[x$scope == "intra", , drop = FALSE]
+
     print_metric_block(
       df = x_intra,
       metric_order = allowed_intra,
@@ -783,8 +807,9 @@ print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...)
     )
   }
 
-  if ("inter" %in% unique(x$scope)) {
+  if (print_inter) {
     x_inter <- x[x$scope == "inter", , drop = FALSE]
+
     print_metric_block(
       df = x_inter,
       metric_order = allowed_inter,
@@ -792,7 +817,111 @@ print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...)
       drop_cols = character(0),
       sort_cols = c("layer", "node")
     )
+
+    if (has_intra) {
+      cat(
+        "\n... intralayer node-level indices are also available in the returned object.\n",
+        sep = ""
+      )
+    }
   }
 
   invisible(x)
+}
+
+#' @export
+summary.get_centrality <- function(object, ...) {
+
+  if (is.null(object) || !nrow(object)) {
+    cat("No node-level centrality indices available.\n")
+    return(invisible(object))
+  }
+
+  x <- as.data.frame(object)
+
+  cat("Node-level centrality summary\n")
+  cat("-----------------------------\n")
+
+  cat("\nScope(s): ", paste(unique(x$scope), collapse = ", "), "\n", sep = "")
+
+  # -----------------------------------------------------------------------
+  # intralayer indices
+  # -----------------------------------------------------------------------
+  if ("intra" %in% x$scope) {
+
+    intra <- x[x$scope == "intra", , drop = FALSE]
+
+    cat("\nIntralayer:\n")
+
+    if ("layer" %in% names(intra) &&
+        any(!is.na(intra$layer))) {
+
+      layers <- unique(stats::na.omit(intra$layer))
+
+      # single-layer case: hide artificial layer "1"
+      if (length(layers) == 1 &&
+          identical(as.character(layers), "1")) {
+
+        cat(
+          "  ",
+          paste(unique(intra$metric), collapse = ", "),
+          "\n",
+          sep = ""
+        )
+
+      } else {
+
+        for (L in layers) {
+          mets <- unique(intra$metric[intra$layer == L])
+
+          cat(
+            "  ", L, " -> ",
+            paste(mets, collapse = ", "),
+            "\n",
+            sep = ""
+          )
+        }
+      }
+
+    } else {
+
+      cat(
+        "  ",
+        paste(unique(intra$metric), collapse = ", "),
+        "\n",
+        sep = ""
+      )
+    }
+  }
+
+  # -----------------------------------------------------------------------
+  # interlayer indices
+  # -----------------------------------------------------------------------
+  if ("inter" %in% x$scope) {
+
+    inter <- x[x$scope == "inter", , drop = FALSE]
+
+    cat("\nInterlayer:\n")
+
+    cat(
+      "  ",
+      paste(unique(inter$metric), collapse = ", "),
+      "\n",
+      sep = ""
+    )
+  }
+
+  # -----------------------------------------------------------------------
+  # bootstrap info
+  # -----------------------------------------------------------------------
+  boot_cols <- grep("bootstrap", names(x), value = TRUE)
+
+  cat(
+    "\nBootstrap summaries: ",
+    if (length(boot_cols)) "available" else "not available",
+    "\n",
+    sep = ""
+  )
+
+  invisible(object)
 }

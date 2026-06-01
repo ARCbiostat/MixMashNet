@@ -395,59 +395,77 @@ print.get_edges <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
 
     cat("\n", block_title, ":\n", sep = "")
 
-    groups <- unique(df[[group_var]])
+    groups_all <- unique(df[[group_var]])
 
-    for (g in groups) {
-      sub_g <- df[df[[group_var]] == g, , drop = FALSE]
-      sub_g <- order_by(sub_g, sort_cols)
+    g <- groups_all[1]
 
-      n_total <- nrow(sub_g)
+    sub_g <- df[df[[group_var]] == g, , drop = FALSE]
+    sub_g <- order_by(sub_g, sort_cols)
 
-      if (is.finite(top_n) && "estimated" %in% colnames(sub_g)) {
-        o <- order(abs(sub_g$estimated), decreasing = TRUE)
-        sub_rank <- sub_g[o, , drop = FALSE]
-        sub_rank <- utils::head(sub_rank, top_n)
-      } else {
-        sub_rank <- sub_g
-      }
+    n_total <- nrow(sub_g)
 
-      n_rank <- nrow(sub_rank)
+    if (is.finite(top_n) && "estimated" %in% colnames(sub_g)) {
+      o <- order(abs(sub_g$estimated), decreasing = TRUE)
+      sub_rank <- sub_g[o, , drop = FALSE]
+      sub_rank <- utils::head(sub_rank, top_n)
+    } else {
+      sub_rank <- sub_g
+    }
 
-      if (is.finite(max_rows) && n_rank > max_rows) {
-        sub_print <- utils::head(sub_rank, max_rows)
-      } else {
-        sub_print <- sub_rank
-      }
+    n_rank <- nrow(sub_rank)
 
-      sub_print <- sub_print[, setdiff(
-        colnames(sub_print),
-        c("scope", group_var, drop_cols)
-      ), drop = FALSE]
+    if (is.finite(max_rows) && n_rank > max_rows) {
+       sub_print <- utils::head(sub_rank, max_rows)
+    } else {
+      sub_print <- sub_rank
+    }
 
-      sub_print <- sub_print[, setdiff(colnames(sub_print), c("scope", drop_cols)), drop = FALSE]
-      sub_print <- .drop_all_na_boot_cols(sub_print)
-      sub_print <- prettify_colnames(sub_print, quantile_level = quantile_level)
+    sub_print <- sub_print[, setdiff(
+      colnames(sub_print),
+      c("scope", group_var, drop_cols)
+    ), drop = FALSE]
 
-      cat("\n  ", group_label, ": ", g, "\n", sep = "")
-      print(sub_print, row.names = FALSE)
+    sub_print <- sub_print[, setdiff(colnames(sub_print), c("scope", drop_cols)), drop = FALSE]
+    sub_print <- .drop_all_na_boot_cols(sub_print)
+    sub_print <- prettify_colnames(sub_print, quantile_level = quantile_level)
 
-      if (n_rank > nrow(sub_print)) {
-        cat("... showing ", nrow(sub_print), " of ", n_rank, " rows", sep = "")
-        if (n_total > n_rank) {
-          cat(" (", n_total, " total before top_n)", sep = "")
-        }
-        cat("\n")
-      } else if (n_total > n_rank) {
-        cat("... showing ", n_rank, " of ", n_total,
-            " rows after top_n filtering\n", sep = "")
-      }
+     cat("\n  ", group_label, ": ", g, "\n", sep = "")
+     print(sub_print, row.names = FALSE)
+
+     if (n_rank > nrow(sub_print)) {
+       cat("... showing ", nrow(sub_print), " of ", n_rank, " rows", sep = "")
+       if (n_total > n_rank) {
+        cat(" (", n_total, " total before top_n)", sep = "")
+       }
+      cat("\n")
+     } else if (n_total > n_rank) {
+       cat("... showing ", n_rank, " of ", n_total,
+           " rows after top_n filtering\n", sep = "")
+     }
+
+    if (length(groups_all) > 1) {
+      cat(
+        "\n... additional ",
+        group_label,
+        "s available in the returned object.\n",
+        sep = ""
+      )
     }
 
     invisible(NULL)
   }
 
-  if ("intra" %in% unique(x$scope)) {
+  has_intra <- "intra" %in% unique(x$scope)
+  has_inter <- "inter" %in% unique(x$scope)
+
+  # If both intra- and interlayer summaries are present, print only
+  # an interlayer preview. The full object still contains both scopes.
+  print_intra <- has_intra && !has_inter
+  print_inter <- has_inter
+
+  if (print_intra) {
     x_intra <- x[x$scope == "intra", , drop = FALSE]
+
     print_edge_block(
       df = x_intra,
       block_title = "Edge-level summaries (intralayer)",
@@ -458,8 +476,9 @@ print.get_edges <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
     )
   }
 
-  if ("inter" %in% unique(x$scope)) {
+  if (print_inter) {
     x_inter <- x[x$scope == "inter", , drop = FALSE]
+
     print_edge_block(
       df = x_inter,
       block_title = "Edge-level summaries (interlayer)",
@@ -468,7 +487,104 @@ print.get_edges <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
       sort_cols = c("pairs", "edge"),
       drop_cols = "layer"
     )
+
+    if (has_intra) {
+      cat(
+        "\n... intralayer summaries are also available in the returned object.\n",
+        sep = ""
+      )
+    }
   }
 
   invisible(x)
+}
+
+#' @export
+summary.get_edges <- function(object, ...) {
+
+  if (is.null(object) || !nrow(object)) {
+    cat("No edge-level summaries available.\n")
+    return(invisible(object))
+  }
+
+  x <- as.data.frame(object)
+
+  cat("Edge-level summary\n")
+  cat("------------------\n")
+
+  has_intra <- "intra" %in% x$scope
+  has_inter <- "inter" %in% x$scope
+
+  # -----------------------------------------------------------------------
+  # intralayer edges
+  # -----------------------------------------------------------------------
+  if (has_intra) {
+
+    intra <- x[x$scope == "intra", , drop = FALSE]
+
+    cat("\nIntralayer edges:\n")
+
+    if ("layer" %in% names(intra) &&
+        any(!is.na(intra$layer))) {
+
+      layers <- unique(stats::na.omit(intra$layer))
+
+      # single-layer object
+      if (length(layers) == 1 &&
+          identical(as.character(layers), "1")) {
+
+        cat("  ", nrow(intra), "\n", sep = "")
+
+      } else {
+
+        tab <- table(intra$layer)
+
+        for (nm in names(tab)) {
+          cat("  - ", nm, ": ", tab[[nm]], "\n", sep = "")
+        }
+      }
+
+    } else {
+
+      cat("  ", nrow(intra), "\n", sep = "")
+    }
+  }
+
+  # -----------------------------------------------------------------------
+  # interlayer edges
+  # -----------------------------------------------------------------------
+  if (has_inter) {
+
+    inter <- x[x$scope == "inter", , drop = FALSE]
+
+    cat("\nInterlayer edges:\n")
+
+    if ("pairs" %in% names(inter) &&
+        any(!is.na(inter$pairs))) {
+
+      tab <- table(inter$pairs)
+
+      for (nm in names(tab)) {
+        cat("  - ", nm, ": ", tab[[nm]], "\n", sep = "")
+      }
+
+    } else {
+
+      cat("  ", nrow(inter), "\n", sep = "")
+    }
+  }
+
+  # -----------------------------------------------------------------------
+  # bootstrap info
+  # -----------------------------------------------------------------------
+  boot_cols <- grep("bootstrap", names(x), value = TRUE)
+
+  cat(
+    "\nBootstrap summaries: ",
+    if (length(boot_cols)) "available" else "not available",
+    "\n",
+    sep = ""
+  )
+
+  invisible(object)
 }

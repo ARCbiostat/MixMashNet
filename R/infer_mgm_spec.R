@@ -3,9 +3,9 @@
 #' @description
 #' Internal helper used by \code{mixMN} and \code{multimixMN} to infer \code{type} and \code{level}
 #' vectors required by \code{mgm::mgm}, and to build a numeric matrix suitable for
-#' model fitting. When \code{recode_binary = TRUE}, binary variables stored as
-#' two-level factors (or ordered factors) and logical variables are internally
-#' recoded to \{0,1\} to satisfy the requirements of \code{mgm} when
+#' model fitting. When \code{recode_binary = TRUE},binary variables stored as two-level factors (or ordered factors), logical
+#' variables, and numeric/integer variables coded as 0/1 are handled as categorical
+#' binary variables. When needed, they are internally recoded to \{0,1\} to satisfy the requirements of \code{mgm} when
 #' \code{binarySign = TRUE}. The original input \code{data} is not modified.
 #'
 #' @details
@@ -19,7 +19,10 @@
 #'   \item \strong{Integer}: if the observed non-missing values are all in \{0,1\},
 #'         then \code{type = "c"}, \code{level = 2}; otherwise \code{type = "p"},
 #'         \code{level = 1}.
-#'   \item \strong{Numeric (double)}: \code{type = "g"}, \code{level = 1}.
+#'   \item \strong{Numeric (double)}:
+#'         if the observed non-missing values are all in \{0,1\},
+#'         then \code{type = "c"}, \code{level = 2};
+#'         otherwise \code{type = "g"}, \code{level = 1}.
 #' }
 #'
 #' The returned \code{data_info} data frame provides a compact audit trail of the
@@ -110,9 +113,21 @@ infer_mgm_spec <- function(data, recode_binary = TRUE) {
       }
 
     } else if (is.numeric(x)) {
-      type[j]  <- "g"
-      level[j] <- 1L
 
+      ux <- unique(x[!is.na(x)])
+
+      if (length(ux) > 0 && all(ux %in% c(0, 1))) {
+
+        type[j]  <- "c"
+        level[j] <- 2L
+
+        # already {0,1}; no recoding needed
+
+      } else {
+
+        type[j]  <- "g"
+        level[j] <- 1L
+      }
     } else {
       stop(sprintf("Column '%s' has unsupported class: %s", nm, paste(class(x), collapse = ", ")))
     }

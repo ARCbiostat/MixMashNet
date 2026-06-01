@@ -181,7 +181,7 @@
 #'     \code{EGAnet::net.loads}) for later community-score computation on new
 #'     data:
 #'     \code{nodes}(nodes used for loadings),
-#'     \code{wc} (integer community labels aligned with \code{nodes}),
+#'     \code{wc} (factor of community labels aligned with \code{nodes}),
 #'     \code{true} (matrix of standardized loadings, nodes x communities,
 #'     or \code{NULL} if loadings were not computed.),
 #'     \code{boot} (list of bootstrap loading matrices, one per replication,
@@ -506,9 +506,13 @@ mixMN <- function(
   nodes_comm <- intersect(names(groups)[!is.na(groups)], keep_nodes_graph)
   A_comm <- wadj_signed_graph[nodes_comm, nodes_comm, drop = FALSE]
   wc_comm <- groups[nodes_comm]
-  wc_levels <- sort(unique(as.integer(wc_comm)))
+  wc_comm_original <- as.integer(as.character(wc_comm))
+  wc_levels <- sort(unique(wc_comm_original))
+
   wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
-  wc_comm_int <- unname(wc_map[as.integer(wc_comm)])
+  wc_comm_int <- unname(wc_map[as.character(wc_comm_original)])
+
+  community_names <- as.character(wc_levels)
 
   # ---- Loadings eligibility (based on inferred MGM type/level) ----
   type_vec  <- stats::setNames(type,  all_nodes)
@@ -557,10 +561,14 @@ mixMN <- function(
     if (!is.null(loads_obj) && !is.null(loads_obj$std)) {
       community_loadings_true <- loads_obj$std
       community_loadings_true <- community_loadings_true[nodes_comm, , drop = FALSE]
+      colnames(community_loadings_true) <- community_names
     } else {
-      community_loadings_true <- matrix(NA_real_, nrow = length(nodes_comm),
-                                        ncol = length(unique(wc_comm_int)),
-                                        dimnames = list(nodes_comm, paste0("C", seq_len(length(unique(wc_comm_int))))))
+      community_loadings_true <- matrix(
+        NA_real_,
+        nrow = length(nodes_comm),
+        ncol = length(wc_levels),
+        dimnames = list(nodes_comm, community_names)
+      )
     }
   }
 
@@ -933,11 +941,15 @@ mixMN <- function(
       if (!is.null(loads_obj_b) && !is.null(loads_obj_b$std)) {
         loadings_boot <- loads_obj_b$std
         loadings_boot <- loadings_boot[nodes_comm, , drop = FALSE]
+        colnames(loadings_boot) <- community_names
       } else {
         K <- if (!is.null(community_loadings_true)) ncol(community_loadings_true) else length(unique(wc_comm_int))
-        loadings_boot <- matrix(NA_real_, nrow = length(nodes_comm), ncol = K,
-                                dimnames = list(nodes_comm,
-                                                if (!is.null(community_loadings_true)) colnames(community_loadings_true) else paste0("C", seq_len(K))))
+        loadings_boot <- matrix(
+          NA_real_,
+          nrow = length(nodes_comm),
+          ncol = length(community_names),
+          dimnames = list(nodes_comm, community_names)
+        )
       }
     }
 
@@ -1214,7 +1226,7 @@ mixMN <- function(
 
     community_loadings = list(
       nodes = nodes_comm,
-      wc    = wc_comm_int,
+      wc    = wc_comm,
       true  = community_loadings_true,
       boot  = community_loadings_boot,
       available = isTRUE(loadings_available),

@@ -234,7 +234,7 @@ the following top-level components:
     \code{EGAnet::net.loads}) for later community-score computation on new
     data:
     \code{nodes}(nodes used for loadings),
-    \code{wc} (integer community labels aligned with \code{nodes}),
+    \code{wc} (factor of community labels aligned with \code{nodes}),
     \code{true} (matrix of standardized loadings, nodes x communities,
     or \code{NULL} if loadings were not computed.),
     \code{boot} (list of bootstrap loading matrices, one per replication,

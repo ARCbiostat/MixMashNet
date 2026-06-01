@@ -36,6 +36,9 @@ Depending on \code{what}, the method can:
 \strong{Network plots (\code{what = "network"}):}
 Supported arguments (via \code{...}):
 \describe{
+  \item{\code{layout}}{Network layout. Either one of
+    \code{c("fr","kk","circle")} or a numeric matrix with one row per node
+    and at least two columns. If omitted, \code{"fr"} is used.}
   \item{\code{color_by}}{Node coloring: \code{c("community","none")}.}
   \item{\code{edge_color_by}}{Edge coloring: \code{c("sign","none")}.}
   \item{\code{edge_scale}}{Numeric scaling factor for edge widths

@@ -611,9 +611,11 @@ multimixMN <- function(
         A_comm <- sub_w[nodes_comm, nodes_comm, drop = FALSE]
 
         wc_fac <- groups_L[nodes_comm]
-        wc_levels <- sort(unique(as.integer(wc_fac)))
+        wc_original <- as.integer(as.character(wc_fac))
+        wc_levels <- sort(unique(wc_original))
         wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
-        wc_int <- unname(wc_map[as.integer(wc_fac)])
+        wc_int <- unname(wc_map[as.character(wc_original)])
+        community_names <- as.character(wc_levels)
 
         loads_obj <- tryCatch(
           .quiet_net_loads(
@@ -628,17 +630,19 @@ multimixMN <- function(
         if (!is.null(loads_obj) && !is.null(loads_obj$std)) {
           L_true <- loads_obj$std
           L_true <- L_true[nodes_comm, , drop = FALSE]
+          colnames(L_true) <- community_names
         } else {
-          K <- length(unique(wc_int))
           L_true <- matrix(
-            NA_real_, nrow = length(nodes_comm), ncol = K,
-            dimnames = list(nodes_comm, paste0("C", seq_len(K)))
+            NA_real_,
+            nrow = length(nodes_comm),
+            ncol = length(wc_levels),
+            dimnames = list(nodes_comm, community_names)
           )
         }
 
         fitL$community_loadings <- list(
           nodes = nodes_comm,
-          wc    = wc_int,
+          wc    = wc_fac,
           true  = L_true,
           boot  = NULL,
           available = TRUE,
@@ -861,7 +865,15 @@ multimixMN <- function(
             length(info$nodes) > 1 && nrow(info$true) > 0) {
 
           nodes_comm <- info$nodes
-          wc_int     <- info$wc
+          wc_fac <- info$wc
+
+          wc_original <- as.integer(as.character(wc_fac))
+          wc_levels <- sort(unique(wc_original))
+
+          wc_map <- stats::setNames(seq_along(wc_levels), wc_levels)
+          wc_int <- unname(wc_map[as.character(wc_original)])
+
+          community_names <- colnames(info$true)
 
           A_comm_boot <- Wg[nodes_comm, nodes_comm, drop = FALSE]
 
@@ -878,6 +890,7 @@ multimixMN <- function(
           if (!is.null(loads_obj_b) && !is.null(loads_obj_b$std)) {
             L_boot <- loads_obj_b$std
             L_boot <- L_boot[nodes_comm, , drop = FALSE]
+            colnames(L_boot) <- community_names
           } else {
             K <- ncol(info$true)
             L_boot <- matrix(

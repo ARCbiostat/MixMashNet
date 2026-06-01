@@ -23,6 +23,9 @@
 #' \strong{Network plots (\code{what = "network"}):}
 #' Supported arguments (via \code{...}):
 #' \describe{
+#'   \item{\code{layout}}{Network layout. Either one of
+#'     \code{c("fr","kk","circle")} or a numeric matrix with one row per node
+#'     and at least two columns. If omitted, \code{"fr"} is used.}
 #'   \item{\code{color_by}}{Node coloring: \code{c("community","none")}.}
 #'   \item{\code{edge_color_by}}{Edge coloring: \code{c("sign","none")}.}
 #'   \item{\code{edge_scale}}{Numeric scaling factor for edge widths
@@ -159,7 +162,8 @@ plot.mixMN_fit <- function(
 #' @param layer Optional layer name. For \code{what = "intra"} or
 #'   \code{what = "stability"}, this selects which layer-specific fit to use.
 #'   For \code{what = "network"}, if provided, the selected layer is plotted as
-#'   a single layer network.
+#'   a single-layer network; in this case, \code{layout} follows the
+#'   single-layer behavior.
 #' @param ... Additional arguments. Supported arguments depend on \code{what}:
 #'   see the details below.
 #'
@@ -167,6 +171,13 @@ plot.mixMN_fit <- function(
 #' \strong{Network plots (\code{what = "network"}):}
 #' Supported arguments (via \code{...}):
 #' \describe{
+#'   \item{\code{layout}}{Layout used within each layer of the multilayer
+#'     network. Either one of \code{c("fr","kk","circle")} applied to all
+#'     layers, or a named list specifying a layout for selected layers. List
+#'     elements can be layout names or numeric matrices with one row per node
+#'     in the corresponding layer and at least two columns. Layer-specific
+#'     layouts are then centered around fixed layer centroids. If omitted,
+#'     \code{"fr"} is used.}
 #'   \item{\code{color_by}}{Node coloring:
 #'     \code{c("layer","community","none")}.}
 #'   \item{\code{edge_color_by}}{Edge coloring: \code{c("sign","none")}.}
