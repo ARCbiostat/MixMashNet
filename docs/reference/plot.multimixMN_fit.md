@@ -40,7 +40,8 @@ plot(x, what = c("network", "intra", "inter", "stability"), layer = NULL, ...)
 
   Optional layer name. For `what = "intra"` or `what = "stability"`,
   this selects which layer-specific fit to use. For `what = "network"`,
-  if provided, the selected layer is plotted as a single layer network.
+  if provided, the selected layer is plotted as a single-layer network;
+  in this case, `layout` follows the single-layer behavior.
 
 - ...:
 
@@ -55,6 +56,15 @@ If `what != "network"`, the function returns a `ggplot` object. If
 ## Details
 
 **Network plots (`what = "network"`):** Supported arguments (via `...`):
+
+- `layout`:
+
+  Layout used within each layer of the multilayer network. Either one of
+  `c("fr","kk","circle")` applied to all layers, or a named list
+  specifying a layout for selected layers. List elements can be layout
+  names or numeric matrices with one row per node in the corresponding
+  layer and at least two columns. Layer-specific layouts are then
+  centered around fixed layer centroids. If omitted, `"fr"` is used.
 
 - `color_by`:
 

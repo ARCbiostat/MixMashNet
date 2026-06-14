@@ -45,6 +45,12 @@ If `what != "network"`, the function returns a `ggplot` object. If
 
 **Network plots (`what = "network"`):** Supported arguments (via `...`):
 
+- `layout`:
+
+  Network layout. Either one of `c("fr","kk","circle")` or a numeric
+  matrix with one row per node and at least two columns. If omitted,
+  `"fr"` is used.
+
 - `color_by`:
 
   Node coloring: `c("community","none")`.

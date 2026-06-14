@@ -62,6 +62,13 @@ using
 Stability is then computed node-wise as the proportion of bootstrap runs
 in which the node's community matches its empirical assignment.
 
+The returned object has class `"membershipStab"` and provides
+[`print()`](https://rdrr.io/r/base/print.html),
+[`summary()`](https://rdrr.io/r/base/summary.html), and
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) methods for
+quick inspection, descriptive summaries, and visualization of node
+stability.
+
 ## References
 
 Christensen, A. P., & Golino, H. (2021). Estimating the Stability of

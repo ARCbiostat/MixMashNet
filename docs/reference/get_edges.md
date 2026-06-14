@@ -81,7 +81,8 @@ get_edges(
 
 ## Value
 
-A tibble in long format with one row per edge. It contains the columns:
+A data frame in long format with one row per edge. It contains the
+columns:
 
 - `edge`
 
@@ -104,7 +105,7 @@ When available, the output also contains bootstrap summary columns:
 - `quantile.upper.bootstrap`
 
 The quantile level used to compute the bootstrap quantile region is
-stored as the `"quantile_level"` attribute of the returned tibble.
+stored as the `"quantile_level"` attribute of the returned data frame.
 
 ## Details
 

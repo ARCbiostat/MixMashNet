@@ -1,7 +1,7 @@
 # Bacteremia example dataset for single layer network analysis
 
 Clinical bacteremia dataset used to illustrate single-layer network
-estimation with MixMashNet This dataset contains 7240 patients with
+estimation with MixMashNet. This dataset contains 7240 patients with
 clinical suspicion of bacteremia who underwent blood culture testing at
 the Vienna General Hospital.
 

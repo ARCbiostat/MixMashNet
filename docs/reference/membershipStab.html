@@ -13,7 +13,7 @@ assign each node to its empirical (original) community."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MixMashNet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -104,6 +104,9 @@ available, i.e. <code>reps &gt; 0</code> and <code>"community" %in% boot_what</c
 <code><a href="https://r-ega.net/reference/community.homogenize.html" class="external-link">EGAnet::community.homogenize()</a></code>. Stability is then computed node-wise as
 the proportion of bootstrap runs in which the node's community matches its
 empirical assignment.</p>
+<p>The returned object has class <code>"membershipStab"</code> and provides
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> methods for quick
+inspection, descriptive summaries, and visualization of node stability.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

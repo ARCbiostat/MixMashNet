@@ -8,13 +8,13 @@ estimated via
 stored in the fitted `mixMN_fit` object. Scores are computed using the
 dataset provided via the `data` argument. If `data = NULL`, the original
 dataset used to fit the model (`fit$model$data`) is used by default.
-Optionally, percentile bootstrap quantile regions for the community
-scores can be computed if bootstrap community loadings are available in
-`fit$community_loadings$boot`. Community scores are only available if
-community loadings were computed in the fitted model. This requires that
-all variables in the community subgraph are of MGM type Gaussian
-(`"g"`), Poisson (`"p"`), or binary categorical (`"c"` with
-`level == 2`).
+Errors if both are NULL. Optionally, percentile bootstrap quantile
+regions for the community scores can be computed if bootstrap community
+loadings are available in `fit$community_loadings$boot`. Community
+scores are only available if community loadings were computed in the
+fitted model. This requires that all variables in the community subgraph
+are of MGM type Gaussian (`"g"`), Poisson (`"p"`), or binary categorical
+(`"c"` with `level == 2`).
 
 ## Usage
 
@@ -120,6 +120,11 @@ scoreable, the function errors.
 The function requires that `fit$community_loadings$true` exists and that
 the input `data` contains all required variables in
 `fit$community_loadings$nodes`. It errors otherwise.
+
+The returned object has class `"community_scores"` and implements
+[`print()`](https://rdrr.io/r/base/print.html) and
+[`summary()`](https://rdrr.io/r/base/summary.html) methods for quick
+inspection and descriptive summaries of the scores.
 
 ## References
 

@@ -270,6 +270,7 @@ mixMN_from_wadj <- function(
   )
 
   if (igraph::ecount(g_igraph) > 0) {
+    igraph::E(g_igraph)$weight <- round(igraph::E(g_igraph)$weight, digits = 12)
     igraph::E(g_igraph)$abs_weight <- abs(igraph::E(g_igraph)$weight)
     igraph::E(g_igraph)$sign <- ifelse(igraph::E(g_igraph)$weight >= 0, 1L, -1L)
   }

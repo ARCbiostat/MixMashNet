@@ -48,7 +48,7 @@ Relevant for intralayer output in multilayer fits.}
 Relevant for interlayer output in multilayer fits.}
 }
 \value{
-A tibble in long format with one row per edge.
+A data frame in long format with one row per edge.
 It contains the columns:
 \itemize{
   \item \code{edge}
@@ -67,7 +67,7 @@ When available, the output also contains bootstrap summary columns:
 }
 
 The quantile level used to compute the bootstrap quantile region is stored
-as the \code{"quantile_level"} attribute of the returned tibble.
+as the \code{"quantile_level"} attribute of the returned data frame.
 }
 \description{
 Extracts edge-level summaries from fitted objects returned by

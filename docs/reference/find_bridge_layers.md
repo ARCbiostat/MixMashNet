@@ -79,3 +79,8 @@ For a focal node in the selected `layer`, the function decomposes:
 
 Contributions are defined so that they sum to the corresponding overall
 interlayer index.
+
+The returned object has class `"bridge_layer_profiles"` and provides a
+dedicated [`print()`](https://rdrr.io/r/base/print.html) method. By
+default, all interlayer profiles are displayed; a specific profile can
+be selected through the `statistic` argument.

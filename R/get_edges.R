@@ -86,16 +86,18 @@
 .finalize_edges <- function(out, quantile_level, what, digits,
                                     drop_na_boot) {
   if (is.null(out) || !nrow(out)) {
-    out <- tibble::tibble(
+    out <- data.frame(
       edge = character(),
       layer = character(),
       pairs = character(),
       scope = character(),
-      estimated = numeric()
+      estimated = numeric(),
+      stringsAsFactors = FALSE
     )
+
     attr(out, "quantile_level") <- quantile_level
     attr(out, "what") <- what
-    class(out) <- c("get_edges", class(out))
+    class(out) <- c("get_edges", "data.frame")
     return(out)
   }
 
@@ -113,11 +115,11 @@
     out <- out[, setdiff(colnames(out), "layer"), drop = FALSE]
   }
 
-  out <- tibble::as_tibble(out)
+  out <- as.data.frame(out, stringsAsFactors = FALSE)
 
   attr(out, "quantile_level") <- quantile_level
   attr(out, "what") <- what
-  class(out) <- c("get_edges", class(out))
+  class(out) <- c("get_edges", "data.frame")
 
   out
 }
@@ -170,7 +172,7 @@
 #' whereas \code{pairs} can be used to subset interlayer output.
 #'
 #' @return
-#' A tibble in long format with one row per edge.
+#' A data frame in long format with one row per edge.
 #' It contains the columns:
 #' \itemize{
 #'   \item \code{edge}
@@ -189,7 +191,7 @@
 #' }
 #'
 #' The quantile level used to compute the bootstrap quantile region is stored
-#' as the \code{"quantile_level"} attribute of the returned tibble.
+#' as the \code{"quantile_level"} attribute of the returned data frame.
 #'
 #' @export
 get_edges <- function(object, ...) {
@@ -334,7 +336,16 @@ get_edges.multimixMN_fit <- function(object,
 }
 
 #' @export
-print.get_edges <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
+print.get_edges <- function(
+    x,
+    what = NULL,
+    layer = NULL,
+    pairs = NULL,
+    digits = 3,
+    top_n = Inf,
+    max_rows = 15,
+    ...
+) {
 
   `%||%` <- function(a, b) if (!is.null(a)) a else b
 
@@ -387,6 +398,27 @@ print.get_edges <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
   quantile_level <- attr(x, "quantile_level") %||% 0.95
 
   x <- as.data.frame(x, stringsAsFactors = FALSE)
+
+  if (!is.null(what)) {
+    what <- match.arg(what, c("intra", "inter"))
+    x <- x[x$scope == what, , drop = FALSE]
+  }
+
+  if (!is.null(layer) && "layer" %in% names(x)) {
+    x <- x[x$layer %in% layer, , drop = FALSE]
+  }
+
+  if (!is.null(pairs) && "pairs" %in% names(x)) {
+    norm_pairs <- .normalize_pairs(pairs)
+    norm_x_pairs <- .normalize_pairs(x$pairs)
+    x <- x[norm_x_pairs %in% norm_pairs, , drop = FALSE]
+  }
+
+  if (!nrow(x)) {
+    cat("No edge-level summaries available for the selected filters.\n")
+    return(invisible(x))
+  }
+
   x <- round_df(x, digits)
 
   print_edge_block <- function(df, block_title, group_var, group_label,
@@ -443,14 +475,26 @@ print.get_edges <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
            " rows after top_n filtering\n", sep = "")
      }
 
-    if (length(groups_all) > 1) {
-      cat(
-        "\n... additional ",
-        group_label,
-        "s available in the returned object.\n",
-        sep = ""
-      )
-    }
+     if (length(groups_all) > 1) {
+
+       filter_arg <- if (identical(group_var, "pairs")) {
+         "pairs"
+       } else {
+         "layer"
+       }
+
+       cat(
+         "\n... additional ",
+         tolower(group_label),
+         "s are available. ",
+         "Use `print(x, ",
+         filter_arg,
+         " = ...)` to display another ",
+         tolower(group_label),
+         ".\n",
+         sep = ""
+       )
+     }
 
     invisible(NULL)
   }
@@ -487,13 +531,6 @@ print.get_edges <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
       sort_cols = c("pairs", "edge"),
       drop_cols = "layer"
     )
-
-    if (has_intra) {
-      cat(
-        "\n... intralayer summaries are also available in the returned object.\n",
-        sep = ""
-      )
-    }
   }
 
   invisible(x)

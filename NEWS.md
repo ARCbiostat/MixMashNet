@@ -1,3 +1,15 @@
+# MixMashNet 1.1.0
+
+## Major updates
+
+* Added support for Fruchterman-Reingold ("fr"), Kamada-Kawai ("kk"), circular, and user-defined network layouts.
+* Added `summary()` methods for `get_centrality()` and `get_edges()` objects.
+* Improved `print()` methods for `get_centrality()` and `get_edges()`.
+
+## Minor upddates
+
+* Fixed bugs affecting community score estimation and output consistency.
+
 # MixMashNet 1.0.0
 
 ## Major updates

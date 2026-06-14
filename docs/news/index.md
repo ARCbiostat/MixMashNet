@@ -1,6 +1,29 @@
 # Changelog
 
+## MixMashNet 1.1.0
+
+### Major updates
+
+- Added support for Fruchterman-Reingold (“fr”), Kamada-Kawai (“kk”),
+  circular, and user-defined network layouts.
+- Added [`summary()`](https://rdrr.io/r/base/summary.html) methods for
+  [`get_centrality()`](https://arcbiostat.github.io/MixMashNet/reference/get_centrality.md)
+  and
+  [`get_edges()`](https://arcbiostat.github.io/MixMashNet/reference/get_edges.md)
+  objects.
+- Improved [`print()`](https://rdrr.io/r/base/print.html) methods for
+  [`get_centrality()`](https://arcbiostat.github.io/MixMashNet/reference/get_centrality.md)
+  and
+  [`get_edges()`](https://arcbiostat.github.io/MixMashNet/reference/get_edges.md).
+
+### Minor upddates
+
+- Fixed bugs affecting community score estimation and output
+  consistency.
+
 ## MixMashNet 1.0.0
+
+CRAN release: 2026-04-30
 
 ### Major updates
 

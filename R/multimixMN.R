@@ -1398,8 +1398,16 @@ multimixMN <- function(
   )
 
   if (igraph::ecount(g_multi) > 0) {
+    igraph::E(g_multi)$weight <- round(
+      igraph::E(g_multi)$weight,
+      digits = 12
+    )
     igraph::E(g_multi)$abs_weight <- abs(igraph::E(g_multi)$weight)
-    igraph::E(g_multi)$sign       <- ifelse(igraph::E(g_multi)$weight >= 0, 1L, -1L)
+    igraph::E(g_multi)$sign <- ifelse(
+      igraph::E(g_multi)$weight >= 0,
+      1L,
+      -1L
+    )
   }
 
   igraph::V(g_multi)$name  <- keep_nodes_graph_all

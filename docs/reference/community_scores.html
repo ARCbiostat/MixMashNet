@@ -5,7 +5,7 @@ weights correspond to the standardized community loadings estimated via
 EGAnet::net.loads and stored in the fitted mixMN_fit object.
 Scores are computed using the dataset provided via the data argument.
 If data = NULL, the original dataset used to fit the model
-(fit$model$data) is used by default.
+(fit$model$data) is used by default. Errors if both are NULL.
 Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 fit$community_loadings$boot.
@@ -18,7 +18,7 @@ weights correspond to the standardized community loadings estimated via
 EGAnet::net.loads and stored in the fitted mixMN_fit object.
 Scores are computed using the dataset provided via the data argument.
 If data = NULL, the original dataset used to fit the model
-(fit$model$data) is used by default.
+(fit$model$data) is used by default. Errors if both are NULL.
 Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 fit$community_loadings$boot.
@@ -33,7 +33,7 @@ binary categorical ("c" with level == 2).'></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">MixMashNet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -71,7 +71,7 @@ weights correspond to the standardized community loadings estimated via
 <code><a href="https://r-ega.net/reference/net.loads.html" class="external-link">EGAnet::net.loads</a></code> and stored in the fitted <code>mixMN_fit</code> object.
 Scores are computed using the dataset provided via the <code>data</code> argument.
 If <code>data = NULL</code>, the original dataset used to fit the model
-(<code>fit$model$data</code>) is used by default.
+(<code>fit$model$data</code>) is used by default. Errors if both are NULL.
 Optionally, percentile bootstrap quantile regions for the community
 scores can be computed if bootstrap community loadings are available in
 <code>fit$community_loadings$boot</code>.
@@ -174,6 +174,9 @@ scoreable, the function errors.</p>
     <p>The function requires that <code>fit$community_loadings$true</code> exists and that
 the input <code>data</code> contains all required variables in
 <code>fit$community_loadings$nodes</code>. It errors otherwise.</p>
+<p>The returned object has class <code>"community_scores"</code> and implements
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> methods for quick inspection and
+descriptive summaries of the scores.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

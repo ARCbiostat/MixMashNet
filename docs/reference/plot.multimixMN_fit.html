@@ -29,7 +29,7 @@ what = "stability": plot node stability within communities
 
     <a class="navbar-brand me-2" href="../index.html">MixMashNet</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -96,7 +96,8 @@ what = "stability": plot node stability within communities
 <dd><p>Optional layer name. For <code>what = "intra"</code> or
 <code>what = "stability"</code>, this selects which layer-specific fit to use.
 For <code>what = "network"</code>, if provided, the selected layer is plotted as
-a single layer network.</p></dd>
+a single-layer network; in this case, <code>layout</code> follows the
+single-layer behavior.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -112,7 +113,16 @@ If <code>what = "network"</code>, the network is plotted directly.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><strong>Network plots (<code>what = "network"</code>):</strong>
-Supported arguments (via <code>...</code>):</p><dl><dt><code>color_by</code></dt>
+Supported arguments (via <code>...</code>):</p><dl><dt><code>layout</code></dt>
+<dd><p>Layout used within each layer of the multilayer
+    network. Either one of <code>c("fr","kk","circle")</code> applied to all
+    layers, or a named list specifying a layout for selected layers. List
+    elements can be layout names or numeric matrices with one row per node
+    in the corresponding layer and at least two columns. Layer-specific
+    layouts are then centered around fixed layer centroids. If omitted,
+    <code>"fr"</code> is used.</p></dd>
+
+  <dt><code>color_by</code></dt>
 <dd><p>Node coloring:
     <code>c("layer","community","none")</code>.</p></dd>
 

@@ -183,16 +183,18 @@
 .finalize_centrality <- function(out, quantile_level, what, digits,
                                          drop_na_boot, metric_order) {
   if (is.null(out) || !nrow(out)) {
-    out <- tibble::tibble(
+    out <- data.frame(
       node = character(),
       layer = character(),
       scope = character(),
       metric = character(),
-      estimated = numeric()
+      estimated = numeric(),
+      stringsAsFactors = FALSE
     )
+
     attr(out, "quantile_level") <- quantile_level
     attr(out, "what") <- what
-    class(out) <- c("get_centrality", class(out))
+    class(out) <- c("get_centrality", "data.frame")
     return(out)
   }
 
@@ -204,12 +206,12 @@
 
   out$metric <- factor(out$metric, levels = metric_order)
   out <- out[order(out$scope, out$layer, out$metric, out$node), , drop = FALSE]
-  out <- tibble::as_tibble(out)
+  out <- as.data.frame(out, stringsAsFactors = FALSE)
   out$metric <- as.character(out$metric)
 
   attr(out, "quantile_level") <- quantile_level
   attr(out, "what") <- what
-  class(out) <- c("get_centrality", class(out))
+  class(out) <- c("get_centrality", "data.frame")
 
   out
 }
@@ -270,7 +272,7 @@
 #' intralayer output.
 #'
 #' @return
-#' A tibble in long format with one row per node-statistic combination.
+#' A data frame in long format with one row per node-statistic combination.
 #' It contains the columns:
 #' \itemize{
 #'   \item \code{node}
@@ -289,7 +291,7 @@
 #' }
 #'
 #' The quantile level used to compute the bootstrap quantile region is stored
-#' as the \code{"quantile_level"} attribute of the returned tibble.
+#' as the \code{"quantile_level"} attribute of the returned data frame.
 #'
 #' @export
 get_centrality <- function(object, ...) {
@@ -631,7 +633,17 @@ get_centrality.multimixMN_fit <- function(object,
 # -------------------------------------------------------------------------
 
 #' @export
-print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...) {
+print.get_centrality <- function(
+    x,
+    what = NULL,
+    statistics = NULL,
+    layer = NULL,
+    pairs = NULL,
+    digits = 3,
+    top_n = Inf,
+    max_rows = 15,
+    ...
+) {
 
   `%||%` <- function(a, b) if (!is.null(a)) a else b
 
@@ -698,6 +710,29 @@ print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...)
   quantile_level <- attr(x, "quantile_level") %||% 0.95
 
   x <- as.data.frame(x, stringsAsFactors = FALSE)
+  if (!is.null(what)) {
+    what <- match.arg(what, c("intra", "inter"))
+    x <- x[x$scope == what, , drop = FALSE]
+  }
+
+  if (!is.null(layer)) {
+    x <- x[x$layer %in% layer, , drop = FALSE]
+  }
+
+  if (!is.null(pairs)) {
+
+    norm_pairs <- .normalize_pairs(pairs)
+
+    allowed_layers <- unique(
+      unlist(strsplit(norm_pairs, "_", fixed = TRUE))
+    )
+
+    x <- x[x$layer %in% allowed_layers, , drop = FALSE]
+  }
+  if (!nrow(x)) {
+    cat("No node-level centrality indices available for the selected filters.\n")
+    return(invisible(x))
+  }
   x <- round_df(x, digits)
 
   allowed_intra <- c(
@@ -727,7 +762,26 @@ print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...)
       return(invisible(NULL))
     }
 
-    met <- metrics_all[1]
+    if (!is.null(statistics)) {
+      if (length(statistics) != 1L) {
+        stop(
+          "`statistics` must contain exactly one metric. ",
+          "Use `get_centrality(..., statistics = ...)` to extract multiple metrics."
+        )
+      }
+
+      if (!statistics %in% metrics_all) {
+        stop(
+          "Invalid `statistics`: ", statistics, "\n",
+          "Available statistics are: ",
+          paste(metrics_all, collapse = ", ")
+        )
+      }
+
+      met <- statistics
+    } else {
+      met <- metrics_all[1]
+    }
 
     sub_met <- df[df$metric == met, , drop = FALSE]
 
@@ -777,9 +831,10 @@ print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...)
         cat("... showing ", n_rank, " of ", n_total, " rows after top_n filtering\n", sep = "")
         }
 
-    if (length(metrics_all) > 1) {
+    if (length(metrics_all) > 1 && is.null(statistics)) {
       cat(
-        "\n... additional statistics are available in the returned object.\n",
+        "\n... additional statistics are available in the returned object. ",
+        "Use `print(x, statistics = ...)` to display another metric.\n",
         sep = ""
       )
     }
@@ -817,13 +872,6 @@ print.get_centrality <- function(x, digits = 3, top_n = Inf, max_rows = 15, ...)
       drop_cols = character(0),
       sort_cols = c("layer", "node")
     )
-
-    if (has_intra) {
-      cat(
-        "\n... intralayer node-level indices are also available in the returned object.\n",
-        sep = ""
-      )
-    }
   }
 
   invisible(x)
