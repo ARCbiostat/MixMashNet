@@ -23,9 +23,18 @@
 #' \strong{Network plots (\code{what = "network"}):}
 #' Supported arguments (via \code{...}):
 #' \describe{
-#'   \item{\code{layout}}{Network layout. Either one of
-#'     \code{c("fr","kk","circle")} or a numeric matrix with one row per node
-#'     and at least two columns. If omitted, \code{"fr"} is used.}
+#'  \item{\code{layout}}{
+#'  Layout specification. Can be:
+#'  \itemize{
+#'  \item one of \code{c("fr","kk","circle")} to compute node coordinates
+#'  using the corresponding layout algorithm;
+#'  \item a numeric matrix with one row per node and at least two columns,
+#'  providing node coordinates directly;
+#'  \item \code{NULL}, in which case coordinates stored in
+#'  \code{x$graph$igraph$layout} are used when available.
+#'  }
+#'  If no stored coordinates are available, a Fruchterman--Reingold layout
+#'  is computed.}
 #'   \item{\code{color_by}}{Node coloring: \code{c("community","none")}.}
 #'   \item{\code{edge_color_by}}{Edge coloring: \code{c("sign","none")}.}
 #'   \item{\code{edge_scale}}{Numeric scaling factor for edge widths
