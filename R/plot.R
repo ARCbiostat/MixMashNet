@@ -171,22 +171,27 @@ plot.mixMN_fit <- function(
 #' \strong{Network plots (\code{what = "network"}):}
 #' Supported arguments (via \code{...}):
 #' \describe{
-#'   \item{\code{layout}}{Layout used within each layer of the multilayer
-#'     network. Either one of \code{c("fr","kk","circle")} applied to all
-#'     layers, or a named list specifying a layout for selected layers. List
-#'     elements can be layout names or numeric matrices with one row per node
-#'     in the corresponding layer and at least two columns. Layer-specific
-#'     layouts are then centered around fixed layer centroids. If omitted,
-#'     \code{"fr"} is used.}
+#'   \item{\code{layout}}{
+#'     Layout specification for the multilayer network. Can be:
+#'     \itemize{
+#'       \item one of \code{c("fr","kk","circle")} applied to all layers;
+#'       \item a numeric matrix with one row per node in the full multilayer
+#'       graph and at least two columns, providing global node coordinates;
+#'       \item a named list specifying layouts for selected layers. List
+#'       elements can be layout names or numeric matrices with one row per node
+#'       in the corresponding layer and at least two columns. Layer-specific
+#'       layouts are then centered around fixed layer centroids.
+#'     }
+#'     If omitted, \code{"fr"} is used.
+#'   }
 #'   \item{\code{color_by}}{Node coloring:
 #'     \code{c("layer","community","none")}.}
 #'   \item{\code{edge_color_by}}{Edge coloring: \code{c("sign","none")}.}
 #'   \item{\code{edge_scale}}{Numeric scaling factor for edge widths
-#'     (multiplied by \code{abs(weight)}).}
+#'     multiplied by \code{abs(weight)}.}
 #'   \item{\code{graphics::plot.igraph} arguments}{e.g., \code{vertex.size},
 #'     \code{vertex.label.cex}, \code{edge.width}, \code{vertex.label.color}, etc.}
 #' }
-#'
 #' \strong{Intralayer statistics (\code{what = "intra"}):}
 #' Plots node-level metrics or edge weights with bootstrap quantile regions.
 #' If \code{layer} is provided, only that layer is plotted. If \code{layer} is
